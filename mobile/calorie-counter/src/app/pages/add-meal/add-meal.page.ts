@@ -1,11 +1,13 @@
 ﻿import { Component, OnDestroy } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { HttpEventType } from "@angular/common/http";
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from "@angular/forms";
 import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
+import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
@@ -27,7 +29,8 @@ function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule,
-    MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatSnackBarModule
+    MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule,
+    MatProgressBarModule, MatSnackBarModule
   ],
   templateUrl: "./add-meal.page.html",
   styleUrls: ["./add-meal.page.scss"]
@@ -36,6 +39,9 @@ export class AddMealPage implements OnDestroy {
   photoDataUrl?: string;    // превью для UI (через pipe convert)
   form!: FormGroup;
   previewActive = false;
+
+  uploadProgress: number | null = null;
+  progressMode: "determinate" | "indeterminate" = "determinate";
 
   lastResult: any;
 
@@ -81,12 +87,23 @@ export class AddMealPage implements OnDestroy {
     this.photoDataUrl = "data:image/jpeg;base64," + b64;
     // upload
     const file = b64toFile(b64, `meal_${Date.now()}.jpg`);
+    this.uploadProgress = 0;
+    this.progressMode = "determinate";
     this.api.uploadPhoto(file).subscribe({
-      next: (res) => {
-        this.lastResult = res;
-        this.snack.open("Фото отправлено. Расчёт готов.", "OK", { duration: 1500 });
+      next: (event) => {
+        if (event.type === HttpEventType.UploadProgress && event.total) {
+          this.uploadProgress = Math.round(100 * event.loaded / event.total);
+          if (event.loaded === event.total) this.progressMode = "indeterminate";
+        } else if (event.type === HttpEventType.Response) {
+          this.lastResult = event.body;
+          this.uploadProgress = null;
+          this.snack.open("Фото отправлено. Расчёт готов.", "OK", { duration: 1500 });
+        }
       },
-      error: () => this.snack.open("Не удалось отправить фото", "OK", { duration: 2000 })
+      error: () => {
+        this.uploadProgress = null;
+        this.snack.open("Не удалось отправить фото", "OK", { duration: 2000 });
+      }
     });
   }
 

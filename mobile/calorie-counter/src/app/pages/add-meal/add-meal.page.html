@@ -16,6 +16,8 @@
     </button>
   </div>
 
+  <mat-progress-bar *ngIf="uploadProgress !== null" [mode]="progressMode" [value]="uploadProgress"></mat-progress-bar>
+
   <div class="last-shot" *ngIf="photoDataUrl">
     <img [src]="photoDataUrl" alt="snapshot" />
   </div>

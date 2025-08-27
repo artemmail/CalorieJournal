@@ -1,5 +1,5 @@
 ﻿import { Injectable } from "@angular/core";
-import { HttpClient, HttpParams } from "@angular/common/http";
+import { HttpClient, HttpParams, HttpEvent } from "@angular/common/http";
 import { map, Observable } from "rxjs";
 import { FoodBotAuthLinkService } from "./foodbot-auth-link.service";
 import {
@@ -30,10 +30,14 @@ export class FoodbotApiService {
   }
 
   // Загрузка фото
-  uploadPhoto(file: File): Observable<UploadResult> {
+  uploadPhoto(file: File): Observable<HttpEvent<UploadResult>> {
     const form = new FormData();
     form.append("image", file, file.name);
-    return this.http.post<UploadResult>(`${this.baseUrl}/api/meals/upload`, form);
+    return this.http.post<UploadResult>(
+      `${this.baseUrl}/api/meals/upload`,
+      form,
+      { reportProgress: true, observe: "events" }
+    );
   }
 
   // Уточнения
