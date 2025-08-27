@@ -1,0 +1,23 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Calorie Counter</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Материальные иконки (для <mat-icon>) -->
+
+  <!-- __FOODBOTOS_ENV__ -->
+  <script>
+    window.environment = Object.assign({
+       //'https://localhost:52800',     // <== замени на свой backend
+      apiBaseUrl: 'https://stock-charts.ru',     // <== замени на свой backend
+      telegramBot: 'CalorieJournal_bot'       // <== юзернейм бота без @
+    }, window.environment || {});
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>

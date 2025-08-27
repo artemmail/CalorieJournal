@@ -1,0 +1,27 @@
+﻿<mat-card>
+  <h2>Вход через Telegram</h2>
+  <p>1) Скопируй код и отправь его боту как команду <code>/start &lt;код&gt;</code> (или просто отправь код).</p>
+
+  <div class="code-pill" *ngIf="code">{{ code }}</div>
+  <div class="actions">
+    <button mat-raised-button color="primary" (click)="copyCode()" [disabled]="!code">
+      <mat-icon>content_copy</mat-icon> Скопировать
+    </button>
+    <button mat-stroked-button color="primary" (click)="openBot()" [disabled]="!code">
+      <mat-icon>send</mat-icon> Открыть бота
+    </button>
+    <button mat-flat-button color="accent" (click)="refresh()" [disabled]="busy || !code">
+      <mat-icon>sync</mat-icon> Обновить статус
+    </button>
+    <button mat-button (click)="restart()" [disabled]="busy">
+      <mat-icon>autorenew</mat-icon> Запросить новый код
+    </button>
+  </div>
+
+  <div class="pending" *ngIf="busy">
+    <mat-progress-spinner mode="indeterminate" diameter="28"></mat-progress-spinner>
+    <span>Ждём подтверждение…</span>
+  </div>
+
+  <p class="expires" *ngIf="expiresAt">Код действителен до: {{ expiresAt | date:'medium' }}</p>
+</mat-card>

@@ -1,0 +1,41 @@
+﻿<mat-card *ngFor="let m of items" class="meal-card">
+  <div class="row">
+    <img *ngIf="m.hasImage && imgUrl(m.id)" [src]="imgUrl(m.id)" alt="meal" />
+    <div class="info">
+      <div class="time">{{ time(m.createdAtUtc) }}</div>
+      <div class="kcal">
+        {{ m.caloriesKcal ?? "—" }} ккал
+        <span class="dish" *ngIf="m.dishName">· {{ m.dishName }}</span>
+      </div>
+      <div class="macros">
+        Б {{ m.proteinsG ?? "—" }} · Ж {{ m.fatsG ?? "—" }} · У {{ m.carbsG ?? "—" }} · {{ m.weightG ?? "—" }} г
+      </div>
+      <div class="ing" *ngIf="m.ingredients?.length">Ингредиенты: {{ m.ingredients.join(", ") }}</div>
+
+      <div class="actions">
+        <button mat-stroked-button color="primary" (click)="clarifyText(m)">
+          <mat-icon>edit</mat-icon> Уточнить (текст)
+        </button>
+        <button mat-stroked-button color="primary" (click)="clarifyVoice(m)">
+          <mat-icon>mic</mat-icon> Уточнить (голос)
+        </button>
+      </div>
+    </div>
+  </div>
+</mat-card>
+
+<mat-paginator [length]="total" [pageSize]="pageSize" [pageIndex]="pageIndex"
+               [pageSizeOptions]="[5,10,20,30]" (page)="pageChange($event)">
+</mat-paginator>
+
+<style>
+.meal-card { margin-bottom: 12px; }
+.row { display: flex; gap: 12px; align-items: flex-start; }
+img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; }
+.info { flex: 1; }
+.time { font-size: 12px; opacity: .7; }
+.kcal { font-weight: 600; margin: 4px 0; }
+.dish { opacity: .8; margin-left: 6px; }
+.macros { font-size: 13px; }
+.actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+</style>

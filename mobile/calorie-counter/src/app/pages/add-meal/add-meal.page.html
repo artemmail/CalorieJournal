@@ -1,0 +1,29 @@
+﻿<mat-card>
+  <div id="cameraPreview" class="preview-box" *ngIf="previewActive"></div>
+
+  <div class="photo-controls">
+    <button mat-raised-button color="primary" (click)="takePhotoSystem()" [disabled]="previewActive">
+      <mat-icon>photo_camera</mat-icon> Системная камера
+    </button>
+    <button mat-stroked-button color="primary" (click)="startPreview()" *ngIf="!previewActive">
+      <mat-icon>videocam</mat-icon> Включить превью
+    </button>
+    <button mat-stroked-button color="warn" (click)="stopPreview()" *ngIf="previewActive">
+      <mat-icon>stop</mat-icon> Выключить превью
+    </button>
+    <button mat-raised-button color="accent" (click)="captureFromPreview()" *ngIf="previewActive">
+      <mat-icon>camera</mat-icon> Сфотографировать
+    </button>
+  </div>
+
+  <div class="last-shot" *ngIf="photoDataUrl">
+    <img [src]="photoDataUrl" alt="snapshot" />
+  </div>
+
+  <mat-card *ngIf="lastResult">
+    <h3>Результат</h3>
+    <p><b>{{ lastResult.result.dish }}</b></p>
+    <p>{{ lastResult.result.calories_kcal }} ккал · Б {{ lastResult.result.proteins_g }} · Ж {{ lastResult.result.fats_g }} · У {{ lastResult.result.carbs_g }} · {{ lastResult.result.weight_g }} г</p>
+    <p *ngIf="lastResult.result.ingredients?.length">Ингредиенты: {{ lastResult.result.ingredients.join(", ") }}</p>
+  </mat-card>
+</mat-card>

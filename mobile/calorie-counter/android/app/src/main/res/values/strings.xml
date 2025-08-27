@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Calorie Counter</string>
+    <string name="title_activity_main">Calorie Counter</string>
+    <string name="package_name">com.yourscriptor.calorie</string>
+    <string name="custom_url_scheme">com.yourscriptor.calorie</string>
+</resources>

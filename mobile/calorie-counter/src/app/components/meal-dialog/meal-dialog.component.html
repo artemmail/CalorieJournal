@@ -1,0 +1,42 @@
+﻿<h2 mat-dialog-title>Уточнение данных</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="form">
+    <mat-form-field appearance="outline">
+      <mat-label>Калории (ккал)</mat-label>
+      <input matInput type="number" formControlName="calories" />
+    </mat-form-field>
+
+    <div class="grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Белки (г)</mat-label>
+        <input matInput type="number" formControlName="proteins" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Жиры (г)</mat-label>
+        <input matInput type="number" formControlName="fats" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Углеводы (г)</mat-label>
+        <input matInput type="number" formControlName="carbs" />
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Заметка</mat-label>
+      <input matInput formControlName="note" />
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="speakFill()" [disabled]="loadingVoice">
+    <mat-icon>mic</mat-icon>
+    Голосом
+  </button>
+  <button mat-raised-button color="primary" (click)="save()">Сохранить</button>
+</mat-dialog-actions>
+
+<style>
+.form { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.full { grid-column: 1 / -1; }
+</style>

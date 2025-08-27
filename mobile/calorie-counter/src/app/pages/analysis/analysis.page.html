@@ -1,0 +1,32 @@
+﻿<mat-card>
+  <h3>Итог на сегодня</h3>
+  <ng-container *ngIf="a.todayRecommendation() as t">
+    <p><b>Съедено:</b> {{ t.consumed.calories | number:'1.0-0' }} ккал · Б {{ t.consumed.proteins | number:'1.0-0' }} · Ж {{ t.consumed.fats | number:'1.0-0' }} · У {{ t.consumed.carbs | number:'1.0-0' }}</p>
+    <p><b>Осталось:</b> {{ t.remaining.calories | number:'1.0-0' }} ккал · Б {{ t.remaining.proteins | number:'1.0-0' }} · Ж {{ t.remaining.fats | number:'1.0-0' }} · У {{ t.remaining.carbs | number:'1.0-0' }}</p>
+    <mat-chip-listbox>
+      <mat-chip>{{ t.tip }}</mat-chip>
+    </mat-chip-listbox>
+  </ng-container>
+</mat-card>
+
+<mat-card>
+  <h3>Периоды</h3>
+  <div class="periods">
+    <div class="period" *ngFor="let d of [7,30,90]">
+      <h4 *ngIf="d===7">Неделя</h4>
+      <h4 *ngIf="d===30">Месяц (30 дней)</h4>
+      <h4 *ngIf="d===90">Квартал (90 дней)</h4>
+      <ng-container *ngIf="a.periodSummary(d) as s">
+        <p><b>Записей:</b> {{ s.entries }}, дней: {{ s.days }}</p>
+        <p><b>Итого:</b> {{ s.totals.calories | number:'1.0-0' }} ккал</p>
+        <p><b>Среднесуточно:</b> {{ s.avgDaily.calories | number:'1.0-0' }} ккал · Б {{ s.avgDaily.proteins | number:'1.0-0' }} · Ж {{ s.avgDaily.fats | number:'1.0-0' }} · У {{ s.avgDaily.carbs | number:'1.0-0' }}</p>
+        <p><i>{{ s.recommendation }}</i></p>
+      </ng-container>
+    </div>
+  </div>
+</mat-card>
+
+<style>
+.periods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.period { border: 1px dashed rgba(0,0,0,.2); padding: 8px; border-radius: 8px; }
+</style>

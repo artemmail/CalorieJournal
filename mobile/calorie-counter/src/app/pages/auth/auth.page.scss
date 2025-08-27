@@ -1,0 +1,10 @@
+﻿:host { display:block; }
+.code-pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 22px; letter-spacing: 2px; font-weight: 700;
+  display:inline-block; padding:8px 14px; border-radius:10px;
+  background:#111; color:#fff; user-select:all; margin: 6px 0 10px;
+}
+.actions { display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 12px; }
+.pending { display:flex; align-items:center; gap:8px; margin:8px 0; }
+.expires { opacity:.7; font-size: 12px; }
