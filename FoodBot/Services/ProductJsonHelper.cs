@@ -7,14 +7,14 @@ namespace FoodBot.Services;
 
 public static class ProductJsonHelper
 {
-    public static string? BuildProductsJson(string? calcPlanJson)
+    public static string BuildProductsJson(string? calcPlanJson)
     {
-        if (string.IsNullOrWhiteSpace(calcPlanJson)) return null;
+        if (string.IsNullOrWhiteSpace(calcPlanJson)) return "[]";
         try
         {
             var final = JsonSerializer.Deserialize<FinalPayload>(calcPlanJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (final?.per_ingredient == null) return null;
+            if (final?.per_ingredient == null) return "[]";
             var total = final.weight_g > 0 ? final.weight_g : final.per_ingredient.Sum(p => p.grams);
             var parts = final.per_ingredient.Select(p => new ProductInfo
             {
@@ -30,7 +30,7 @@ public static class ProductJsonHelper
         }
         catch
         {
-            return null;
+            return "[]";
         }
     }
 
