@@ -16,6 +16,11 @@ export interface StatsSummary {
   entries: number;
 }
 
+export interface DayStats {
+  date: string;
+  totals: MacroTotals;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StatsService {
   constructor(private http: HttpClient, private auth: FoodBotAuthLinkService) {}
@@ -24,5 +29,12 @@ export class StatsService {
   getSummary(days = 1): Observable<StatsSummary> {
     const params = new HttpParams().set('days', days);
     return this.http.get<StatsSummary>(`${this.baseUrl}/api/stats/summary`, { params });
+  }
+
+  getDaily(from: Date, to: Date): Observable<DayStats[]> {
+    const params = new HttpParams()
+      .set('from', from.toISOString().split('T')[0])
+      .set('to', to.toISOString().split('T')[0]);
+    return this.http.get<DayStats[]>(`${this.baseUrl}/api/stats/daily`, { params });
   }
 }
