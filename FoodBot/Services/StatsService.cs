@@ -89,7 +89,15 @@ public sealed class StatsService
             var item = results.FirstOrDefault(r => r.Date == day);
             list.Add(item ?? new DailyTotals { Date = day, Totals = new MacroTotals() });
         }
-        return list;
+        // remove empty days until the first one containing a meal
+        var trimmed = list
+            .SkipWhile(d =>
+                d.Totals.Calories == 0 &&
+                d.Totals.Proteins == 0 &&
+                d.Totals.Fats == 0 &&
+                d.Totals.Carbs == 0)
+            .ToList();
+        return trimmed;
     }
 }
 
