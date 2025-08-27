@@ -69,7 +69,7 @@ namespace FoodBot.Controllers
                     m.CarbsG,
                     m.IngredientsJson,
                     m.ProductsJson,
-                    HasImage = m.ImageBytes != null && m.ImageBytes.Length > 0
+                    HasImage = EF.Functions.DataLength(m.ImageBytes) > 0
                 })
                 .ToListAsync(ct);
 
