@@ -20,11 +20,11 @@ public sealed class StatsService
     {
         if (days <= 0) days = 1;
         var from = DateTimeOffset.UtcNow.Date.AddDays(-(days - 1));
-        var to = DateTimeOffset.UtcNow;
+        var to = DateTimeOffset.UtcNow.Date.AddDays(1);
 
         var totals = await _db.Meals
             .AsNoTracking()
-            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= from && m.CreatedAtUtc <= to)
+            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= from && m.CreatedAtUtc < to)
             .GroupBy(_ => 1)
             .Select(g => new
             {
