@@ -17,6 +17,16 @@ export interface NutritionResult {
   confidence: number; // 0..1
 }
 
+export interface ProductInfo {
+  name: string;
+  grams: number;
+  proteins_g: number;
+  fats_g: number;
+  carbs_g: number;
+  calories_kcal: number;
+  percent: number;
+}
+
 export interface MealListItem {
   id: number;
   createdAtUtc: string;
@@ -27,7 +37,9 @@ export interface MealListItem {
   fatsG: number | null;
   carbsG: number | null;
   ingredients: string[];
+  products: ProductInfo[];
   hasImage: boolean;
+  expanded?: boolean;
 }
 
 export interface MealsListResponse {
@@ -48,6 +60,7 @@ export interface MealDetails {
   carbsG: number | null;
   confidence: number | null;
   ingredients: string[];
+  products: ProductInfo[];
   step1: Step1Snapshot | null;
   reasoningPrompt: string | null;
   hasImage: boolean;
@@ -56,6 +69,7 @@ export interface MealDetails {
 export interface UploadResult {
   id: number;
   result: NutritionResult;
+  products: ProductInfo[];
   step1: Step1Snapshot;
   reasoningPrompt: string;
   calcPlanJson: string;
@@ -64,6 +78,7 @@ export interface UploadResult {
 export interface ClarifyResult {
   id: number;
   result: NutritionResult;
+  products: ProductInfo[];
   step1: Step1Snapshot;
   reasoningPrompt: string;
   calcPlanJson: string;

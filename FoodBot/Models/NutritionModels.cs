@@ -57,4 +57,18 @@ namespace FoodBot.Models
         public decimal per100g_carbs_g { get; set; }
         public decimal kcal_per_g { get; set; }
     }
+
+    /// <summary>
+    /// Calculated breakdown of a dish per ingredient (grams, macros and percent of total).
+    /// </summary>
+    public sealed class ProductInfo
+    {
+        public string name { get; set; } = "";
+        public decimal grams { get; set; }
+        public decimal proteins_g { get; set; }
+        public decimal fats_g { get; set; }
+        public decimal carbs_g { get; set; }
+        public decimal calories_kcal { get; set; }
+        public decimal percent { get; set; }
+    }
 }

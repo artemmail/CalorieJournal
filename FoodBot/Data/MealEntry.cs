@@ -23,6 +23,7 @@ public class MealEntry
     // Extracted nutrition
     [MaxLength(256)] public string? DishName { get; set; }
     public string? IngredientsJson { get; set; }
+    public string? ProductsJson { get; set; }
     [Column(TypeName = "decimal(10,2)")] public decimal? WeightG { get; set; }
     [Column(TypeName="decimal(10,2)")] public decimal? ProteinsG { get; set; }
     [Column(TypeName="decimal(10,2)")] public decimal? FatsG { get; set; }

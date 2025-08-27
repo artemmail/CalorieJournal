@@ -100,6 +100,9 @@ namespace FoodBot.Migrations
                     b.Property<string>("IngredientsJson")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ProductsJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Model")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
