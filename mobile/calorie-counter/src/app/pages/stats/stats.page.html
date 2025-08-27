@@ -23,11 +23,9 @@
 
   <ng-container *ngIf="view==='chart'">
     <div class="chart">
-      <div class="bars">
-        <div class="bar" *ngFor="let d of data" [style.height.%]="maxCalories ? (d.totals.calories / maxCalories) * 100 : 0"></div>
-      </div>
-      <div class="labels">
-        <div class="label" *ngFor="let d of data">{{ d.date | date:'dd.MM' }}</div>
+      <div class="row" *ngFor="let d of data">
+        <div class="label">{{ d.date | date:'dd.MM' }}</div>
+        <div class="bar" [style.width.%]="maxCalories ? (d.totals.calories / maxCalories) * 100 : 0"></div>
       </div>
     </div>
   </ng-container>
@@ -52,11 +50,10 @@
 
 <style>
 .dates { display: flex; gap: 8px; margin: 8px 0; }
-.chart { height: 200px; display: flex; flex-direction: column; }
-.bars { flex: 1; display: flex; align-items: flex-end; gap: 4px; }
-.bar { flex: 1; background: #3f51b5; }
-.labels { display: flex; gap: 4px; }
-.label { flex: 1; text-align: center; font-size: 12px; }
+.chart { display: flex; flex-direction: column; gap: 4px; }
+.row { display: flex; align-items: center; gap: 4px; }
+.label { width: 40px; text-align: right; font-size: 12px; }
+.bar { height: 16px; background: #3f51b5; }
 .stats-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
 .stats-table th, .stats-table td { border: 1px solid rgba(0,0,0,.1); padding: 4px; text-align: right; }
 .stats-table th:first-child, .stats-table td:first-child { text-align: left; }
