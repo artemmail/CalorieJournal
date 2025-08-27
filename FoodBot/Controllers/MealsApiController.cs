@@ -10,6 +10,9 @@ using FoodBot.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Step1Snapshot = FoodBot.Services.Step1Snapshot;
+using NutritionConversation = FoodBot.Services.NutritionConversation;
+
 
 namespace FoodBot.Controllers
 {
