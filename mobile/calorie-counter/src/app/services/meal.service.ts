@@ -60,6 +60,18 @@ export class MealService {
     return this.sumRange(start, end);
   }
 
+  dailyTotals(start: Date, end: Date) {
+    const results: { date: Date; totals: { calories: number; proteins: number; fats: number; carbs: number } }[] = [];
+    const dayMs = 24 * 60 * 60 * 1000;
+    const s = new Date(start); s.setHours(0, 0, 0, 0);
+    const e = new Date(end); e.setHours(0, 0, 0, 0);
+    for (let t = s.getTime(); t <= e.getTime(); t += dayMs) {
+      const { totals } = this.sumRange(t, t + dayMs - 1);
+      results.push({ date: new Date(t), totals });
+    }
+    return results;
+  }
+
   private sumRange(startMs: number, endMs: number) {
     const meals = this._meals$.value.filter(m => m.timestamp >= startMs && m.timestamp <= endMs);
     const totals = meals.reduce((acc, m) => {
