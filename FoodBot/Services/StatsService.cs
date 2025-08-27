@@ -69,7 +69,7 @@ public sealed class StatsService
         var results = await _db.Meals
             .AsNoTracking()
             .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= start && m.CreatedAtUtc < end)
-            .GroupBy(m => m.CreatedAtUtc.UtcDateTime.Date)
+            .GroupBy(m => m.CreatedAtUtc.Date)
             .Select(g => new DailyTotals
             {
                 Date = g.Key,
