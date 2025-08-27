@@ -5,12 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { MealService } from '../../services/meal.service';
-
-interface DayTotals {
-  date: Date;
-  totals: { calories: number; proteins: number; fats: number; carbs: number };
-}
+import { StatsService, DayStats } from '../../services/stats.service';
 
 @Component({
   selector: 'app-stats',
@@ -24,10 +19,10 @@ export class StatsPage implements OnInit {
   selectedPeriod = 'week';
   customStart = '';
   customEnd = '';
-  data: DayTotals[] = [];
+  data: { date: Date; totals: { calories: number; proteins: number; fats: number; carbs: number } }[] = [];
   maxCalories = 0;
 
-  constructor(private meals: MealService) {}
+  constructor(private stats: StatsService) {}
 
   ngOnInit() { this.updatePeriod(); }
 
@@ -42,7 +37,9 @@ export class StatsPage implements OnInit {
       if (this.customStart) start = new Date(this.customStart);
       if (this.customEnd) end.setTime(new Date(this.customEnd).getTime());
     }
-    this.data = this.meals.dailyTotals(start, end);
-    this.maxCalories = Math.max(0, ...this.data.map(d => d.totals.calories));
+    this.stats.getDaily(start, end).subscribe(res => {
+      this.data = res.map(d => ({ date: new Date(d.date), totals: d.totals }));
+      this.maxCalories = Math.max(0, ...this.data.map(d => d.totals.calories));
+    });
   }
 }

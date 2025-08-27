@@ -1,3 +1,4 @@
+using System;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,5 +28,11 @@ public sealed class StatsController : ControllerBase
     {
         days = Math.Clamp(days, 1, 30);
         return _stats.GetSummaryAsync(GetChatId(), days, ct);
+    }
+
+    [HttpGet("daily")]
+    public Task<List<DailyTotals>> Daily([FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct = default)
+    {
+        return _stats.GetDailyTotalsAsync(GetChatId(), from, to, ct);
     }
 }
