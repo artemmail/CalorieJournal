@@ -80,6 +80,7 @@ export class HistoryPage implements OnInit, OnDestroy {
           item.carbsG = r.result.carbs_g;
           item.weightG = r.result.weight_g;
           item.ingredients = r.result.ingredients;
+          item.products = r.products;
           this.snack.open("Уточнение применено", "OK", { duration: 1500 });
         },
         error: () => this.snack.open("Ошибка уточнения", "OK", { duration: 1500 })
@@ -101,6 +102,7 @@ export class HistoryPage implements OnInit, OnDestroy {
         item.carbsG = r.result.carbs_g;
         item.weightG = r.result.weight_g;
         item.ingredients = r.result.ingredients;
+        item.products = r.products;
         this.snack.open("Уточнение применено", "OK", { duration: 1500 });
       },
       error: () => this.snack.open("Ошибка уточнения", "OK", { duration: 1500 })

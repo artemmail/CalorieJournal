@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FoodBot.Data;
 using FoodBot.Services;
+using FoodBot.Models;
 using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -122,6 +123,7 @@ $@"Вход через приложение:
 
                     DishName = conv?.Result.dish,
                     IngredientsJson = conv is null ? null : JsonSerializer.Serialize(conv.Result.ingredients),
+                    ProductsJson = conv is null ? null : ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson),
                     ProteinsG = conv?.Result.proteins_g,
                     FatsG = conv?.Result.fats_g,
                     CarbsG = conv?.Result.carbs_g,
@@ -418,6 +420,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>";
             // Обновляем запись
             last!.DishName = conv2.Result.dish;
             last.IngredientsJson = JsonSerializer.Serialize(conv2.Result.ingredients);
+            last.ProductsJson = ProductJsonHelper.BuildProductsJson(conv2.CalcPlanJson);
             last.ProteinsG = conv2.Result.proteins_g;
             last.FatsG = conv2.Result.fats_g;
             last.CarbsG = conv2.Result.carbs_g;

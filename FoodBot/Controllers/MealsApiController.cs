@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FoodBot.Data;
 using FoodBot.Services;
+using FoodBot.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -64,6 +65,7 @@ namespace FoodBot.Controllers
                     m.FatsG,
                     m.CarbsG,
                     m.IngredientsJson,
+                    m.ProductsJson,
                     HasImage = m.ImageBytes != null && m.ImageBytes.Length > 0
                 })
                 .ToListAsync(ct);
@@ -82,6 +84,7 @@ namespace FoodBot.Controllers
                 Ingredients = string.IsNullOrWhiteSpace(r.IngredientsJson)
                     ? Array.Empty<string>()
                     : (System.Text.Json.JsonSerializer.Deserialize<string[]>(r.IngredientsJson!) ?? Array.Empty<string>()),
+                Products = ProductJsonHelper.DeserializeProducts(r.ProductsJson),
                 r.HasImage
             }).ToList();
 
@@ -116,6 +119,8 @@ namespace FoodBot.Controllers
                 catch { /* ignore bad JSON */ }
             }
 
+            var products = ProductJsonHelper.DeserializeProducts(m.ProductsJson);
+
             return Ok(new
             {
                 m.Id,
@@ -128,6 +133,7 @@ namespace FoodBot.Controllers
                 m.CarbsG,
                 m.Confidence,
                 Ingredients = ingredients,
+                Products = products,
                 Step1 = step1,
                 ReasoningPrompt = m.ReasoningPrompt,
                 HasImage = m.ImageBytes != null && m.ImageBytes.Length > 0
@@ -178,6 +184,7 @@ namespace FoodBot.Controllers
                 ImageBytes = bytes,
                 DishName = conv.Result.dish,
                 IngredientsJson = System.Text.Json.JsonSerializer.Serialize(conv.Result.ingredients),
+                ProductsJson = ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson),
                 ProteinsG = conv.Result.proteins_g,
                 FatsG = conv.Result.fats_g,
                 CarbsG = conv.Result.carbs_g,
@@ -195,6 +202,7 @@ namespace FoodBot.Controllers
             {
                 entry.Id,
                 Result = conv.Result,
+                Products = ProductJsonHelper.DeserializeProducts(entry.ProductsJson),
                 Step1 = conv.Step1,
                 conv.ReasoningPrompt,
                 conv.CalcPlanJson
@@ -236,6 +244,7 @@ namespace FoodBot.Controllers
 
             m.DishName = conv2.Result.dish;
             m.IngredientsJson = System.Text.Json.JsonSerializer.Serialize(conv2.Result.ingredients);
+            m.ProductsJson = ProductJsonHelper.BuildProductsJson(conv2.CalcPlanJson);
             m.ProteinsG = conv2.Result.proteins_g;
             m.FatsG = conv2.Result.fats_g;
             m.CarbsG = conv2.Result.carbs_g;
@@ -251,6 +260,7 @@ namespace FoodBot.Controllers
             {
                 m.Id,
                 Result = conv2.Result,
+                Products = ProductJsonHelper.DeserializeProducts(m.ProductsJson),
                 Step1 = conv2.Step1,
                 conv2.ReasoningPrompt,
                 conv2.CalcPlanJson

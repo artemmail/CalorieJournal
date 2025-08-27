@@ -13,12 +13,21 @@
       <div class="ing" *ngIf="m.ingredients?.length">Ингредиенты: {{ m.ingredients.join(", ") }}</div>
 
       <div class="actions">
+        <button mat-stroked-button color="primary" (click)="m.expanded = !m.expanded">
+          <mat-icon>{{ m.expanded ? 'expand_less' : 'expand_more' }}</mat-icon> Состав
+        </button>
         <button mat-stroked-button color="primary" (click)="clarifyText(m)">
           <mat-icon>edit</mat-icon> Уточнить (текст)
         </button>
         <button mat-stroked-button color="primary" (click)="clarifyVoice(m)">
           <mat-icon>mic</mat-icon> Уточнить (голос)
         </button>
+      </div>
+      <div class="products" *ngIf="m.expanded">
+        <div *ngFor="let p of m.products">
+          {{ p.name }} — {{ p.percent }}% ({{ p.grams }} г):
+          Б {{ p.proteins_g }} · Ж {{ p.fats_g }} · У {{ p.carbs_g }} · {{ p.calories_kcal }} ккал
+        </div>
       </div>
     </div>
   </div>
@@ -38,4 +47,5 @@ img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; }
 .dish { opacity: .8; margin-left: 6px; }
 .macros { font-size: 13px; }
 .actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.products { margin-top: 8px; font-size: 13px; }
 </style>
