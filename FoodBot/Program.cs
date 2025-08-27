@@ -50,6 +50,7 @@ builder.Services.AddSingleton<NutritionService>(sp =>
 
 builder.Services.AddSingleton<SpeechToTextService>();
 builder.Services.AddScoped<TelegramReportService>();
+builder.Services.AddScoped<StatsService>();
 
 // ===== Controllers / API =====
 builder.Services.AddControllers(); // AppAuthController / MealsController
