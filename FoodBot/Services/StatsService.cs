@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -59,6 +60,37 @@ public sealed class StatsService
             Entries = totals.Count
         };
     }
+
+    public async Task<List<DailyTotals>> GetDailyTotalsAsync(long chatId, DateTime from, DateTime to, CancellationToken ct = default)
+    {
+        var start = DateTime.SpecifyKind(from.Date, DateTimeKind.Utc);
+        var end = DateTime.SpecifyKind(to.Date, DateTimeKind.Utc).AddDays(1);
+
+        var results = await _db.Meals
+            .AsNoTracking()
+            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= start && m.CreatedAtUtc < end)
+            .GroupBy(m => m.CreatedAtUtc.UtcDateTime.Date)
+            .Select(g => new DailyTotals
+            {
+                Date = g.Key,
+                Totals = new MacroTotals
+                {
+                    Calories = g.Sum(m => m.CaloriesKcal) ?? 0,
+                    Proteins = g.Sum(m => m.ProteinsG) ?? 0,
+                    Fats = g.Sum(m => m.FatsG) ?? 0,
+                    Carbs = g.Sum(m => m.CarbsG) ?? 0,
+                }
+            })
+            .ToListAsync(ct);
+
+        var list = new List<DailyTotals>();
+        for (var day = start; day < end; day = day.AddDays(1))
+        {
+            var item = results.FirstOrDefault(r => r.Date == day);
+            list.Add(item ?? new DailyTotals { Date = day, Totals = new MacroTotals() });
+        }
+        return list;
+    }
 }
 
 public sealed class StatsSummary
@@ -74,5 +106,11 @@ public sealed class MacroTotals
     public decimal Proteins { get; set; }
     public decimal Fats { get; set; }
     public decimal Carbs { get; set; }
+}
+
+public sealed class DailyTotals
+{
+    public DateTime Date { get; set; }
+    public required MacroTotals Totals { get; set; }
 }
 

@@ -22,12 +22,13 @@
   </mat-button-toggle-group>
 
   <ng-container *ngIf="view==='chart'">
-    <div class="day-bar" *ngFor="let d of data">
-      <div class="label">{{ d.date | date:'dd.MM' }}</div>
-      <div class="bar-wrapper">
-        <div class="bar-fill" [style.width.%]="maxCalories ? (d.totals.calories / maxCalories) * 100 : 0"></div>
+    <div class="chart">
+      <div class="bars">
+        <div class="bar" *ngFor="let d of data" [style.height.%]="maxCalories ? (d.totals.calories / maxCalories) * 100 : 0"></div>
       </div>
-      <div class="details">{{ d.totals.calories | number:'1.0-0' }} ккал · Б {{ d.totals.proteins | number:'1.0-0' }} · Ж {{ d.totals.fats | number:'1.0-0' }} · У {{ d.totals.carbs | number:'1.0-0' }}</div>
+      <div class="labels">
+        <div class="label" *ngFor="let d of data">{{ d.date | date:'dd.MM' }}</div>
+      </div>
     </div>
   </ng-container>
 
@@ -51,11 +52,11 @@
 
 <style>
 .dates { display: flex; gap: 8px; margin: 8px 0; }
-.day-bar { margin: 8px 0; }
-.bar-wrapper { background: rgba(0,0,0,.1); height: 8px; width: 100%; }
-.bar-fill { background: #3f51b5; height: 100%; }
-.label { font-weight: bold; margin-bottom: 4px; }
-.details { font-size: 12px; margin-top: 4px; }
+.chart { height: 200px; display: flex; flex-direction: column; }
+.bars { flex: 1; display: flex; align-items: flex-end; gap: 4px; }
+.bar { flex: 1; background: #3f51b5; }
+.labels { display: flex; gap: 4px; }
+.label { flex: 1; text-align: center; font-size: 12px; }
 .stats-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
 .stats-table th, .stats-table td { border: 1px solid rgba(0,0,0,.1); padding: 4px; text-align: right; }
 .stats-table th:first-child, .stats-table td:first-child { text-align: left; }
