@@ -1,0 +1,62 @@
+<mat-card>
+  <h3>Статистика по дням</h3>
+
+  <mat-form-field appearance="fill">
+    <mat-label>Период</mat-label>
+    <mat-select [(ngModel)]="selectedPeriod" (selectionChange)="updatePeriod()">
+      <mat-option value="week">Неделя</mat-option>
+      <mat-option value="month">Месяц</mat-option>
+      <mat-option value="quarter">Квартал</mat-option>
+      <mat-option value="custom">Пользовательский</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <div class="dates" *ngIf="selectedPeriod==='custom'">
+    <input type="date" [(ngModel)]="customStart" (change)="updatePeriod()">
+    <input type="date" [(ngModel)]="customEnd" (change)="updatePeriod()">
+  </div>
+
+  <mat-button-toggle-group [(ngModel)]="view">
+    <mat-button-toggle value="chart">График</mat-button-toggle>
+    <mat-button-toggle value="table">Таблица</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  <ng-container *ngIf="view==='chart'">
+    <div class="day-bar" *ngFor="let d of data">
+      <div class="label">{{ d.date | date:'dd.MM' }}</div>
+      <div class="bar-wrapper">
+        <div class="bar-fill" [style.width.%]="maxCalories ? (d.totals.calories / maxCalories) * 100 : 0"></div>
+      </div>
+      <div class="details">{{ d.totals.calories | number:'1.0-0' }} ккал · Б {{ d.totals.proteins | number:'1.0-0' }} · Ж {{ d.totals.fats | number:'1.0-0' }} · У {{ d.totals.carbs | number:'1.0-0' }}</div>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="view==='table'">
+    <table class="stats-table">
+      <thead>
+        <tr><th>Дата</th><th>Ккал</th><th>Б</th><th>Ж</th><th>У</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of data">
+          <td>{{ d.date | date:'dd.MM' }}</td>
+          <td>{{ d.totals.calories | number:'1.0-0' }}</td>
+          <td>{{ d.totals.proteins | number:'1.0-0' }}</td>
+          <td>{{ d.totals.fats | number:'1.0-0' }}</td>
+          <td>{{ d.totals.carbs | number:'1.0-0' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </ng-container>
+</mat-card>
+
+<style>
+.dates { display: flex; gap: 8px; margin: 8px 0; }
+.day-bar { margin: 8px 0; }
+.bar-wrapper { background: rgba(0,0,0,.1); height: 8px; width: 100%; }
+.bar-fill { background: #3f51b5; height: 100%; }
+.label { font-weight: bold; margin-bottom: 4px; }
+.details { font-size: 12px; margin-top: 4px; }
+.stats-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.stats-table th, .stats-table td { border: 1px solid rgba(0,0,0,.1); padding: 4px; text-align: right; }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; }
+</style>
