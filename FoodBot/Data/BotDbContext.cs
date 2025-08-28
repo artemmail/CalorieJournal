@@ -10,6 +10,7 @@ public class BotDbContext : DbContext
 
 
     public DbSet<AppStartCode> StartCodes => Set<AppStartCode>();
+    public DbSet<PersonalCard> PersonalCards => Set<PersonalCard>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,5 +25,8 @@ public class BotDbContext : DbContext
 
         modelBuilder.Entity<AppStartCode>()
             .HasIndex(x => new { x.ChatId, x.ExpiresAtUtc });
+
+        modelBuilder.Entity<PersonalCard>()
+            .HasKey(x => x.ChatId);
     }
 }

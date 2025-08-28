@@ -5,6 +5,7 @@ import { AnalysisPage } from "./pages/analysis/analysis.page";
 import { AuthPage } from "./pages/auth/auth.page";
 import { StatsPage } from "./pages/stats/stats.page";
 import { authGuard } from "./guards/auth.guard";
+import { ProfilePage } from "./pages/profile/profile.page";
 
 export const routes: Routes = [
   { path: "auth", component: AuthPage },
@@ -13,5 +14,6 @@ export const routes: Routes = [
   { path: "add", component: AddMealPage, canActivate: [authGuard] },
   { path: "analysis", component: AnalysisPage, canActivate: [authGuard] },
   { path: "stats", component: StatsPage, canActivate: [authGuard] },
+  { path: "profile", component: ProfilePage, canActivate: [authGuard] },
   { path: "**", redirectTo: "history" }
 ];

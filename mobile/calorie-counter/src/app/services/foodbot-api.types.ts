@@ -90,3 +90,11 @@ export interface ExchangeResponse {
   expiresInSeconds: number;
   chatId: number;
 }
+
+export interface PersonalCard {
+  email: string | null;
+  name: string | null;
+  birthYear: number | null;
+  dietGoals: string | null;
+  medicalRestrictions: string | null;
+}
