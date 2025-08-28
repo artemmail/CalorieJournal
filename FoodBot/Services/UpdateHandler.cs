@@ -110,6 +110,7 @@ $@"Вход через приложение:
 
                 var conv = await nutrition.AnalyzeAsync(bytes, ct);
 
+                var productsJsonEntry = conv is null ? null : ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson);
                 var entry = new MealEntry
                 {
                     ChatId = chatId,
@@ -123,7 +124,7 @@ $@"Вход через приложение:
 
                     DishName = conv?.Result.dish,
                     IngredientsJson = conv is null ? null : JsonSerializer.Serialize(conv.Result.ingredients),
-                    ProductsJson = conv is null ? null : ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson),
+                    ProductsJson = productsJsonEntry,
                     ProteinsG = conv?.Result.proteins_g,
                     FatsG = conv?.Result.fats_g,
                     CarbsG = conv?.Result.carbs_g,
@@ -151,6 +152,7 @@ $@"Вход через приложение:
                         await SendHtmlSafe(_bot, chatId, promptHtml, ct);
 
                     var r = conv.Result;
+                    var compHtml = BuildProductsHtml(productsJsonEntry!);
                     var htmlFinal =
 $@"<b>✅ Final nutrition (computed by AI)</b>
 <b>🍽️ {WebUtility.HtmlEncode(r.dish)}</b>
@@ -159,12 +161,8 @@ Ingredients (EN): <code>{WebUtility.HtmlEncode(string.Join(", ", r.ingredients))
 Serving weight: <b>{r.weight_g:F0} g</b>
 P: <b>{r.proteins_g:F1} g</b>   F: <b>{r.fats_g:F1} g</b>   C: <b>{r.carbs_g:F1} g</b>
 Calories: <b>{r.calories_kcal:F0}</b> kcal
-Model confidence: <b>{(r.confidence * 100m):F0}%</b>";
+Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
                     await SendHtmlSafe(_bot, chatId, htmlFinal, ct);
-
-                    var planHtml = BuildPlanPreviewHtml(conv.CalcPlanJson);
-                    if (!string.IsNullOrWhiteSpace(planHtml))
-                        await SendHtmlSafe(_bot, chatId, planHtml, ct);
 
                     await _bot.SendMessage(chatId,
                         "Можно уточнить текстом или голосом: “+50 g bread”, “no sauce”, “replace mayo with yogurt”, “weight 220 g”.",
@@ -420,7 +418,8 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>";
             // Обновляем запись
             last!.DishName = conv2.Result.dish;
             last.IngredientsJson = JsonSerializer.Serialize(conv2.Result.ingredients);
-            last.ProductsJson = ProductJsonHelper.BuildProductsJson(conv2.CalcPlanJson);
+            var productsJson = ProductJsonHelper.BuildProductsJson(conv2.CalcPlanJson);
+            last.ProductsJson = productsJson;
             last.ProteinsG = conv2.Result.proteins_g;
             last.FatsG = conv2.Result.fats_g;
             last.CarbsG = conv2.Result.carbs_g;
@@ -442,6 +441,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>";
                 await SendHtmlSafe(_bot, chatId, promptHtml, ct);
 
             var r = conv2.Result;
+            var compHtml = BuildProductsHtml(productsJson);
             var htmlFinal =
 $@"<b>✅ Final nutrition (after clarify)</b>
 <b>🍽️ {WebUtility.HtmlEncode(r.dish)}</b>
@@ -450,12 +450,8 @@ Ingredients (EN): <code>{WebUtility.HtmlEncode(string.Join(", ", r.ingredients))
 Serving weight: <b>{r.weight_g:F0} g</b>
 P: <b>{r.proteins_g:F1} g</b>   F: <b>{r.fats_g:F1} g</b>   C: <b>{r.carbs_g:F1} g</b>
 Calories: <b>{r.calories_kcal:F0}</b> kcal
-Model confidence: <b>{(r.confidence * 100m):F0}%</b>";
+Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             await SendHtmlSafe(_bot, chatId, htmlFinal, ct);
-
-            var planHtml = BuildPlanPreviewHtml(conv2.CalcPlanJson);
-            if (!string.IsNullOrWhiteSpace(planHtml))
-                await SendHtmlSafe(_bot, chatId, planHtml, ct);
         }
         else
         {
@@ -492,12 +488,31 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>";
         return "<b>🧠 Reasoning request (compact)</b>\n<pre>" + enc + "</pre>";
     }
 
-    private static string BuildPlanPreviewHtml(string json, int maxLen = 1400)
+    private static string BuildProductsHtml(string productsJson)
     {
-        if (string.IsNullOrWhiteSpace(json)) return "";
-        var trimmed = json.Length > maxLen ? json.Substring(0, maxLen) + " …" : json;
-        var enc = WebUtility.HtmlEncode(trimmed);
-        return "<b>🔢 Reasoning result</b>\n<pre>" + enc + "</pre>";
+        var products = ProductJsonHelper.DeserializeProducts(productsJson);
+        if (products.Length == 0) return "";
+        var sb = new StringBuilder();
+        sb.Append("\n\n<b>📊 Composition</b>\n");
+        foreach (var p in products)
+        {
+            sb.Append("• ")
+              .Append(WebUtility.HtmlEncode(p.name))
+              .Append(": <b>")
+              .Append(p.grams.ToString("F0"))
+              .Append(" g</b>, P ")
+              .Append(p.proteins_g.ToString("F1"))
+              .Append(" g F ")
+              .Append(p.fats_g.ToString("F1"))
+              .Append(" g C ")
+              .Append(p.carbs_g.ToString("F1"))
+              .Append(" g, ")
+              .Append(p.calories_kcal.ToString("F0"))
+              .Append(" kcal (")
+              .Append(p.percent.ToString("F0"))
+              .Append("%)\n");
+        }
+        return sb.ToString();
     }
 
     // Безопасная отправка HTML: если парсинг падает или слишком длинно — отправляем plain text чанками
