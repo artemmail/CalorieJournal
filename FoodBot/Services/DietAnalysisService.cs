@@ -141,7 +141,9 @@ public sealed class DietAnalysisService
                     content = new object[]
                     {
                         new { type = "input_text", text = prompt },
-                        new { type = "input_json", json = data }
+                        // OpenAI responses API does not support an "input_json" type.
+                        // Serialize the structured data and send it as plain text instead.
+                        new { type = "input_text", text = JsonSerializer.Serialize(data) }
                     }
                 }
             }
