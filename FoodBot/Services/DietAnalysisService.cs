@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -98,16 +97,27 @@ public sealed class DietAnalysisService
             .Select(m => new { m.DishName, m.CreatedAtUtc, m.CaloriesKcal, m.ProteinsG, m.FatsG, m.CarbsG })
             .ToListAsync(ct);
 
-        var sb = new StringBuilder();
-        sb.AppendLine($"Client info: birth year: {card?.BirthYear}, goals: {card?.DietGoals}, restrictions: {card?.MedicalRestrictions}.");
-        sb.AppendLine("Meal history (last 90 days):");
-        sb.AppendLine("| Time | Dish | Calories | Proteins | Fats | Carbs |");
-        sb.AppendLine("|---|---|---|---|---|---|");
-        foreach (var m in meals)
+        var mealHistory = meals.Select(m => new
         {
-            var time = m.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-            sb.AppendLine($"| {time} | {m.DishName} | {m.CaloriesKcal ?? 0} | {m.ProteinsG ?? 0} | {m.FatsG ?? 0} | {m.CarbsG ?? 0} |");
-        }
+            time = m.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+            dish = m.DishName,
+            calories = m.CaloriesKcal ?? 0,
+            proteins = m.ProteinsG ?? 0,
+            fats = m.FatsG ?? 0,
+            carbs = m.CarbsG ?? 0
+        }).ToList();
+
+        var data = new
+        {
+            clientInfo = new
+            {
+                birthYear = card?.BirthYear,
+                goals = card?.DietGoals,
+                restrictions = card?.MedicalRestrictions
+            },
+            mealHistory
+        };
+
         var periodPrompt = period switch
         {
             AnalysisPeriod.Day => "rest of the day",
@@ -116,7 +126,7 @@ public sealed class DietAnalysisService
             AnalysisPeriod.Quarter => "upcoming quarter",
             _ => "period"
         };
-        sb.AppendLine($"Give dietologist recommendations for the {periodPrompt} based on the goals and restrictions. Use markdown with tables.");
+        var prompt = $"Give dietologist recommendations for the {periodPrompt} based on the goals and restrictions. Use markdown with tables.";
 
         var reqObj = new
         {
@@ -124,7 +134,15 @@ public sealed class DietAnalysisService
             input = new object[]
             {
                 new { role = "system", content = "You are a helpful dietologist." },
-                new { role = "user", content = sb.ToString() }
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = prompt },
+                        new { type = "input_json", json = data }
+                    }
+                }
             }
         };
         var body = JsonSerializer.Serialize(reqObj);
