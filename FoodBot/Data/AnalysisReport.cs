@@ -1,3 +1,4 @@
+using FoodBot.Models;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -18,7 +19,16 @@ public class AnalysisReport
 
     public DateTimeOffset CreatedAtUtc { get; set; }
 
-    
+
+
+    // Ќќ¬ќ≈
+    public AnalysisPeriod Period { get; set; } = AnalysisPeriod.Day;
+
+    // Ќќ¬ќ≈: начало периода в локальной ћ— -дате (дл€ Day Ч это дата дн€)
+    public DateOnly PeriodStartLocalDate { get; set; }
+
+
+
 
 
 }
