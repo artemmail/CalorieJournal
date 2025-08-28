@@ -46,21 +46,31 @@ public sealed class DietAnalysisService
         // Кэш дневного отчёта по ЛОКАЛЬНОЙ дате (МСК)
         var localDayDateOnly = dayStartLocal.Date;
         var existing = await _db.AnalysisReports
-            .AsNoTracking()
             .FirstOrDefaultAsync(r => r.ChatId == chatId && r.ReportDate == localDayDateOnly, ct);
 
-        if (existing != null)
+        // Был ли новый приём пищи после формирования отчёта?
+        var lastMealTimeUtc = await _db.Meals
+            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= dayStartUtc.UtcDateTime)
+            .OrderByDescending(m => m.CreatedAtUtc)
+            .Select(m => (DateTimeOffset?)m.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (existing != null && (!lastMealTimeUtc.HasValue || lastMealTimeUtc <= existing.CreatedAtUtc))
             return existing;
 
-        // Создаём запись отчёта, даже если приёмов ещё нет
-        var rec = new AnalysisReport
+        // Либо отчёта ещё не было, либо появились новые приёмы — формируем заново
+        var rec = existing ?? new AnalysisReport
         {
             ChatId = chatId,
-            ReportDate = localDayDateOnly,
-            IsProcessing = true,
-            CreatedAtUtc = DateTimeOffset.UtcNow
+            ReportDate = localDayDateOnly
         };
-        _db.AnalysisReports.Add(rec);
+
+        rec.IsProcessing = true;
+        rec.CreatedAtUtc = DateTimeOffset.UtcNow;
+
+        if (existing == null)
+            _db.AnalysisReports.Add(rec);
+
         await _db.SaveChangesAsync(ct);
 
         try
