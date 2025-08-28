@@ -52,7 +52,7 @@ namespace FoodBot.Services
 
             // Модели оставляем в конфиге (не секретные параметры)
             _visionModel = cfg["OpenAI:Model"] ?? "gpt-4o-mini";
-            _reasoningModel = cfg["OpenAI:ReasoningModel"] ?? "o4-mini";
+            _reasoningModel = cfg["OpenAI:ReasoningModel"] ?? "gpt-4o-mini";
 
             var foodsPath = cfg["Foods:Path"];
             if (string.IsNullOrWhiteSpace(foodsPath))
