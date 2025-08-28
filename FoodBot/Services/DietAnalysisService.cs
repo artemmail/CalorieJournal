@@ -131,7 +131,7 @@ public sealed class DietAnalysisService
 
         var reqObj = new
         {
-            model = "o4-mini",
+            model = "gpt-4o-mini",
             input = new object[]
             {
                 new { role = "system", content = "You are a helpful dietologist." },
