@@ -172,7 +172,7 @@ namespace FoodBot.Controllers
             await image.CopyToAsync(ms, ct);
             var bytes = ms.ToArray();
 
-            var conv = await _nutrition.AnalyzeAsync(bytes, ct);
+            var conv = await _nutrition.AnalyzeAsync(bytes, ct: ct);
             if (conv is null) return BadRequest("analyze_failed");
 
             var chatId = GetChatId();
@@ -240,7 +240,7 @@ namespace FoodBot.Controllers
 
             if (conv2 is null && m.ImageBytes is { Length: > 0 })
             {
-                conv2 = await _nutrition.AnalyzeWithNoteAsync(m.ImageBytes, req.note ?? "", ct);
+                conv2 = await _nutrition.AnalyzeWithNoteAsync(m.ImageBytes, req.note ?? "", ct: ct);
             }
 
             if (conv2 is null) return BadRequest("clarify_failed");
