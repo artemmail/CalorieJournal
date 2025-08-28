@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -28,15 +28,17 @@ import { PersonalCard } from '../../services/foodbot-api.types';
 })
 export class ProfilePage implements OnInit {
   years: number[] = [];
-  form = this.fb.group({
-    email: ['', [Validators.email]],
-    name: [''],
-    birthYear: [null as number | null],
-    dietGoals: [''],
-    medicalRestrictions: ['']
-  });
+  form!: FormGroup;
 
-  constructor(private fb: FormBuilder, private api: FoodbotApiService, private snack: MatSnackBar) {}
+  constructor(private fb: FormBuilder, private api: FoodbotApiService, private snack: MatSnackBar) {
+    this.form = this.fb.group({
+      email: ['', [Validators.email]],
+      name: [''],
+      birthYear: [null as number | null],
+      dietGoals: [''],
+      medicalRestrictions: ['']
+    });
+  }
 
   ngOnInit() {
     const currentYear = new Date().getFullYear();
