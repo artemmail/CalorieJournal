@@ -132,6 +132,36 @@ namespace FoodBot.Migrations
 
                     b.ToTable("Meals");
                 });
+
+            modelBuilder.Entity("FoodBot.Data.AnalysisReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("ChatId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsProcessing")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Markdown")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ReportDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatId", "ReportDate");
+
+                    b.ToTable("AnalysisReports");
+                });
 #pragma warning restore 612, 618
         }
     }
