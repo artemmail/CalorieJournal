@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using FoodBot.Data;
 using FoodBot.Models;
+using System.Text;
 
 namespace FoodBot.Services;
 
@@ -70,7 +71,7 @@ public sealed class DietAnalysisService
             rec.CreatedAtUtc = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
         }
-        catch
+        catch(Exception e)
         {
             rec.IsProcessing = false;
             await _db.SaveChangesAsync(ct);
