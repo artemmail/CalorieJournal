@@ -91,7 +91,9 @@ public sealed class DietAnalysisService
     private async Task<string> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
         var card = await _db.PersonalCards.AsNoTracking().FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
-        var from = DateTimeOffset.UtcNow.AddDays(-90);
+        var from = period == AnalysisPeriod.Day
+            ? DateTimeOffset.UtcNow.Date
+            : DateTimeOffset.UtcNow.AddDays(-90);
         var meals = await _db.Meals.AsNoTracking()
             .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= from)
             .OrderBy(m => m.CreatedAtUtc)
@@ -112,6 +114,7 @@ public sealed class DietAnalysisService
         {
             clientInfo = new
             {
+                name = card?.Name,
                 birthYear = card?.BirthYear,
                 goals = card?.DietGoals,
                 restrictions = card?.MedicalRestrictions
@@ -160,7 +163,6 @@ public sealed class DietAnalysisService
         var content = doc.RootElement.GetProperty("output")[0]
             .GetProperty("content")[0]
             .GetProperty("text")
-            .GetProperty("value")
             .GetString();
         return content ?? string.Empty;
     }
