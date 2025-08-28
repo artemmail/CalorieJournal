@@ -36,9 +36,15 @@ public sealed class AnalysisController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] AnalysisPeriod period, CancellationToken ct)
     {
-        if (period == AnalysisPeriod.Day)
-            return BadRequest("Use /api/analysis/day for day recommendations");
         var chatId = GetChatId();
+        if (period == AnalysisPeriod.Day)
+        {
+            var report = await _service.GetDailyAsync(chatId, ct);
+            if (report.IsProcessing)
+                return Accepted(new { status = "processing" });
+            return Ok(new { status = "ok", markdown = report.Markdown, createdAtUtc = report.CreatedAtUtc });
+        }
+
         var markdown = await _service.GetPlanAsync(chatId, period, ct);
         return Ok(new { status = "ok", markdown, period = period.ToString().ToLower() });
     }
