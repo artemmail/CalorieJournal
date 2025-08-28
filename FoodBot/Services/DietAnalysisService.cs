@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using FoodBot.Data;
+using FoodBot.Models;
 
 namespace FoodBot.Services;
 
@@ -25,7 +26,7 @@ public sealed class DietAnalysisService
         _apiKey = cfg["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI:ApiKey missing");
     }
 
-    public async Task<AnalysisReport> GetOrGenerateAsync(long chatId, CancellationToken ct)
+    public async Task<AnalysisReport> GetDailyAsync(long chatId, CancellationToken ct)
     {
         var today = DateTime.UtcNow.Date;
         var existing = await _db.AnalysisReports
@@ -64,7 +65,7 @@ public sealed class DietAnalysisService
 
         try
         {
-            var markdown = await GenerateReportAsync(chatId, ct);
+            var markdown = await GenerateReportAsync(chatId, AnalysisPeriod.Day, ct);
             rec.Markdown = markdown;
             rec.IsProcessing = false;
             rec.CreatedAtUtc = DateTimeOffset.UtcNow;
@@ -80,7 +81,14 @@ public sealed class DietAnalysisService
         return rec;
     }
 
-    private async Task<string> GenerateReportAsync(long chatId, CancellationToken ct)
+    public async Task<string> GetPlanAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    {
+        if (period == AnalysisPeriod.Day)
+            throw new ArgumentException("Day period is handled by GetDailyAsync", nameof(period));
+        return await GenerateReportAsync(chatId, period, ct);
+    }
+
+    private async Task<string> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
         var card = await _db.PersonalCards.AsNoTracking().FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
         var from = DateTimeOffset.UtcNow.AddDays(-90);
@@ -100,7 +108,15 @@ public sealed class DietAnalysisService
             var time = m.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
             sb.AppendLine($"| {time} | {m.DishName} | {m.CaloriesKcal ?? 0} | {m.ProteinsG ?? 0} | {m.FatsG ?? 0} | {m.CarbsG ?? 0} |");
         }
-        sb.AppendLine("Give dietologist recommendations for the rest of the day, week, month and quarter based on the goals and restrictions. Use markdown with tables.");
+        var periodPrompt = period switch
+        {
+            AnalysisPeriod.Day => "rest of the day",
+            AnalysisPeriod.Week => "upcoming week",
+            AnalysisPeriod.Month => "upcoming month",
+            AnalysisPeriod.Quarter => "upcoming quarter",
+            _ => "period"
+        };
+        sb.AppendLine($"Give dietologist recommendations for the {periodPrompt} based on the goals and restrictions. Use markdown with tables.");
 
         var reqObj = new
         {
