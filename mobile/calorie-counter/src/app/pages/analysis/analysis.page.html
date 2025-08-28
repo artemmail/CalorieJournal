@@ -1,7 +1,9 @@
 <mat-card *ngIf="a.loading">Загрузка отчёта...</mat-card>
 <mat-card *ngIf="!a.loading && a.report?.status === 'processing'">
   <p>Отчёт формируется, попробуйте позже.</p>
+  <button mat-raised-button color="primary" (click)="a.refresh()">Обновить</button>
 </mat-card>
 <mat-card *ngIf="!a.loading && a.report?.status === 'ok'">
+  <button mat-raised-button color="primary" (click)="a.refresh()">Обновить</button>
   <div [innerHTML]="a.report?.markdown | markdown"></div>
 </mat-card>
