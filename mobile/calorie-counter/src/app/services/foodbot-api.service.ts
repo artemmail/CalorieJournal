@@ -6,7 +6,8 @@ import {
   ClarifyResult,
   MealDetails,
   MealsListResponse,
-  UploadResult
+  UploadResult,
+  PersonalCard
 } from "./foodbot-api.types";
 
 @Injectable({ providedIn: "root" })
@@ -54,6 +55,14 @@ export class FoodbotApiService {
   // Отчёт Excel
   getReport(): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/api/meals/report`, { responseType: "blob" as const });
+  }
+
+  // Личная карточка
+  getPersonalCard(): Observable<PersonalCard | null> {
+    return this.http.get<PersonalCard | null>(`${this.baseUrl}/api/profile`);
+  }
+  savePersonalCard(card: PersonalCard): Observable<PersonalCard> {
+    return this.http.post<PersonalCard>(`${this.baseUrl}/api/profile`, card);
   }
 }
 

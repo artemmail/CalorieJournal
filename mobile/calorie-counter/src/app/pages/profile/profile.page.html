@@ -1,0 +1,33 @@
+<mat-card>
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" type="email" />
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Имя</mat-label>
+      <input matInput formControlName="name" />
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Год рождения</mat-label>
+      <mat-select formControlName="birthYear">
+        <mat-option [value]="null">—</mat-option>
+        <mat-option *ngFor="let y of years" [value]="y">{{ y }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Цели диеты</mat-label>
+      <textarea matInput formControlName="dietGoals"></textarea>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Медицинские ограничения</mat-label>
+      <textarea matInput formControlName="medicalRestrictions"></textarea>
+    </mat-form-field>
+
+    <button mat-raised-button color="primary" type="submit">Сохранить</button>
+  </form>
+</mat-card>
