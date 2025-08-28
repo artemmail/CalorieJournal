@@ -8,6 +8,8 @@ export interface AnalysisResponse {
   createdAtUtc?: string;
 }
 
+export type AnalysisPeriod = 'day' | 'week' | 'month' | 'quarter';
+
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
   report?: AnalysisResponse;
@@ -18,19 +20,20 @@ export class AnalysisService {
 
   private get baseUrl(): string { return this.auth.apiBaseUrl; }
 
-  refresh() {
+  refresh(period: AnalysisPeriod = 'day') {
     if (this.loading) return;
     this.loading = true;
+    this.report = undefined;
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = undefined;
     }
-    this.http.get<AnalysisResponse>(`${this.baseUrl}/api/analysis`).subscribe({
+    this.http.get<AnalysisResponse>(`${this.baseUrl}/api/analysis?period=${period}`).subscribe({
       next: r => {
         this.report = r;
         this.loading = false;
-        if (r.status === 'processing') {
-          this.timer = setTimeout(() => this.refresh(), 5000);
+        if (period === 'day' && r.status === 'processing') {
+          this.timer = setTimeout(() => this.refresh(period), 5000);
         }
       },
       error: _ => {
