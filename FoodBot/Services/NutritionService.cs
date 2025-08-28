@@ -63,16 +63,23 @@ namespace FoodBot.Services
         }
 
         // === Public API ===
-        public async Task<NutritionConversation?> AnalyzeAsync(byte[] imageBytes, CancellationToken ct)
+        public async Task<NutritionConversation?> AnalyzeAsync(
+            byte[] imageBytes,
+            Func<int, Task>? progress = null,
+            CancellationToken ct = default)
         {
             var dataUrl = "data:image/jpeg;base64," + Convert.ToBase64String(imageBytes);
-            return await AnalyzeCore(dataUrl, userNote: null, ct);
+            return await AnalyzeCore(dataUrl, userNote: null, progress, ct);
         }
 
-        public async Task<NutritionConversation?> AnalyzeWithNoteAsync(byte[] imageBytes, string userNote, CancellationToken ct)
+        public async Task<NutritionConversation?> AnalyzeWithNoteAsync(
+            byte[] imageBytes,
+            string userNote,
+            Func<int, Task>? progress = null,
+            CancellationToken ct = default)
         {
             var dataUrl = "data:image/jpeg;base64," + Convert.ToBase64String(imageBytes);
-            return await AnalyzeCore(dataUrl, userNote, ct);
+            return await AnalyzeCore(dataUrl, userNote, progress, ct);
         }
 
         public async Task<NutritionConversation?> ClarifyAsync(Guid threadId, string userNote, CancellationToken ct)
@@ -210,13 +217,23 @@ namespace FoodBot.Services
             );
         }
 
-        private async Task<NutritionConversation?> AnalyzeCore(string dataUrl, string? userNote, CancellationToken ct)
+        private async Task<NutritionConversation?> AnalyzeCore(
+            string dataUrl,
+            string? userNote,
+            Func<int, Task>? progress,
+            CancellationToken ct)
         {
             var threadId = Guid.NewGuid();
             _threadImageDataUrl[threadId] = dataUrl;
 
+            if (progress is not null)
+                await progress(1); // start vision step
+
             var step1 = await _ai.DetectFromImageAsync(dataUrl, userNote, _visionModel, ct);
             if (step1 is null || step1.ingredients.Length == 0) return null;
+
+            if (progress is not null)
+                await progress(2); // start final compute
 
             _threadStep1[threadId] = step1;
             _threadIngredients[threadId] = step1.ingredients;

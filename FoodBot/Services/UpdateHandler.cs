@@ -106,9 +106,25 @@ $@"Вход через приложение:
                 var client = httpf.CreateClient();
                 var bytes = await client.GetByteArrayAsync(url, ct);
 
-                await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
+                var progressMsg = await _bot.SendMessage(chatId, "⏳ Распознавание запущено...", cancellationToken: ct);
 
-                var conv = await nutrition.AnalyzeAsync(bytes, ct);
+                var conv = await nutrition.AnalyzeAsync(bytes, async step =>
+                {
+                    if (step == 1)
+                    {
+                        await _bot.SendChatAction(chatId, ChatAction.UploadPhoto, cancellationToken: ct);
+                        await _bot.EditMessageText(chatId, progressMsg.MessageId, "🔎 Шаг 1/2: анализ фото", cancellationToken: ct);
+                    }
+                    else if (step == 2)
+                    {
+                        await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
+                        await _bot.EditMessageText(chatId, progressMsg.MessageId, "🧠 Шаг 2/2: расчёт нутриентов", cancellationToken: ct);
+                    }
+                }, ct);
+
+                await _bot.EditMessageText(chatId, progressMsg.MessageId,
+                    conv is null ? "❌ Распознавание не удалось" : "✅ Распознавание завершено",
+                    cancellationToken: ct);
 
                 var productsJsonEntry = conv is null ? null : ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson);
                 var entry = new MealEntry
@@ -343,6 +359,28 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             .OrderByDescending(m => m.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
 
+        async Task<NutritionConversation?> AnalyzeWithProgress(byte[] img)
+        {
+            var progressMsg = await _bot.SendMessage(chatId, "⏳ Распознавание запущено...", cancellationToken: ct);
+            var result = await nutrition.AnalyzeWithNoteAsync(img, text, async step =>
+            {
+                if (step == 1)
+                {
+                    await _bot.SendChatAction(chatId, ChatAction.UploadPhoto, cancellationToken: ct);
+                    await _bot.EditMessageText(chatId, progressMsg.MessageId, "🔎 Шаг 1/2: анализ фото", cancellationToken: ct);
+                }
+                else if (step == 2)
+                {
+                    await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
+                    await _bot.EditMessageText(chatId, progressMsg.MessageId, "🧠 Шаг 2/2: расчёт нутриентов", cancellationToken: ct);
+                }
+            }, ct);
+            await _bot.EditMessageText(chatId, progressMsg.MessageId,
+                result is null ? "❌ Распознавание не удалось" : "✅ Распознавание завершено",
+                cancellationToken: ct);
+            return result;
+        }
+
         NutritionConversation? conv2 = null;
 
         switch (mode)
@@ -364,14 +402,14 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
                         }
                     }
                     if (conv2 is null && last?.ImageBytes is { Length: > 0 })
-                        conv2 = await nutrition.AnalyzeWithNoteAsync(last.ImageBytes, text, ct);
+                        conv2 = await AnalyzeWithProgress(last.ImageBytes);
                     break;
                 }
 
             case ClarifyStartMode.FromVisionStep1:
                 {
                     if (last?.ImageBytes is { Length: > 0 })
-                        conv2 = await nutrition.AnalyzeWithNoteAsync(last.ImageBytes, text, ct);
+                        conv2 = await AnalyzeWithProgress(last.ImageBytes);
                     if (conv2 is null && last?.Step1Json is { Length: > 0 })
                     {
                         try
@@ -408,7 +446,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
                         }
                     }
                     if (conv2 is null && last?.ImageBytes is { Length: > 0 })
-                        conv2 = await nutrition.AnalyzeWithNoteAsync(last.ImageBytes, text, ct);
+                        conv2 = await AnalyzeWithProgress(last.ImageBytes);
                     break;
                 }
         }
