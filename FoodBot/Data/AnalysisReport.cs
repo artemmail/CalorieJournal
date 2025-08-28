@@ -17,4 +17,8 @@ public class AnalysisReport
     public bool IsProcessing { get; set; }
 
     public DateTimeOffset CreatedAtUtc { get; set; }
+
+    public bool IsProcessing1 { get; set; }
+
+
 }
