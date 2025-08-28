@@ -28,5 +28,9 @@ public class BotDbContext : DbContext
 
         modelBuilder.Entity<PersonalCard>()
             .HasKey(x => x.ChatId);
+
+        modelBuilder.Entity<PersonalCard>()
+            .Property(x => x.ChatId)
+            .ValueGeneratedNever();
     }
 }

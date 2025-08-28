@@ -1,10 +1,14 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodBot.Data;
 
 public class PersonalCard
 {
-    [Key] public long ChatId { get; set; }
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    public long ChatId { get; set; }
+
     [MaxLength(256)] public string? Email { get; set; }
     [MaxLength(256)] public string? Name { get; set; }
     public int? BirthYear { get; set; }
