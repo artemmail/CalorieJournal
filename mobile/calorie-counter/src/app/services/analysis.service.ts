@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { FoodBotAuthLinkService } from './foodbot-auth-link.service';
 
 export interface AnalysisResponse {
   status: string;
@@ -13,7 +14,9 @@ export class AnalysisService {
   loading = false;
   private timer?: any;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private auth: FoodBotAuthLinkService) {}
+
+  private get baseUrl(): string { return this.auth.apiBaseUrl; }
 
   refresh() {
     if (this.loading) return;
@@ -22,7 +25,7 @@ export class AnalysisService {
       clearTimeout(this.timer);
       this.timer = undefined;
     }
-    this.http.get<AnalysisResponse>('/api/analysis').subscribe({
+    this.http.get<AnalysisResponse>(`${this.baseUrl}/api/analysis`).subscribe({
       next: r => {
         this.report = r;
         this.loading = false;
