@@ -6,7 +6,11 @@
   (scrolled)="onScrollDown()"
 >
   <ng-container *ngFor="let m of items; let i = index">
-    <div class="date" *ngIf="showDateSeparator(i)">{{ date(m.createdAtUtc) }}</div>
+    <div class="date" *ngIf="showDateSeparator(i)">
+      {{ date(m.createdAtUtc) }}
+      <span class="date-total">· {{ dateTotalFor(m.createdAtUtc) | number:'1.0-0' }} ккал</span>
+    </div>
+
     <mat-card class="meal-card" (click)="openDialog(m)">
       <div class="row">
         <img *ngIf="m.hasImage && imgUrl(m.id)" [src]="imgUrl(m.id)" alt="meal" />
@@ -27,16 +31,3 @@
 
   <mat-spinner *ngIf="loading"></mat-spinner>
 </div>
-
-<style>
-.meal-card { margin-bottom: 12px; cursor: pointer; }
-.row { display: flex; gap: 12px; align-items: flex-start; }
-img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; }
-.info { flex: 1; }
-.time { font-size: 12px; opacity: .7; }
-.kcal { font-weight: 600; margin: 4px 0; }
-.dish { opacity: .8; margin-left: 6px; }
-.macros { font-size: 13px; }
-.date { font-weight: 600; margin: 16px 0 8px; }
-</style>
-

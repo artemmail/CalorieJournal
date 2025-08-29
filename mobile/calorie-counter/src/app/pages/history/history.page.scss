@@ -1,1 +1,15 @@
-﻿:host { display:block; }
+﻿:host { display: block; }
+
+.meal-card { margin-bottom: 12px; cursor: pointer; }
+.row { display: flex; gap: 12px; align-items: flex-start; }
+img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; }
+.info { flex: 1; }
+.time { font-size: 12px; opacity: .7; }
+.kcal { font-weight: 600; margin: 4px 0; }
+.dish { opacity: .8; margin-left: 6px; }
+.macros { font-size: 13px; }
+.date { font-weight: 600; margin: 16px 0 8px; display: flex; align-items: baseline; gap: 6px; }
+.date-total { font-weight: 500; opacity: .8; }
+
+/* длинные ингредиенты будут переноситься */
+.ing { overflow-wrap: anywhere; word-break: break-word; }

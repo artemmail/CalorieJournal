@@ -4,7 +4,7 @@ import { MatCardModule } from "@angular/material/card";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { InfiniteScrollModule } from 'ngx-infinite-scroll';
+import { InfiniteScrollModule } from "ngx-infinite-scroll";
 import { Router } from "@angular/router";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { MealListItem } from "../../services/foodbot-api.types";
@@ -14,17 +14,27 @@ import { HistoryDetailDialogComponent } from "./history-detail.dialog";
 @Component({
   selector: "app-history",
   standalone: true,
-  imports: [CommonModule, MatCardModule, InfiniteScrollModule, MatSnackBarModule, MatDialogModule, MatProgressSpinnerModule],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    InfiniteScrollModule,
+    MatSnackBarModule,
+    MatDialogModule,
+    MatProgressSpinnerModule
+  ],
   templateUrl: "./history.page.html",
   styleUrls: ["./history.page.scss"]
 })
 export class HistoryPage implements OnInit, OnDestroy {
-    items: MealListItem[] = [];
-    total = 0;
-    pageSize = 10;
-    loading = false;
+  items: MealListItem[] = [];
+  total = 0;
+  pageSize = 10;
+  loading = false;
 
   imageUrls = new Map<number, string>();
+
+  /** сумма ккал по локальной дате (YYYY-MM-DD) для уже загруженных элементов */
+  private dateTotals = new Map<string, number>();
 
   constructor(
     private api: FoodbotApiService,
@@ -34,44 +44,51 @@ export class HistoryPage implements OnInit, OnDestroy {
     private dialog: MatDialog
   ) {}
 
-    ngOnInit() {
-      if (!this.auth.isAuthenticated()) { this.router.navigateByUrl("/auth"); return; }
-      this.loadMore();
+  ngOnInit() {
+    if (!this.auth.isAuthenticated()) {
+      this.router.navigateByUrl("/auth");
+      return;
     }
+    this.loadMore();
+  }
 
   ngOnDestroy() {
     // чистим ObjectURL'ы
     for (const url of this.imageUrls.values()) URL.revokeObjectURL(url);
   }
 
-    loadMore() {
-      if (this.loading) return;
-      if (this.items.length >= this.total && this.total !== 0) return;
-      this.loading = true;
-      const offset = this.items.length;
-      this.api.getMeals(this.pageSize, offset).subscribe({
-        next: (res) => {
-          this.items = [...this.items, ...res.items];
-          this.total = res.total;
-          for (const m of res.items) {
-            if (m.hasImage) {
-              this.api.getMealImageObjectUrl(m.id).subscribe(url => this.imageUrls.set(m.id, url));
-            }
-          }
-          this.loading = false;
-        },
-        error: () => {
-          this.snack.open("Не удалось загрузить историю", "OK", { duration: 2000 });
-          this.loading = false;
-        }
-      });
-    }
+  loadMore() {
+    if (this.loading) return;
+    if (this.items.length >= this.total && this.total !== 0) return;
 
-    onScrollDown() { this.loadMore(); }
+    this.loading = true;
+    const offset = this.items.length;
+
+    this.api.getMeals(this.pageSize, offset).subscribe({
+      next: (res) => {
+        this.items = [...this.items, ...res.items];
+        this.total = res.total;
+
+        for (const m of res.items) {
+          if (m.hasImage) {
+            this.api.getMealImageObjectUrl(m.id).subscribe((url) => this.imageUrls.set(m.id, url));
+          }
+        }
+
+        this.recomputeDateTotals();
+        this.loading = false;
+      },
+      error: () => {
+        this.snack.open("Не удалось загрузить историю", "OK", { duration: 2000 });
+        this.loading = false;
+      }
+    });
+  }
+
+  onScrollDown() { this.loadMore(); }
 
   time(s: string) { return new Date(s).toLocaleString(); }
   imgUrl(id: number) { return this.imageUrls.get(id) || ""; }
-
   date(s: string) { return new Date(s).toLocaleDateString(); }
 
   private sameDay(a: string, b: string) {
@@ -95,6 +112,28 @@ export class HistoryPage implements OnInit, OnDestroy {
       height: "95vh"
     });
   }
+
+  /** ключ локальной даты YYYY-MM-DD */
+  private dateKey(s: string): string {
+    const d = new Date(s);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  /** пересчёт сумм калорий для всех уже загруженных элементов */
+  private recomputeDateTotals() {
+    this.dateTotals.clear();
+    for (const m of this.items) {
+      const key = this.dateKey(m.createdAtUtc);
+      const kcal = Number(m.caloriesKcal ?? 0);
+      this.dateTotals.set(key, (this.dateTotals.get(key) ?? 0) + (isNaN(kcal) ? 0 : kcal));
+    }
+  }
+
+  /** получить сумму калорий для даты элемента */
+  dateTotalFor(dateStr: string): number {
+    return this.dateTotals.get(this.dateKey(dateStr)) ?? 0;
+  }
 }
-
-
