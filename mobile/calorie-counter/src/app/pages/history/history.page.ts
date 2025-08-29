@@ -3,9 +3,9 @@ import { CommonModule } from "@angular/common";
 import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDialogModule } from "@angular/material/dialog";
+import { InfiniteScrollModule } from 'ngx-infinite-scroll';
 import { Router } from "@angular/router";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { MealListItem, ClarifyResult } from "../../services/foodbot-api.types";
@@ -15,15 +15,15 @@ import { FoodBotAuthLinkService } from "../../services/foodbot-auth-link.service
 @Component({
   selector: "app-history",
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatPaginatorModule, MatSnackBarModule, MatDialogModule],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, InfiniteScrollModule, MatSnackBarModule, MatDialogModule],
   templateUrl: "./history.page.html",
   styleUrls: ["./history.page.scss"]
 })
 export class HistoryPage implements OnInit, OnDestroy {
-  items: MealListItem[] = [];
-  total = 0;
-  pageSize = 10;
-  pageIndex = 0;
+    items: MealListItem[] = [];
+    total = 0;
+    pageSize = 10;
+    loading = false;
 
   imageUrls = new Map<number, string>();
 
@@ -35,37 +35,40 @@ export class HistoryPage implements OnInit, OnDestroy {
     private auth: FoodBotAuthLinkService
   ) {}
 
-  ngOnInit() {
-    if (!this.auth.isAuthenticated()) { this.router.navigateByUrl("/auth"); return; }
-    this.loadPage(0);
-  }
+    ngOnInit() {
+      if (!this.auth.isAuthenticated()) { this.router.navigateByUrl("/auth"); return; }
+      this.loadMore();
+    }
 
   ngOnDestroy() {
     // чистим ObjectURL'ы
     for (const url of this.imageUrls.values()) URL.revokeObjectURL(url);
   }
 
-  loadPage(index: number) {
-    const offset = index * this.pageSize;
-    this.api.getMeals(this.pageSize, offset).subscribe({
-      next: (res) => {
-        this.items = res.items;
-        this.total = res.total;
-        this.pageIndex = index;
-        // загружаем превью
-        this.imageUrls.forEach(u => URL.revokeObjectURL(u));
-        this.imageUrls.clear();
-        for (const m of this.items) {
-          if (m.hasImage) {
-            this.api.getMealImageObjectUrl(m.id).subscribe(url => this.imageUrls.set(m.id, url));
+    loadMore() {
+      if (this.loading) return;
+      if (this.items.length >= this.total && this.total !== 0) return;
+      this.loading = true;
+      const offset = this.items.length;
+      this.api.getMeals(this.pageSize, offset).subscribe({
+        next: (res) => {
+          this.items = [...this.items, ...res.items];
+          this.total = res.total;
+          for (const m of res.items) {
+            if (m.hasImage) {
+              this.api.getMealImageObjectUrl(m.id).subscribe(url => this.imageUrls.set(m.id, url));
+            }
           }
+          this.loading = false;
+        },
+        error: () => {
+          this.snack.open("Не удалось загрузить историю", "OK", { duration: 2000 });
+          this.loading = false;
         }
-      },
-      error: () => this.snack.open("Не удалось загрузить историю", "OK", { duration: 2000 })
-    });
-  }
+      });
+    }
 
-  pageChange(e: PageEvent) { this.pageSize = e.pageSize; this.loadPage(e.pageIndex); }
+    onScrollDown() { this.loadMore(); }
 
   async clarifyVoice(item: MealListItem) {
     try {

@@ -1,41 +1,47 @@
-﻿<mat-card *ngFor="let m of items" class="meal-card">
-  <div class="row">
-    <img *ngIf="m.hasImage && imgUrl(m.id)" [src]="imgUrl(m.id)" alt="meal" />
-    <div class="info">
-      <div class="time">{{ time(m.createdAtUtc) }}</div>
-      <div class="kcal">
-        {{ m.caloriesKcal ?? "—" }} ккал
-        <span class="dish" *ngIf="m.dishName">· {{ m.dishName }}</span>
-      </div>
-      <div class="macros">
-        Б {{ m.proteinsG ?? "—" }} · Ж {{ m.fatsG ?? "—" }} · У {{ m.carbsG ?? "—" }} · {{ m.weightG ?? "—" }} г
-      </div>
-      <div class="ing" *ngIf="m.ingredients?.length">Ингредиенты: {{ m.ingredients.join(", ") }}</div>
+<div
+  infiniteScroll
+  [scrollWindow]="true"
+  [infiniteScrollDistance]="1"
+  [infiniteScrollThrottle]="200"
+  (scrolled)="onScrollDown()"
+>
+  <mat-card *ngFor="let m of items" class="meal-card">
+    <div class="row">
+      <img *ngIf="m.hasImage && imgUrl(m.id)" [src]="imgUrl(m.id)" alt="meal" />
+      <div class="info">
+        <div class="time">{{ time(m.createdAtUtc) }}</div>
+        <div class="kcal">
+          {{ m.caloriesKcal ?? "—" }} ккал
+          <span class="dish" *ngIf="m.dishName">· {{ m.dishName }}</span>
+        </div>
+        <div class="macros">
+          Б {{ m.proteinsG ?? "—" }} · Ж {{ m.fatsG ?? "—" }} · У {{ m.carbsG ?? "—" }} · {{ m.weightG ?? "—" }} г
+        </div>
+        <div class="ing" *ngIf="m.ingredients?.length">Ингредиенты: {{ m.ingredients.join(", ") }}</div>
 
-      <div class="actions">
-        <button mat-stroked-button color="primary" (click)="m.expanded = !m.expanded">
-          <mat-icon>{{ m.expanded ? 'expand_less' : 'expand_more' }}</mat-icon> Состав
-        </button>
-        <button mat-stroked-button color="primary" (click)="clarifyText(m)">
-          <mat-icon>edit</mat-icon> Уточнить (текст)
-        </button>
-        <button mat-stroked-button color="primary" (click)="clarifyVoice(m)">
-          <mat-icon>mic</mat-icon> Уточнить (голос)
-        </button>
-      </div>
-      <div class="products" *ngIf="m.expanded">
-        <div *ngFor="let p of m.products">
-          {{ p.name }} — {{ p.percent }}% ({{ p.grams }} г):
-          Б {{ p.proteins_g }} · Ж {{ p.fats_g }} · У {{ p.carbs_g }} · {{ p.calories_kcal }} ккал
+        <div class="actions">
+          <button mat-stroked-button color="primary" (click)="m.expanded = !m.expanded">
+            <mat-icon>{{ m.expanded ? 'expand_less' : 'expand_more' }}</mat-icon> Состав
+          </button>
+          <button mat-stroked-button color="primary" (click)="clarifyText(m)">
+            <mat-icon>edit</mat-icon> Уточнить (текст)
+          </button>
+          <button mat-stroked-button color="primary" (click)="clarifyVoice(m)">
+            <mat-icon>mic</mat-icon> Уточнить (голос)
+          </button>
+        </div>
+        <div class="products" *ngIf="m.expanded">
+          <div *ngFor="let p of m.products">
+            {{ p.name }} — {{ p.percent }}% ({{ p.grams }} г):
+            Б {{ p.proteins_g }} · Ж {{ p.fats_g }} · У {{ p.carbs_g }} · {{ p.calories_kcal }} ккал
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</mat-card>
+  </mat-card>
 
-<mat-paginator [length]="total" [pageSize]="pageSize" [pageIndex]="pageIndex"
-               [pageSizeOptions]="[5,10,20,30]" (page)="pageChange($event)">
-</mat-paginator>
+  <mat-spinner *ngIf="loading"></mat-spinner>
+</div>
 
 <style>
 .meal-card { margin-bottom: 12px; }
@@ -49,3 +55,4 @@ img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; }
 .actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
 .products { margin-top: 8px; font-size: 13px; }
 </style>
+
