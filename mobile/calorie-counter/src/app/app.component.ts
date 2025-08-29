@@ -10,4 +10,6 @@ import { MatButtonModule } from "@angular/material/button";
   imports: [RouterOutlet, RouterLink, MatToolbarModule, MatIconModule, MatButtonModule],
   templateUrl: "./app.component.html"
 })
-export class AppComponent {}
+export class AppComponent {
+  title = 'calorie-counter';
+}
