@@ -1,22 +1,20 @@
 ﻿import { Component, OnDestroy, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { MatCardModule } from "@angular/material/card";
-import { MatButtonModule } from "@angular/material/button";
-import { MatIconModule } from "@angular/material/icon";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatDialogModule } from "@angular/material/dialog";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { InfiniteScrollModule } from 'ngx-infinite-scroll';
 import { Router } from "@angular/router";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
-import { MealListItem, ClarifyResult } from "../../services/foodbot-api.types";
-import { VoiceService } from "../../services/voice.service";
+import { MealListItem } from "../../services/foodbot-api.types";
 import { FoodBotAuthLinkService } from "../../services/foodbot-auth-link.service";
+import { HistoryDetailDialogComponent } from "./history-detail.dialog";
 
 @Component({
   selector: "app-history",
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, InfiniteScrollModule, MatSnackBarModule, MatDialogModule, MatProgressSpinnerModule],
+  imports: [CommonModule, MatCardModule, InfiniteScrollModule, MatSnackBarModule, MatDialogModule, MatProgressSpinnerModule],
   templateUrl: "./history.page.html",
   styleUrls: ["./history.page.scss"]
 })
@@ -30,10 +28,10 @@ export class HistoryPage implements OnInit, OnDestroy {
 
   constructor(
     private api: FoodbotApiService,
-    private voice: VoiceService,
     private snack: MatSnackBar,
     private router: Router,
-    private auth: FoodBotAuthLinkService
+    private auth: FoodBotAuthLinkService,
+    private dialog: MatDialog
   ) {}
 
     ngOnInit() {
@@ -71,50 +69,18 @@ export class HistoryPage implements OnInit, OnDestroy {
 
     onScrollDown() { this.loadMore(); }
 
-  async clarifyVoice(item: MealListItem) {
-    try {
-      const text = await this.voice.listenOnce("ru-RU");
-      if (!text) return;
-      this.api.clarifyText(item.id, text).subscribe({
-        next: (r: ClarifyResult) => {
-          item.dishName = r.result.dish;
-          item.caloriesKcal = r.result.calories_kcal;
-          item.proteinsG = r.result.proteins_g;
-          item.fatsG = r.result.fats_g;
-          item.carbsG = r.result.carbs_g;
-          item.weightG = r.result.weight_g;
-          item.ingredients = r.result.ingredients;
-          item.products = r.products;
-          this.snack.open("Уточнение применено", "OK", { duration: 1500 });
-        },
-        error: () => this.snack.open("Ошибка уточнения", "OK", { duration: 1500 })
-      });
-    } catch {
-      this.snack.open("Речь не распознана", "OK", { duration: 1500 });
-    }
-  }
-
-  clarifyText(item: MealListItem) {
-    const note = prompt("Введите уточнение по блюду/массе/ингредиентам:", "");
-    if (!note) return;
-    this.api.clarifyText(item.id, note).subscribe({
-      next: (r: ClarifyResult) => {
-        item.dishName = r.result.dish;
-        item.caloriesKcal = r.result.calories_kcal;
-        item.proteinsG = r.result.proteins_g;
-        item.fatsG = r.result.fats_g;
-        item.carbsG = r.result.carbs_g;
-        item.weightG = r.result.weight_g;
-        item.ingredients = r.result.ingredients;
-        item.products = r.products;
-        this.snack.open("Уточнение применено", "OK", { duration: 1500 });
-      },
-      error: () => this.snack.open("Ошибка уточнения", "OK", { duration: 1500 })
-    });
-  }
-
   time(s: string) { return new Date(s).toLocaleString(); }
   imgUrl(id: number) { return this.imageUrls.get(id) || ""; }
+
+  openDialog(item: MealListItem) {
+    this.dialog.open(HistoryDetailDialogComponent, {
+      data: { item, imageUrl: this.imgUrl(item.id) },
+      maxWidth: "100vw",
+      maxHeight: "100vh",
+      width: "95vw",
+      height: "95vh"
+    });
+  }
 }
 
 
