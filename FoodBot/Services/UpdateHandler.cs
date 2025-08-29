@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -22,6 +23,13 @@ public class UpdateHandler
 
     // (опционально) карта "чат → последний threadId"
     private static readonly ConcurrentDictionary<long, Guid> _threadsByChat = new();
+
+    // Cache of recently processed update IDs to avoid duplicates
+    private static readonly ConcurrentDictionary<int, DateTimeOffset> _recentUpdateIds = new();
+    private static DateTimeOffset _lastPruneUtc = DateTimeOffset.UtcNow;
+    private static readonly TimeSpan UpdateIdTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan PruneInterval = TimeSpan.FromMinutes(1);
+    private const int MaxUpdateCacheSize = 1000;
 
     // ====== ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМА УТОЧНЕНИЙ ======
     // Значения: FromSavedStep1 — используем сохранённый Step-1 (без повторной визионки),
@@ -52,9 +60,42 @@ public class UpdateHandler
         };
     }
 
+    private static void PruneOldUpdates(DateTimeOffset now)
+    {
+        if (now - _lastPruneUtc < PruneInterval)
+            return;
+
+        _lastPruneUtc = now;
+
+        foreach (var kvp in _recentUpdateIds)
+        {
+            if (kvp.Value <= now)
+                _recentUpdateIds.TryRemove(kvp.Key, out _);
+        }
+
+        if (_recentUpdateIds.Count <= MaxUpdateCacheSize)
+            return;
+
+        var excess = _recentUpdateIds
+            .OrderBy(kvp => kvp.Value)
+            .Take(_recentUpdateIds.Count - MaxUpdateCacheSize)
+            .ToList();
+
+        foreach (var item in excess)
+            _recentUpdateIds.TryRemove(item.Key, out _);
+    }
+
     public async Task HandleAsync(Update update, CancellationToken ct)
     {
-        if (update?.Type != UpdateType.Message || update.Message is not { } msg)
+        if (update is null)
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        PruneOldUpdates(now);
+        if (!_recentUpdateIds.TryAdd(update.Id, now.Add(UpdateIdTtl)))
+            return;
+
+        if (update.Type != UpdateType.Message || update.Message is not { } msg)
             return;
 
         using var scope = _scopeFactory.CreateScope();
