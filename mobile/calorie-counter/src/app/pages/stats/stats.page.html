@@ -1,31 +1,75 @@
 <mat-card>
   <h3>Статистика по дням</h3>
 
-  <mat-form-field appearance="fill">
-    <mat-label>Период</mat-label>
-    <mat-select [(ngModel)]="selectedPeriod" (selectionChange)="updatePeriod()">
-      <mat-option value="week">Неделя</mat-option>
-      <mat-option value="month">Месяц</mat-option>
-      <mat-option value="quarter">Квартал</mat-option>
-      <mat-option value="custom">Пользовательский</mat-option>
-    </mat-select>
-  </mat-form-field>
+  <div class="controls">
+    <mat-form-field appearance="fill">
+      <mat-label>Период</mat-label>
+      <mat-select [(ngModel)]="selectedPeriod" (selectionChange)="updatePeriod()">
+        <mat-option value="week">Неделя</mat-option>
+        <mat-option value="month">Месяц</mat-option>
+        <mat-option value="quarter">Квартал</mat-option>
+        <mat-option value="custom">Пользовательский</mat-option>
+      </mat-select>
+    </mat-form-field>
 
-  <div class="dates" *ngIf="selectedPeriod==='custom'">
-    <input type="date" [(ngModel)]="customStart" (change)="updatePeriod()">
-    <input type="date" [(ngModel)]="customEnd" (change)="updatePeriod()">
+    <div class="dates" *ngIf="selectedPeriod==='custom'">
+      <input type="date" [(ngModel)]="customStart" (change)="updatePeriod()">
+      <input type="date" [(ngModel)]="customEnd" (change)="updatePeriod()">
+    </div>
+
+    <mat-button-toggle-group [(ngModel)]="view">
+      <mat-button-toggle value="chart">График</mat-button-toggle>
+      <mat-button-toggle value="table">Таблица</mat-button-toggle>
+    </mat-button-toggle-group>
   </div>
 
-  <mat-button-toggle-group [(ngModel)]="view">
-    <mat-button-toggle value="chart">График</mat-button-toggle>
-    <mat-button-toggle value="table">Таблица</mat-button-toggle>
-  </mat-button-toggle-group>
+  <!-- Легенда по периоду -->
+  <div class="legend" *ngIf="legend.totalMacroKcal > 0">
+    <span class="dot p"></span>
+    Б {{ legend.proteinsPct | number:'1.0-0' }}%
+    <span class="dot f"></span>
+    Ж {{ legend.fatsPct | number:'1.0-0' }}%
+    <span class="dot c"></span>
+    У {{ legend.carbsPct | number:'1.0-0' }}%
+  </div>
 
   <ng-container *ngIf="view==='chart'">
     <div class="chart">
+      <!-- Шкала (совпадает по ширине с дорожкой) -->
+      <div class="scale" *ngIf="ticks.length">
+        <div class="tick" *ngFor="let t of ticks">
+          <span>{{ t | number:'1.0-0' }}</span>
+        </div>
+      </div>
+
+      <!-- Строки по дням -->
       <div class="row" *ngFor="let d of data">
         <div class="label">{{ d.date | date:'dd.MM' }}</div>
-        <div class="bar" [style.width.%]="maxCalories ? (d.totals.calories / maxCalories) * 100 : 0"></div>
+
+        <div class="track" [attr.aria-label]="'Сумма ккал ' + (d.totals.calories | number:'1.0-0')">
+          <div
+            class="bar-fill"
+            [style.width.%]="effectiveMax ? (d.totals.calories / effectiveMax) * 100 : 0"
+          >
+            <span
+              class="seg p"
+              [style.width.%]="macroShare(d, 'p')"
+              [attr.title]="macroTooltip(d, 'p')"
+            ></span>
+            <span
+              class="seg f"
+              [style.width.%]="macroShare(d, 'f')"
+              [attr.title]="macroTooltip(d, 'f')"
+            ></span>
+            <span
+              class="seg c"
+              [style.width.%]="macroShare(d, 'c')"
+              [attr.title]="macroTooltip(d, 'c')"
+            ></span>
+          </div>
+        </div>
+
+        <div class="value">{{ d.totals.calories | number:'1.0-0' }}</div>
       </div>
     </div>
   </ng-container>
@@ -47,14 +91,3 @@
     </table>
   </ng-container>
 </mat-card>
-
-<style>
-.dates { display: flex; gap: 8px; margin: 8px 0; }
-.chart { display: flex; flex-direction: column; gap: 4px; }
-.row { display: flex; align-items: center; gap: 4px; }
-.label { width: 40px; text-align: right; font-size: 12px; }
-.bar { height: 16px; background: #3f51b5; }
-.stats-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.stats-table th, .stats-table td { border: 1px solid rgba(0,0,0,.1); padding: 4px; text-align: right; }
-.stats-table th:first-child, .stats-table td:first-child { text-align: left; }
-</style>

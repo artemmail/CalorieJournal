@@ -1,1 +1,138 @@
-:host { display: block; }
+:host {
+  display: block;
+
+  /* Цвета сегментов */
+  --p-color: #4caf50; /* белки */
+  --f-color: #ff9800; /* жиры */
+  --c-color: #2196f3; /* углеводы */
+
+  /* Геометрия */
+  --label-w: 44px;
+  --value-w: 56px;
+  --gap: 6px;
+  --bar-h: 16px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dates { display: flex; gap: 8px; }
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 4px;
+  font-size: 12px;
+
+  .dot {
+    width: 12px; height: 12px; border-radius: 2px; display: inline-block; margin-right: 4px;
+    &.p { background: var(--p-color); }
+    &.f { background: var(--f-color); }
+    &.c { background: var(--c-color); }
+  }
+}
+
+.chart {
+  position: relative;
+}
+
+/* Шкала сверху: 0, 25%, 50%, 75%, 100% от effectiveMax (ккал) */
+.scale {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin-left: calc(var(--label-w) + var(--gap));
+  margin-right: calc(var(--value-w) + var(--gap));
+  height: 20px;
+  align-items: end;
+  position: relative;
+
+  .tick {
+    position: relative;
+    height: 100%;
+  }
+  .tick::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 1px;
+    background: rgba(0,0,0,.08);
+  }
+  .tick span {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(0,0,0,.6);
+  }
+}
+
+/* Строка графика */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  margin: 4px 0;
+}
+
+.label {
+  width: var(--label-w);
+  text-align: right;
+  font-size: 12px;
+  color: rgba(0,0,0,.75);
+}
+
+/* Дорожка + бар */
+.track {
+  position: relative;
+  flex: 1;
+  height: var(--bar-h);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(25% - 0.5px),
+      rgba(0,0,0,.06) calc(25% - 0.5px),
+      rgba(0,0,0,.06) calc(25% + 0.5px)
+    );
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  display: flex;       /* для сегментов Б/Ж/У */
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Сегменты */
+.seg { height: 100%; display: block; }
+.seg.p { background: var(--p-color); }
+.seg.f { background: var(--f-color); }
+.seg.c { background: var(--c-color); }
+
+.value {
+  width: var(--value-w);
+  text-align: right;
+  font-size: 12px;
+  color: rgba(0,0,0,.75);
+}
+
+/* Таблица */
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  th, td {
+    border: 1px solid rgba(0,0,0,.1);
+    padding: 4px;
+    text-align: right;
+    font-size: 12px;
+  }
+  th:first-child, td:first-child { text-align: left; }
+}
