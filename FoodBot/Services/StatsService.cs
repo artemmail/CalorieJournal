@@ -90,14 +90,16 @@ public sealed class StatsService
             list.Add(item ?? new DailyTotals { Date = day, Totals = new MacroTotals() });
         }
         // remove empty days until the first one containing a meal
-        var trimmed = list
-            .SkipWhile(d =>
-                d.Totals.Calories == 0 &&
-                d.Totals.Proteins == 0 &&
-                d.Totals.Fats == 0 &&
-                d.Totals.Carbs == 0)
-            .ToList();
-        return trimmed;
+        // but keep at least one day to show zero totals for the current day
+        while (list.Count > 1 &&
+               list[0].Totals.Calories == 0 &&
+               list[0].Totals.Proteins == 0 &&
+               list[0].Totals.Fats == 0 &&
+               list[0].Totals.Carbs == 0)
+        {
+            list.RemoveAt(0);
+        }
+        return list;
     }
 }
 
