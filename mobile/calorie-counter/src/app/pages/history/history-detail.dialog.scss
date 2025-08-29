@@ -1,64 +1,74 @@
-/* Общая плотность */
+/* Диалог должен сжиматься по контенту, но иметь верхний предел по высоте окна */
+:host ::ng-deep .mat-mdc-dialog-container {
+  max-height: 90vh; /* по вкусу 85–92vh */
+  height: auto;
+}
 
+/* Компактные строки mat-table */
 :host ::ng-deep .mat-mdc-table .mdc-data-table__row,
 :host ::ng-deep .mat-mdc-table .mdc-data-table__header-row {
   height: auto;
 }
 
-/* Вертикальный паддинг именно для mdc-ячеёк */
+/* Вертикальный паддинг в ячейках (регулируйте эти 2px, если нужно выше/ниже) */
 :host ::ng-deep .mat-mdc-table .mdc-data-table__cell,
 :host ::ng-deep .mat-mdc-table .mdc-data-table__header-cell {
-  padding-top: 2px;   /* ← ТУТ по высоте */
-  padding-bottom: 2px;
-  padding-left: 6px;  /* ширина — ок */
+  padding-top: 2px;    /* ← по высоте */
+  padding-bottom: 2px; /* ← по высоте */
+  padding-left: 6px;
   padding-right: 6px;
 }
 
-.container { display: flex; flex-direction: column; gap: 1x; height: 100%; overflow: auto; padding: 12px; }
-.photo { width: 100%; height: auto; max-height: 55vh; border-radius: 6px; object-fit: contain; }
+/* Корневой контейнер диалога — больше не растягиваем на всю высоту */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;            /* было 1x — опечатка */
+  padding: 12px;
+  /* height: 100%;  ← удалено */
+  /* overflow: auto; ← удалено */
+}
+
+.photo {
+  width: 100%;
+  height: auto;
+  max-height: 55vh;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
 .macros { font-size: 13px; line-height: 1.2; }
 .ingredients { font-size: 12.5px; line-height: 1.2; }
 
-/* Таблица компактная, не растягивается на всю ширину */
+/* Таблица компактная, не на всю ширину */
 .composition { align-self: flex-start; max-width: 100%; overflow-x: auto; }
+
 .products-table {
-  display: inline-table;          /* позволяет занять ширину по контенту */
+  display: inline-table;      /* ширина по контенту */
   width: auto;
-  border-collapse: collapse;      /* убираем лишние промежутки */
+  border-collapse: collapse;
   font-size: 12.5px;
   line-height: 1.15;
-  white-space: nowrap;            /* компактные ячейки */
-  font-variant-numeric: tabular-nums; /* ровные цифры */
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Паддинги минимальные */
-.products-table .h, .products-table .c {
-  padding: 0px 6px;
-}
-
-/* Заголовок чуть темнее и фиксированной высоты */
+.products-table .h, .products-table .c { padding: 0 6px; }
 .products-table .h {
   font-weight: 600;
   border-bottom: 1px solid rgba(0,0,0,.12);
 }
-
-/* Тонкие разделители строк */
-.products-table .c {
-  border-bottom: 1px dashed rgba(0,0,0,.08);
-}
-
-/* Наведение без сильной «воздушности» */
-.products-table .row:hover .c {
-  background: rgba(0,0,0,.03);
-}
-
-/* Выровнять числа вправо для компактности */
+.products-table .c { border-bottom: 1px dashed rgba(0,0,0,.08); }
+.products-table .row:hover .c { background: rgba(0,0,0,.03); }
 .products-table .num { text-align: right; }
-
-/* Колонки: имя оставляем эластичной, остальным задаём минимальную ширину */
 .products-table .name { max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
+
 @media (max-width: 420px) {
   .products-table .name { max-width: 240px; }
 }
 
-.buttons { display: flex; justify-content: flex-end; gap: 6px; }
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}

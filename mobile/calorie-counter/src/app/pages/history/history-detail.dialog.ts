@@ -37,9 +37,19 @@ export class HistoryDetailDialogComponent implements OnInit {
       next: d => {
         this.data.item.ingredients = d.ingredients;
         this.data.item.products = d.products;
+        this.fitDialog(); // поджать после прихода данных
       },
       error: () => {}
     });
+
+    // небольшая «пинок»-подстройка сразу после первой отрисовки
+    this.fitDialog();
+  }
+
+  /** Аккуратно подгоняет высоту диалога под контент */
+  fitDialog() {
+    // UpdateSize ставит стиль на .cdk-overlay-pane; '' = не менять ширину, 'auto' = высота по контенту
+    Promise.resolve().then(() => this.dialogRef.updateSize('', 'auto'));
   }
 
   openClarify() {

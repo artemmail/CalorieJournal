@@ -1,8 +1,15 @@
 <div class="container">
-  <img *ngIf="data.item.hasImage && data.imageUrl" [src]="data.imageUrl" alt="meal" class="photo" />
+  <img
+    *ngIf="data.item.hasImage && data.imageUrl"
+    [src]="data.imageUrl"
+    alt="meal"
+    class="photo"
+    (load)="fitDialog()"
+  />
 
   <div class="macros">
-    Б {{ data.item.proteinsG ?? '—' }} · Ж {{ data.item.fatsG ?? '—' }} · У {{ data.item.carbsG ?? '—' }} · {{ data.item.caloriesKcal ?? '—' }} ккал
+    Б {{ data.item.proteinsG ?? '—' }} · Ж {{ data.item.fatsG ?? '—' }} · У {{ data.item.carbsG ?? '—' }} ·
+    {{ data.item.caloriesKcal ?? '—' }} ккал
   </div>
 
   <div class="ingredients" *ngIf="data.item.ingredients?.length">
@@ -19,7 +26,7 @@
       </ng-container>
 
       <ng-container matColumnDef="percent">
-        <th mat-header-cell *matHeaderCellDef class="h num">% </th>
+        <th mat-header-cell *matHeaderCellDef class="h num">%</th>
         <td mat-cell *matCellDef="let p" class="c num">
           {{ p.percent == null ? '—' : (p.percent | number:'1.0-1') }}
         </td>
