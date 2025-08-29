@@ -5,6 +5,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDialogModule } from "@angular/material/dialog";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { InfiniteScrollModule } from 'ngx-infinite-scroll';
 import { Router } from "@angular/router";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
@@ -15,7 +16,7 @@ import { FoodBotAuthLinkService } from "../../services/foodbot-auth-link.service
 @Component({
   selector: "app-history",
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, InfiniteScrollModule, MatSnackBarModule, MatDialogModule],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, InfiniteScrollModule, MatSnackBarModule, MatDialogModule, MatProgressSpinnerModule],
   templateUrl: "./history.page.html",
   styleUrls: ["./history.page.scss"]
 })
