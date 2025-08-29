@@ -54,16 +54,22 @@ export class HistoryDetailDialogComponent implements OnInit {
 
   openClarify() {
     const ref = this.dialog.open(HistoryClarifyDialogComponent, { data: { mealId: this.data.item.id } });
-    ref.afterClosed().subscribe((r: ClarifyResult | undefined) => {
+    ref.afterClosed().subscribe((r: ClarifyResult | { deleted: true } | undefined) => {
       if (!r) return;
-      this.data.item.dishName = r.result.dish;
-      this.data.item.caloriesKcal = r.result.calories_kcal;
-      this.data.item.proteinsG = r.result.proteins_g;
-      this.data.item.fatsG = r.result.fats_g;
-      this.data.item.carbsG = r.result.carbs_g;
-      this.data.item.weightG = r.result.weight_g;
-      this.data.item.ingredients = r.result.ingredients;
-      this.data.item.products = r.products;
+      if ((r as any).deleted) {
+        this.snack.open('Запись удалена', 'OK', { duration: 1500 });
+        this.dialogRef.close({ deleted: true });
+        return;
+      }
+      const res = r as ClarifyResult;
+      this.data.item.dishName = res.result.dish;
+      this.data.item.caloriesKcal = res.result.calories_kcal;
+      this.data.item.proteinsG = res.result.proteins_g;
+      this.data.item.fatsG = res.result.fats_g;
+      this.data.item.carbsG = res.result.carbs_g;
+      this.data.item.weightG = res.result.weight_g;
+      this.data.item.ingredients = res.result.ingredients;
+      this.data.item.products = res.products;
       this.snack.open('Уточнение применено', 'OK', { duration: 1500 });
       this.dialogRef.close();
     });
