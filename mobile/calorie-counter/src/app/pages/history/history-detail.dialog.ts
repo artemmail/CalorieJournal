@@ -74,4 +74,17 @@ export class HistoryDetailDialogComponent implements OnInit {
       this.dialogRef.close();
     });
   }
+
+  remove() {
+    if (!confirm('Удалить запись?')) return;
+    this.api.deleteMeal(this.data.item.id).subscribe({
+      next: () => {
+        this.snack.open('Запись удалена', 'OK', { duration: 1500 });
+        this.dialogRef.close({ deleted: true });
+      },
+      error: () => {
+        this.snack.open('Не удалось удалить', 'OK', { duration: 1500 });
+      }
+    });
+  }
 }
