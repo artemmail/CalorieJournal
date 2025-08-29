@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.StaticFiles; // ← для корректных MIME
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -155,11 +156,23 @@ app.MapControllers();
 
 // ===== Telegram webhook endpoint =====
 var secret = builder.Configuration["Telegram:WebhookSecretPath"] ?? "my-secret";
-app.MapPost($"/bot/{secret}", async (HttpContext http, UpdateHandler handler, CancellationToken ct) =>
+app.MapPost($"/bot/{secret}", async (HttpContext http, UpdateHandler handler, ILogger<Program> logger, CancellationToken ct) =>
 {
     var update = await System.Text.Json.JsonSerializer.DeserializeAsync<Update>(http.Request.Body, cancellationToken: ct);
     if (update != null)
-        await handler.HandleAsync(update, ct);
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await handler.HandleAsync(update, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error handling update");
+            }
+        });
+    }
     return Results.Ok();
 });
 
