@@ -5,22 +5,25 @@
   [infiniteScrollThrottle]="200"
   (scrolled)="onScrollDown()"
 >
-  <mat-card *ngFor="let m of items" class="meal-card" (click)="openDialog(m)">
-    <div class="row">
-      <img *ngIf="m.hasImage && imgUrl(m.id)" [src]="imgUrl(m.id)" alt="meal" />
-      <div class="info">
-        <div class="time">{{ time(m.createdAtUtc) }}</div>
-        <div class="kcal">
-          {{ m.caloriesKcal ?? "—" }} ккал
-          <span class="dish" *ngIf="m.dishName">· {{ m.dishName }}</span>
+  <ng-container *ngFor="let m of items; let i = index">
+    <div class="date" *ngIf="showDateSeparator(i)">{{ date(m.createdAtUtc) }}</div>
+    <mat-card class="meal-card" (click)="openDialog(m)">
+      <div class="row">
+        <img *ngIf="m.hasImage && imgUrl(m.id)" [src]="imgUrl(m.id)" alt="meal" />
+        <div class="info">
+          <div class="time">{{ time(m.createdAtUtc) }}</div>
+          <div class="kcal">
+            {{ m.caloriesKcal ?? "—" }} ккал
+            <span class="dish" *ngIf="m.dishName">· {{ m.dishName }}</span>
+          </div>
+          <div class="macros">
+            Б {{ m.proteinsG ?? "—" }} · Ж {{ m.fatsG ?? "—" }} · У {{ m.carbsG ?? "—" }} · {{ m.weightG ?? "—" }} г
+          </div>
+          <div class="ing" *ngIf="m.ingredients?.length">Ингредиенты: {{ m.ingredients.join(", ") }}</div>
         </div>
-        <div class="macros">
-          Б {{ m.proteinsG ?? "—" }} · Ж {{ m.fatsG ?? "—" }} · У {{ m.carbsG ?? "—" }} · {{ m.weightG ?? "—" }} г
-        </div>
-        <div class="ing" *ngIf="m.ingredients?.length">Ингредиенты: {{ m.ingredients.join(", ") }}</div>
       </div>
-    </div>
-  </mat-card>
+    </mat-card>
+  </ng-container>
 
   <mat-spinner *ngIf="loading"></mat-spinner>
 </div>
@@ -34,5 +37,6 @@ img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; }
 .kcal { font-weight: 600; margin: 4px 0; }
 .dish { opacity: .8; margin-left: 6px; }
 .macros { font-size: 13px; }
+.date { font-weight: 600; margin: 16px 0 8px; }
 </style>
 

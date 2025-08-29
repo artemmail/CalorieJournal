@@ -72,6 +72,20 @@ export class HistoryPage implements OnInit, OnDestroy {
   time(s: string) { return new Date(s).toLocaleString(); }
   imgUrl(id: number) { return this.imageUrls.get(id) || ""; }
 
+  date(s: string) { return new Date(s).toLocaleDateString(); }
+
+  private sameDay(a: string, b: string) {
+    const da = new Date(a); const db = new Date(b);
+    return da.getFullYear() === db.getFullYear() &&
+           da.getMonth() === db.getMonth() &&
+           da.getDate() === db.getDate();
+  }
+
+  showDateSeparator(i: number) {
+    if (i === 0) return true;
+    return !this.sameDay(this.items[i - 1].createdAtUtc, this.items[i].createdAtUtc);
+  }
+
   openDialog(item: MealListItem) {
     this.dialog.open(HistoryDetailDialogComponent, {
       data: { item, imageUrl: this.imgUrl(item.id) },
