@@ -4,7 +4,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
-import { MealListItem, ClarifyResult, Step1Snapshot } from "../../services/foodbot-api.types";
+import { MealListItem, ClarifyResult } from "../../services/foodbot-api.types";
 import { HistoryClarifyDialogComponent } from "./history-clarify.dialog";
 
 @Component({
@@ -23,12 +23,7 @@ import { HistoryClarifyDialogComponent } from "./history-clarify.dialog";
         Б {{ data.item.proteinsG ?? '—' }} · Ж {{ data.item.fatsG ?? '—' }} · У {{ data.item.carbsG ?? '—' }} · {{ data.item.caloriesKcal ?? '—' }} ккал
       </div>
       <div class="ingredients" *ngIf="data.item.ingredients?.length">Ингредиенты: {{ data.item.ingredients.join(', ') }}</div>
-      <div class="composition" *ngIf="step1">
-        <div *ngFor="let ing of step1.ingredients; let i = index">
-          {{ ing }} — {{ step1.shares_percent[i] }}%
-        </div>
-      </div>
-      <div class="products" *ngIf="data.item.products?.length">
+      <div class="composition" *ngIf="data.item.products?.length">
         <div *ngFor="let p of data.item.products">
           {{ p.name }} — {{ p.percent }}% ({{ p.grams }} г): Б {{ p.proteins_g }} · Ж {{ p.fats_g }} · У {{ p.carbs_g }} · {{ p.calories_kcal }} ккал
         </div>
@@ -43,12 +38,11 @@ import { HistoryClarifyDialogComponent } from "./history-clarify.dialog";
     .container { display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: auto; padding: 16px; }
     .photo { width: 100%; height: auto; max-height: 60vh; border-radius: 8px; object-fit: contain; }
     .macros { font-size: 14px; }
-    .ingredients, .products, .composition { font-size: 13px; }
+    .ingredients, .composition { font-size: 13px; }
     .buttons { display: flex; justify-content: flex-end; gap: 8px; }
   `]
 })
 export class HistoryDetailDialogComponent implements OnInit {
-  step1: Step1Snapshot | null = null;
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { item: MealListItem; imageUrl: string },
@@ -60,7 +54,10 @@ export class HistoryDetailDialogComponent implements OnInit {
 
   ngOnInit() {
     this.api.getMeal(this.data.item.id).subscribe({
-      next: d => (this.step1 = d.step1),
+      next: d => {
+        this.data.item.ingredients = d.ingredients;
+        this.data.item.products = d.products;
+      },
       error: () => {}
     });
   }
