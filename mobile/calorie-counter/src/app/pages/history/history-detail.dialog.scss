@@ -1,0 +1,64 @@
+/* Общая плотность */
+
+:host ::ng-deep .mat-mdc-table .mdc-data-table__row,
+:host ::ng-deep .mat-mdc-table .mdc-data-table__header-row {
+  height: auto;
+}
+
+/* Вертикальный паддинг именно для mdc-ячеёк */
+:host ::ng-deep .mat-mdc-table .mdc-data-table__cell,
+:host ::ng-deep .mat-mdc-table .mdc-data-table__header-cell {
+  padding-top: 2px;   /* ← ТУТ по высоте */
+  padding-bottom: 2px;
+  padding-left: 6px;  /* ширина — ок */
+  padding-right: 6px;
+}
+
+.container { display: flex; flex-direction: column; gap: 1x; height: 100%; overflow: auto; padding: 12px; }
+.photo { width: 100%; height: auto; max-height: 55vh; border-radius: 6px; object-fit: contain; }
+.macros { font-size: 13px; line-height: 1.2; }
+.ingredients { font-size: 12.5px; line-height: 1.2; }
+
+/* Таблица компактная, не растягивается на всю ширину */
+.composition { align-self: flex-start; max-width: 100%; overflow-x: auto; }
+.products-table {
+  display: inline-table;          /* позволяет занять ширину по контенту */
+  width: auto;
+  border-collapse: collapse;      /* убираем лишние промежутки */
+  font-size: 12.5px;
+  line-height: 1.15;
+  white-space: nowrap;            /* компактные ячейки */
+  font-variant-numeric: tabular-nums; /* ровные цифры */
+}
+
+/* Паддинги минимальные */
+.products-table .h, .products-table .c {
+  padding: 0px 6px;
+}
+
+/* Заголовок чуть темнее и фиксированной высоты */
+.products-table .h {
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0,0,0,.12);
+}
+
+/* Тонкие разделители строк */
+.products-table .c {
+  border-bottom: 1px dashed rgba(0,0,0,.08);
+}
+
+/* Наведение без сильной «воздушности» */
+.products-table .row:hover .c {
+  background: rgba(0,0,0,.03);
+}
+
+/* Выровнять числа вправо для компактности */
+.products-table .num { text-align: right; }
+
+/* Колонки: имя оставляем эластичной, остальным задаём минимальную ширину */
+.products-table .name { max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 420px) {
+  .products-table .name { max-width: 240px; }
+}
+
+.buttons { display: flex; justify-content: flex-end; gap: 6px; }
