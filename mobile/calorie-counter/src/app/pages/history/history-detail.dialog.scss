@@ -14,7 +14,7 @@
   padding-right: 6px;
 }
 
-.container { display: flex; flex-direction: column; gap: 1x; height: 100%; overflow: auto; padding: 12px; }
+.container { display: flex; flex-direction: column; gap: 1x; max-height: 100%; overflow: auto; padding: 12px; }
 .photo { width: 100%; height: auto; max-height: 55vh; border-radius: 6px; object-fit: contain; }
 .macros { font-size: 13px; line-height: 1.2; }
 .ingredients { font-size: 12.5px; line-height: 1.2; }
