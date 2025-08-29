@@ -1,34 +1,105 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTabsModule } from '@angular/material/tabs';
-import { AnalysisService, AnalysisPeriod } from '../../services/analysis.service';
+import { MatTableModule } from '@angular/material/table';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analysis.service';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 
 @Component({
   selector: 'app-analysis',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatTabsModule, MarkdownPipe],
+  imports: [
+    CommonModule,
+    DatePipe,
+    MatCardModule,
+    MatButtonModule,
+    MatTableModule,
+    MatIconModule,
+    MatMenuModule,
+    MatChipsModule,
+    MatSnackBarModule,
+    MarkdownPipe
+  ],
   templateUrl: './analysis.page.html',
   styleUrls: ['./analysis.page.scss']
 })
 export class AnalysisPage implements OnInit, OnDestroy {
-  period: AnalysisPeriod = 'day';
+  cols = ['date', 'name', 'period', 'status', 'actions'];
+  rows: ReportRow[] = [];
+  loading = false;
+  hasProcessing = false;
 
-  constructor(public a: AnalysisService) {}
+  selectedMarkdown: string | null = null;
+  selectedName = '';
+  selectedId: number | null = null;
 
-  ngOnInit() {
-    this.a.refresh(this.period);
+  private timer?: any;
+
+  constructor(private api: AnalysisService, private sb: MatSnackBar) {}
+
+  ngOnInit(): void {
+    this.refresh();
+    this.timer = setInterval(() => {
+      if (this.hasProcessing) this.refresh(false);
+    }, 3000);
   }
 
-  ngOnDestroy() {
-    this.a.cancel();
+  ngOnDestroy(): void {
+    if (this.timer) clearInterval(this.timer);
   }
 
-  changePeriod(index: number) {
-    const map: AnalysisPeriod[] = ['day', 'week', 'month', 'quarter'];
-    this.period = map[index] ?? 'day';
-    this.a.refresh(this.period);
+  async refresh(showSpinner = true) {
+    try {
+      if (showSpinner) this.loading = true;
+      const list = await this.api.list();
+      this.rows = list;
+      this.hasProcessing = list.some(x => x.isProcessing);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async create(period: AnalysisPeriod) {
+    try {
+      this.loading = true;
+      const res = await this.api.create(period);
+      if (res.status === 'no_changes') {
+        this.sb.open('Новых приёмов пищи не было — отчёт не пересчитывался.', 'OK', { duration: 4000 });
+      } else {
+        this.sb.open('Отчёт поставлен в очередь. Статус обновится автоматически.', 'OK', { duration: 3000 });
+      }
+      await this.refresh(false);
+    } catch {
+      this.sb.open('Не удалось создать отчёт.', 'Закрыть', { duration: 4000 });
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async open(row: ReportRow) {
+    this.selectedId = row.id;
+    this.selectedName = row.name;
+    this.selectedMarkdown = null;
+
+    const res = await this.api.getById(row.id);
+    if (res.status === 'processing') {
+      this.sb.open('Отчёт ещё формируется…', 'OK', { duration: 2500 });
+      return;
+    }
+    this.selectedMarkdown = res.markdown ?? '';
+  }
+
+  periodLabel(p: AnalysisPeriod) {
+    switch (p) {
+      case 'day': return 'День';
+      case 'week': return 'Неделя';
+      case 'month': return 'Месяц';
+      case 'quarter': return 'Квартал';
+    }
   }
 }

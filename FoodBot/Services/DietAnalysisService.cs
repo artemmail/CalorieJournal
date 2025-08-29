@@ -31,11 +31,147 @@ public sealed class DietAnalysisService
         _apiKey = cfg["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI:ApiKey missing");
     }
 
-    /// <summary>
-    /// Ежедневный отчёт: анализ уже съеденного с начала СЕГОДНЯ (локально МСК) + почасовой план на остаток дня.
-    /// Пересчитываем ТОЛЬКО если появились новые приёмы пищи после предыдущего расчёта.
-    /// </summary>
-    public async Task<AnalysisReport> GetDailyAsync(long chatId, CancellationToken ct)
+    // === NEW: публичные методы для истории/очереди ===
+
+    public async Task<List<AnalysisReport1>> ListReportsAsync(long chatId, CancellationToken ct)
+    {
+        await CleanupStaleAsync(ct); // авто-очистка "висящих"
+        return await _db.AnalysisReports2.AsNoTracking()
+            .Where(x => x.ChatId == chatId)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(ct);
+    }
+
+    public async Task<AnalysisReport1?> GetReportAsync(long chatId, long id, CancellationToken ct)
+    {
+        return await _db.AnalysisReports2.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
+    }
+
+    /// <summary>Старт генерации отчёта (постановка в очередь) с проверкой checksum.</summary>
+    public async Task<(string status, AnalysisReport1 report)> StartReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    {
+        var tz = MoscowTz;
+        var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
+        var (periodStartUtc, periodHuman, _, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
+        var periodStartLocalDate = DateOnly.FromDateTime(periodStartLocal);
+
+        // Уже есть processing этого периода?
+        var existingProcessing = await _db.AnalysisReports2
+            .FirstOrDefaultAsync(r => r.ChatId == chatId && r.Period == period
+                && r.PeriodStartLocalDate == periodStartLocalDate && r.IsProcessing, ct);
+
+        if (existingProcessing != null)
+            return ("processing", existingProcessing);
+
+        // Посчитать текущую сумму калорий за период
+        var currentChecksum = await ComputeCaloriesChecksum(chatId, periodStartUtc.UtcDateTime, ct);
+
+        // Последний готовый отчёт этого периода в этом же периоде дат
+        var lastReady = await _db.AnalysisReports2.AsNoTracking()
+            .Where(r => r.ChatId == chatId && r.Period == period
+                && r.PeriodStartLocalDate == periodStartLocalDate
+                && !r.IsProcessing && r.Markdown != null)
+            .OrderByDescending(r => r.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (lastReady != null && lastReady.CaloriesChecksum == currentChecksum)
+        {
+            // Ничего не поменялось — говорим об этом клиенту
+            var phantom = new AnalysisReport1
+            {
+                Id = lastReady.Id,
+                ChatId = chatId,
+                Period = period,
+                PeriodStartLocalDate = periodStartLocalDate,
+                Name = lastReady.Name ?? BuildName(period, periodStartLocalDate),
+                CreatedAtUtc = lastReady.CreatedAtUtc,
+                CaloriesChecksum = lastReady.CaloriesChecksum,
+                Markdown = lastReady.Markdown,
+                IsProcessing = false
+            };
+            return ("no_changes", phantom);
+        }
+
+        // Создаём запись "в обработке"
+        var rec = new AnalysisReport1
+        {
+            ChatId = chatId,
+            Period = period,
+            PeriodStartLocalDate = periodStartLocalDate,
+            Name = BuildName(period, periodStartLocalDate),
+            IsProcessing = true,
+            ProcessingStartedAtUtc = DateTimeOffset.UtcNow,
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+        _db.AnalysisReports2.Add(rec);
+        await _db.SaveChangesAsync(ct);
+
+        return ("processing", rec);
+    }
+
+    /// <summary>Сгенерировать отчёт для конкретной записи (используется воркером очереди).</summary>
+    public async Task GenerateForRecordAsync(long reportId, CancellationToken ct)
+    {
+        var rec = await _db.AnalysisReports2.FirstOrDefaultAsync(x => x.Id == reportId, ct);
+        if (rec == null) return;
+        if (!rec.IsProcessing) return; // уже не нужно
+
+        var tz = MoscowTz;
+        var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
+        var (periodStartUtc, _, _, _) = GetPeriodStart(nowLocal, rec.Period, tz);
+
+        // Генерация
+        try
+        {
+            var markdown = await GenerateReportAsync(rec.ChatId, rec.Period, ct);
+            // Обновить чек-сумму на момент завершения
+            var checksum = await ComputeCaloriesChecksum(rec.ChatId, periodStartUtc.UtcDateTime, ct);
+
+            rec.Markdown = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(rec.Period, nowLocal) : markdown;
+            rec.CaloriesChecksum = checksum;
+            rec.IsProcessing = false;
+            rec.CreatedAtUtc = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            // При ошибке — снимаем флаг и удаляем запись, чтобы не висела
+            _db.AnalysisReports2.Remove(rec);
+            await _db.SaveChangesAsync(ct);
+            throw;
+        }
+    }
+
+    /// <summary>Удаляет все processing-отчёты (на запуске приложения по требованию ТЗ).</summary>
+    public async Task CleanupAllProcessingOnStartupAsync(CancellationToken ct)
+    {
+        var bad = await _db.AnalysisReports2.Where(x => x.IsProcessing).ToListAsync(ct);
+        if (bad.Count > 0)
+        {
+            _db.AnalysisReports2.RemoveRange(bad);
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
+    /// <summary>Удаляет зависшие processing (старше 10 минут).</summary>
+    public async Task CleanupStaleAsync(CancellationToken ct)
+    {
+        var limit = DateTimeOffset.UtcNow.AddMinutes(-10);
+        var stale = await _db.AnalysisReports2
+            .Where(x => x.IsProcessing && x.ProcessingStartedAtUtc < limit)
+            .ToListAsync(ct);
+
+        if (stale.Count > 0)
+        {
+            _db.AnalysisReports2.RemoveRange(stale);
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
+    // === Старая совместимость (используется твоим текущим контроллером) ===
+
+    public async Task<AnalysisReport1> GetDailyAsync(long chatId, CancellationToken ct)
     {
         var tz = MoscowTz;
         var nowUtc = DateTimeOffset.UtcNow;
@@ -45,16 +181,13 @@ public sealed class DietAnalysisService
         var dayStartLocalOffset = new DateTimeOffset(dayStartLocal, tz.GetUtcOffset(dayStartLocal));
         var dayStartUtc = dayStartLocalOffset.ToUniversalTime();
 
-        // Определяем ключ периода для кэша
         var periodStartLocalDate = DateOnly.FromDateTime(dayStartLocal);
 
-        // Кэш дневного отчёта по (ChatId, Period=Day, PeriodStartLocalDate)
-        var existing = await _db.AnalysisReports
+        var existing = await _db.AnalysisReports2
             .FirstOrDefaultAsync(r => r.ChatId == chatId
                                    && r.Period == AnalysisPeriod.Day
                                    && r.PeriodStartLocalDate == periodStartLocalDate, ct);
 
-        // Был ли новый приём пищи после формирования отчёта?
         var lastMealTimeUtc = await _db.Meals.AsNoTracking()
             .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= dayStartUtc.UtcDateTime)
             .OrderByDescending(m => m.CreatedAtUtc)
@@ -64,26 +197,30 @@ public sealed class DietAnalysisService
         if (existing != null && (!lastMealTimeUtc.HasValue || lastMealTimeUtc <= existing.CreatedAtUtc))
             return existing;
 
-        // Либо отчёта ещё не было, либо появились новые приёмы — формируем заново
-        var rec = existing ?? new AnalysisReport
+        var rec = existing ?? new AnalysisReport1
         {
             ChatId = chatId,
             Period = AnalysisPeriod.Day,
-            PeriodStartLocalDate = periodStartLocalDate
+            PeriodStartLocalDate = periodStartLocalDate,
+            Name = BuildName(AnalysisPeriod.Day, periodStartLocalDate)
         };
 
         rec.IsProcessing = true;
+        rec.ProcessingStartedAtUtc = DateTimeOffset.UtcNow;
         rec.CreatedAtUtc = DateTimeOffset.UtcNow;
 
         if (existing == null)
-            _db.AnalysisReports.Add(rec);
+            _db.AnalysisReports2.Add(rec);
 
         await _db.SaveChangesAsync(ct);
 
         try
         {
             var markdown = await GenerateReportAsync(chatId, AnalysisPeriod.Day, ct);
-            rec.Markdown = markdown;
+            var checksum = await ComputeCaloriesChecksum(chatId, dayStartUtc.UtcDateTime, ct);
+
+            rec.Markdown = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(AnalysisPeriod.Day, nowLocal) : markdown;
+            rec.CaloriesChecksum = checksum;
             rec.IsProcessing = false;
             rec.CreatedAtUtc = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
@@ -98,10 +235,6 @@ public sealed class DietAnalysisService
         return rec;
     }
 
-    /// <summary>
-    /// План-отчёт для недели/месяца/квартала: анализ с начала ПЕРИОДА (локально МСК) + общие рекомендации.
-    /// В день возвращаем кэш, если отчёт уже генерировался (чтобы не считать чаще 1 раза в сутки).
-    /// </summary>
     public async Task<string> GetPlanAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
         if (period == AnalysisPeriod.Day)
@@ -114,13 +247,11 @@ public sealed class DietAnalysisService
         var (periodStartUtc, _, _, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
         var periodStartLocalDate = DateOnly.FromDateTime(periodStartLocal);
 
-        // Ищем существующий отчёт этого периода
-        var existing = await _db.AnalysisReports.AsNoTracking()
+        var existing = await _db.AnalysisReports2.AsNoTracking()
             .FirstOrDefaultAsync(r => r.ChatId == chatId
                                    && r.Period == period
                                    && r.PeriodStartLocalDate == periodStartLocalDate, ct);
 
-        // Анти-пересчёт: если уже считали сегодня (локальный день) — возвращаем кэш
         var todayLocalStart = new DateTime(nowLocal.Year, nowLocal.Month, nowLocal.Day, 0, 0, 0);
         var todayLocalStartOffset = new DateTimeOffset(todayLocalStart, tz.GetUtcOffset(todayLocalStart));
         var todayStartUtc = todayLocalStartOffset.ToUniversalTime();
@@ -128,36 +259,40 @@ public sealed class DietAnalysisService
         if (existing != null && existing.CreatedAtUtc >= todayStartUtc)
             return existing.Markdown ?? string.Empty;
 
-        // Либо отчёта ещё не было, либо сегодня ещё не считали — генерируем
-        // (даже если были новые приёмы сегодня — это допустимо; ограничение — не чаще 1 раза в сутки)
-        var updatable = await _db.AnalysisReports
+        var updatable = await _db.AnalysisReports2
             .FirstOrDefaultAsync(r => r.ChatId == chatId
                                    && r.Period == period
                                    && r.PeriodStartLocalDate == periodStartLocalDate, ct);
 
         if (updatable == null)
         {
-            updatable = new AnalysisReport
+            updatable = new AnalysisReport1
             {
                 ChatId = chatId,
                 Period = period,
-                PeriodStartLocalDate = periodStartLocalDate
+                PeriodStartLocalDate = periodStartLocalDate,
+                Name = BuildName(period, periodStartLocalDate)
             };
-            _db.AnalysisReports.Add(updatable);
+            _db.AnalysisReports2.Add(updatable);
         }
 
         updatable.IsProcessing = true;
+        updatable.ProcessingStartedAtUtc = DateTimeOffset.UtcNow;
         updatable.CreatedAtUtc = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(ct);
 
         try
         {
             var markdown = await GenerateReportAsync(chatId, period, ct);
-            updatable.Markdown = markdown;
+            var checksum = await ComputeCaloriesChecksum(chatId, periodStartUtc.UtcDateTime, ct);
+
+            var final = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(period, nowLocal) : markdown;
+            updatable.Markdown = final;
+            updatable.CaloriesChecksum = checksum;
             updatable.IsProcessing = false;
             updatable.CreatedAtUtc = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
-            return markdown;
+            return final;
         }
         catch
         {
@@ -167,20 +302,16 @@ public sealed class DietAnalysisService
         }
     }
 
-    /// <summary>
-    /// Единая генерация отчёта для любого периода.
-    /// История собирается с НАЧАЛА ПЕРИОДА по ЛОКАЛЬНОМУ (Москва) времени → запрос к БД по UTC.
-    /// </summary>
+    // === Генерация отчёта (как у тебя), + фоллбэк если пусто ===
+
     private async Task<string> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
         var tz = MoscowTz;
         var nowUtc = DateTimeOffset.UtcNow;
         var nowLocal = TimeZoneInfo.ConvertTime(nowUtc, tz);
 
-        // Начало периода (локально и UTC)
         var (periodStartUtc, periodHuman, recScopeHint, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
 
-        // Данные пользователя
         var card = await _db.PersonalCards
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
@@ -189,7 +320,6 @@ public sealed class DietAnalysisService
         if (card?.BirthYear is int by && by > 1900 && by <= nowLocal.Year)
             age = nowLocal.Year - by;
 
-        // История приёмов (UTC в БД) → локализация для тайминга/показа
         var mealsRaw = await _db.Meals.AsNoTracking()
             .Where(m => m.ChatId == chatId &&
                         m.CreatedAtUtc >= periodStartUtc.UtcDateTime &&
@@ -222,7 +352,6 @@ public sealed class DietAnalysisService
             };
         }).ToList();
 
-        // Итоги на сейчас
         var totals = new
         {
             calories = meals.Sum(x => x.calories),
@@ -232,7 +361,6 @@ public sealed class DietAnalysisService
             mealsCount = meals.Count()
         };
 
-        // Для дневных рекомендаций: сетка часов до конца дня и время последнего приёма
         List<string>? hourGrid = null;
         string? lastMealLocalTime = null;
         double? hoursSinceLastMeal = null;
@@ -240,12 +368,8 @@ public sealed class DietAnalysisService
         if (period == AnalysisPeriod.Day)
         {
             hourGrid = new List<string>();
-            if (!(nowLocal.Hour == 23 && nowLocal.Minute > 0))
-            {
-                int startHour = (nowLocal.Minute == 0) ? nowLocal.Hour : nowLocal.Hour + 1;
-                for (int h = startHour; h <= 23; h++)
-                    hourGrid.Add($"{h:00}:00");
-            }
+            var startHour = (nowLocal.Minute == 0) ? nowLocal.Hour : nowLocal.Hour + 1;
+            for (int h = Math.Min(startHour, 23); h <= 23; h++) hourGrid.Add($"{h:00}:00");
 
             if (meals.Any())
             {
@@ -258,7 +382,6 @@ public sealed class DietAnalysisService
             }
         }
 
-        // Доп. вычисления для «Общей характеристики стиля питания» (агрегаты на вход модели)
         var byHour = meals
             .GroupBy(m => int.Parse(m.localTime[..2], CultureInfo.InvariantCulture))
             .Select(g => new { hour = g.Key, cnt = g.Count(), kcal = g.Sum(x => x.calories) })
@@ -279,7 +402,6 @@ public sealed class DietAnalysisService
             .OrderBy(x => x.date)
             .ToList();
 
-        // Предварительные строковые представления
         var utcOffset = tz.GetUtcOffset(nowLocal.DateTime);
         var utcOffsetStr = utcOffset.ToString(@"hh\:mm");
         var nowLocalStr = nowLocal.ToString("yyyy-MM-dd HH:mm");
@@ -291,15 +413,9 @@ public sealed class DietAnalysisService
         var periodStartUtcStr = periodStartUtc.ToString("yyyy-MM-dd HH:mm:ss");
         var periodEndUtcStr = nowUtc.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // Структурированный контекст для модели
         var data = new
         {
-            timezone = new
-            {
-                id = tz.Id,
-                label = "Europe/Moscow / Russian Standard Time",
-                utcOffset = utcOffsetStr
-            },
+            timezone = new { id = tz.Id, label = "Europe/Moscow / Russian Standard Time", utcOffset = utcOffsetStr },
             period = new
             {
                 kind = periodKindStr,
@@ -309,85 +425,46 @@ public sealed class DietAnalysisService
                 startUtc = periodStartUtcStr,
                 endUtc = periodEndUtcStr
             },
-            now = new
-            {
-                local = nowLocalStr,
-                localHour = nowLocalHourStr,
-                localDate = nowLocalDateStr
-            },
-            client = new
-            {
-                name = card?.Name,
-                age,
-                goals = card?.DietGoals,
-                restrictions = card?.MedicalRestrictions
-            },
+            now = new { local = nowLocalStr, localHour = nowLocalHourStr, localDate = nowLocalDateStr },
+            client = new { name = card?.Name, age, goals = card?.DietGoals, restrictions = card?.MedicalRestrictions },
             meals,
             totals,
-            grouping = new
-            {
-                byHour, // распределение приёмов/ккал по часам
-                byDay   // распределение по дням
-            },
-            dailyPlanContext = new
-            {
-                isDaily = period == AnalysisPeriod.Day,
-                remainingHourGrid = hourGrid,
-                lastMealLocalTime,
-                hoursSinceLastMeal
-            }
+            grouping = new { byHour, byDay },
+            dailyPlanContext = new { isDaily = period == AnalysisPeriod.Day, remainingHourGrid = hourGrid, lastMealLocalTime, hoursSinceLastMeal }
         };
 
-        // Инструкции для модели
         var instructionsRu =
 $@"Ты — внимательный клинический нутрициолог.
 Анализируй ТОЛЬКО фактически съеденное с начала периода до текущего момента.
-Весь анализ привязывай к локальному времени пользователя (Москва, UTC+3). Учитывай время каждого приёма (рано/поздно, интервалы).
-
-Сформируй ответ на русском в Markdown с разделами:
+Весь анализ привязывай к локальному времени пользователя (Москва, UTC+3). Учитывай время каждого приёма.
 
 ## Что уже съедено ({periodHuman})
-Таблица с колонками:
-Дата | Время (МСК) | Блюдо | Ккал | Б, г | Ж, г | У, г | Комментарий диетолога
-— В комментарии кратко оцени блюдо: сытность, баланс БЖУ, клетчатка, соль/сахар, соответствие целям/ограничениям, уместность по времени суток.
+Таблица: Дата | Время | Блюдо | Ккал | Б | Ж | У | Комментарий.
 
 ## Итоги периода на сейчас
-- Суммарно: Ккал, Б/Ж/У и доли макронутриентов (%).
-- Кол-во приёмов.
-- Краткие выводы (перекосы, дефициты, повторы, интервалы между приёмами).
+Сумма Ккал, Б/Ж/У, кол-во приёмов, краткие выводы.
 
 ## Общая характеристика стиля питания
-- Тайминг: сколько приёмов в первой половине дня vs вечером, поздние перекусы/углеводы.
-- Пищевые привычки: повторы, полуфабрикаты/сладкое/выпечка, клетчатка, вода.
-- Калорийность: средние Ккал на день/приём, колебания по дням.
-- БЖУ: средние доли и перекосы; чего системно не хватает/много.
-- Что поменять: 4–7 конкретных пунктов (распорядок, заготовки, замены продуктов).
+Тайминг, привычки, калорийность, БЖУ, что поменять (4–7 пунктов).
 
 ## Индивидуальные нюансы
-Учти возраст, цели и ограничения пользователя; укажи, как это влияет на советы.
+Учитывай возраст, цели, ограничения.
 
 ## Рекомендации
-- Если период = день → **План на остаток дня (по часам МСК)**:
-  - Для КАЖДОГО часа из remainingHourGrid явно: «не есть» / «вода/чай/кофе без сахара» / «перекус» (с примерами и ориентиром по Ккал/БЖУ) / «приём пищи» (состав и ориентиры).
-  - Цели по БЖУ на остаток дня агрегировано (что добрать/срезать).
-  - Если последний приём был недавно, укажи минимальный интервал до следующего.
-- Если период = неделя/месяц/квартал → **Рекомендации на {recScopeHint}**: принципы, паттерны, план закупок/заготовок, чек-лист. Не предлагай план на конец дня.
-
-Требования к стилю:
-- Конкретика без воды; числа там, где уместно.
-- Без клинических диагнозов и процедур, требующих очного врача.
+- Если день → почасовой план на остаток дня (по remainingHourGrid).
+- Если неделя/месяц/квартал → общие рекомендации на период; план на конец дня НЕ нужен.
+Стиль — конкретно и без воды.
 ";
 
         var periodPrompt = period switch
         {
             AnalysisPeriod.Day => "Сформируй почасовой план на остаток текущего дня, используя remainingHourGrid.",
-            AnalysisPeriod.Week => "Сформируй общие рекомендации на текущую неделю. План на конец дня НЕ нужен.",
-            AnalysisPeriod.Month => "Сформируй общие рекомендации на текущий месяц. План на конец дня НЕ нужен.",
-            AnalysisPeriod.Quarter => "Сформируй общие рекомендации на текущий квартал. План на конец дня НЕ нужен.",
+            AnalysisPeriod.Week => "Сформируй общие рекомендации на текущую неделю. План на конец дня не нужен.",
+            AnalysisPeriod.Month => "Сформируй общие рекомендации на текущий месяц. План на конец дня не нужен.",
+            AnalysisPeriod.Quarter => "Сформируй общие рекомендации на текущий квартал. План на конец дня не нужен.",
             _ => "Сформируй рекомендации на указанный период."
         };
 
-        // Запрос к OpenAI Responses API
         var reqObj = new
         {
             model = "gpt-4o-mini",
@@ -426,14 +503,50 @@ $@"Ты — внимательный клинический нутрициоло
         return content ?? string.Empty;
     }
 
-    /// <summary>
-    /// Возвращает:
-    ///  - начало периода в UTC для выборки из БД,
-    ///  - человекочитаемую подпись периода,
-    ///  - подсказку для блока рекомендаций,
-    ///  - начало периода в ЛОКАЛИ (для отображения/контекста).
-    /// Неделя — ISO (понедельник первый).
-    /// </summary>
+    // === Утилиты ===
+
+    private static string BuildName(AnalysisPeriod period, DateOnly startLocalDate)
+    {
+        var kind = period switch
+        {
+            AnalysisPeriod.Day => "день",
+            AnalysisPeriod.Week => "неделя",
+            AnalysisPeriod.Month => "месяц",
+            AnalysisPeriod.Quarter => "квартал",
+            _ => "период"
+        };
+        return $"{startLocalDate:yyyy-MM-dd} · {kind}";
+    }
+
+    private static string BuildFallbackMarkdown(AnalysisPeriod period, DateTimeOffset nowLocal)
+    {
+        var kind = period switch
+        {
+            AnalysisPeriod.Day => "день",
+            AnalysisPeriod.Week => "неделя",
+            AnalysisPeriod.Month => "месяц",
+            AnalysisPeriod.Quarter => "квартал",
+            _ => "период"
+        };
+        return
+$@"# Отчёт ({kind})
+Сформирован: {nowLocal:yyyy-MM-dd HH:mm}
+
+_Автоматический фоллбэк: содержимое не пустое, но LLM не вернул ответ. Попробуй перегенерировать позже или проверить входные данные._";
+    }
+
+    private async Task<int> ComputeCaloriesChecksum(long chatId, DateTime periodStartUtc, CancellationToken ct)
+    {
+        var untilUtc = DateTime.UtcNow;
+        var sum = await _db.Meals.AsNoTracking()
+            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= periodStartUtc && m.CreatedAtUtc <= untilUtc)
+            .Select(m => m.CaloriesKcal ?? 0)
+            .SumAsync(ct);
+
+        return (int)sum;
+    }
+
+    // Возвращает начало периода (UTC/Local) и подписи
     private static (DateTimeOffset startUtc, string periodHuman, string recScopeHint, DateTime periodStartLocal)
         GetPeriodStart(DateTimeOffset nowLocal, AnalysisPeriod period, TimeZoneInfo tz)
     {
@@ -447,12 +560,11 @@ $@"Ты — внимательный клинический нутрициоло
                 }
             case AnalysisPeriod.Week:
                 {
-                    // ISO: Monday=1 ... Sunday=7
-                    int dowRaw = (int)nowLocal.DayOfWeek;      // Sunday=0
-                    int isoDow = (dowRaw == 0) ? 7 : dowRaw;   // Monday=1..Sunday=7
-                    int daysFromMonday = isoDow - 1;           // 0..6
+                    int dowRaw = (int)nowLocal.DayOfWeek; // Sunday=0
+                    int isoDow = (dowRaw == 0) ? 7 : dowRaw;
+                    int daysFromMonday = isoDow - 1;
 
-                    var mondayLocalDate = nowLocal.Date.AddDays(-daysFromMonday); // DateTime
+                    var mondayLocalDate = nowLocal.Date.AddDays(-daysFromMonday);
                     var startLocal = new DateTime(mondayLocalDate.Year, mondayLocalDate.Month, mondayLocalDate.Day, 0, 0, 0);
                     var startLocalOffset = new DateTimeOffset(startLocal, tz.GetUtcOffset(startLocal));
                     return (startLocalOffset.ToUniversalTime(), "с начала недели", "неделю", startLocal);
@@ -465,8 +577,8 @@ $@"Ты — внимательный клинический нутрициоло
                 }
             case AnalysisPeriod.Quarter:
                 {
-                    var q = (nowLocal.Month - 1) / 3;      // 0..3
-                    var startMonth = (q * 3) + 1;          // 1,4,7,10
+                    var q = (nowLocal.Month - 1) / 3;
+                    var startMonth = (q * 3) + 1;
                     var startLocal = new DateTime(nowLocal.Year, startMonth, 1, 0, 0, 0);
                     var startLocalOffset = new DateTimeOffset(startLocal, tz.GetUtcOffset(startLocal));
                     return (startLocalOffset.ToUniversalTime(), "с начала квартала", "квартал", startLocal);
@@ -481,20 +593,14 @@ $@"Ты — внимательный клинический нутрициоло
         }
     }
 
-    /// <summary>
-    /// Возврат часового пояса Москва кросс-платформенно:
-    /// - Linux/macOS: "Europe/Moscow"
-    /// - Windows: "Russian Standard Time"
-    /// </summary>
     private static TimeZoneInfo GetMoscowTz()
     {
         string[] ids = new[] { "Europe/Moscow", "Russian Standard Time" };
         foreach (var id in ids)
         {
             try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
-            catch { /* try next */ }
+            catch { }
         }
-        // Фоллбэк: фиксированный UTC+3 (без переходов)
         return TimeZoneInfo.CreateCustomTimeZone("UTC+03", TimeSpan.FromHours(3), "UTC+03", "UTC+03");
     }
 }

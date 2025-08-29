@@ -11,7 +11,7 @@ public class BotDbContext : DbContext
 
     public DbSet<AppStartCode> StartCodes => Set<AppStartCode>();
     public DbSet<PersonalCard> PersonalCards => Set<PersonalCard>();
-    public DbSet<AnalysisReport> AnalysisReports => Set<AnalysisReport>();
+    public DbSet<AnalysisReport1> AnalysisReports2 => Set<AnalysisReport1>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,7 +34,6 @@ public class BotDbContext : DbContext
             .Property(x => x.ChatId)
             .ValueGeneratedNever();
 
-        modelBuilder.Entity<AnalysisReport>()
-            .HasIndex(x => new { x.ChatId, x.ReportDate });
+       
     }
 }

@@ -1,51 +1,60 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { FoodBotAuthLinkService } from './foodbot-auth-link.service';
-
-export interface AnalysisResponse {
-  status: string;
-  markdown?: string;
-  createdAtUtc?: string;
-}
 
 export type AnalysisPeriod = 'day' | 'week' | 'month' | 'quarter';
 
+export interface ReportRow {
+  id: number;
+  name: string;
+  period: AnalysisPeriod;
+  createdAtUtc: string;
+  isProcessing: boolean;
+  checksum: number;
+  hasMarkdown: boolean;
+}
+
+export interface CreateReportResponse {
+  status: 'processing' | 'ok' | 'no_changes';
+  id: number;
+  name: string;
+  period: AnalysisPeriod;
+}
+
+export interface GetReportResponse {
+  status: 'ok' | 'processing';
+  markdown?: string;
+  createdAtUtc?: string;
+  checksum?: number;
+  name?: string;
+  period?: AnalysisPeriod;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
-  report?: AnalysisResponse;
-  loading = false;
-  private timer?: any;
-
   constructor(private http: HttpClient, private auth: FoodBotAuthLinkService) {}
 
   private get baseUrl(): string { return this.auth.apiBaseUrl; }
 
-  refresh(period: AnalysisPeriod = 'day') {
-    if (this.loading) return;
-    this.loading = true;
-    this.report = undefined;
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = undefined;
-    }
-    this.http.get<AnalysisResponse>(`${this.baseUrl}/api/analysis?period=${period}`).subscribe({
-      next: r => {
-        this.report = r;
-        this.loading = false;
-        if (period === 'day' && r.status === 'processing') {
-          this.timer = setTimeout(() => this.refresh(period), 5000);
-        }
-      },
-      error: _ => {
-        this.loading = false;
-      }
-    });
+  /** История сохранённых отчётов */
+  list(): Promise<ReportRow[]> {
+    return firstValueFrom(
+      this.http.get<ReportRow[]>(`${this.baseUrl}/api/analysis/reports`)
+    );
   }
 
-  cancel() {
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = undefined;
-    }
+  /** Создать новый отчёт указанного периода */
+  create(period: AnalysisPeriod): Promise<CreateReportResponse> {
+    return firstValueFrom(
+      this.http.post<CreateReportResponse>(`${this.baseUrl}/api/analysis`, { period })
+    );
+  }
+
+  /** Получить сохранённый отчёт по id */
+  getById(id: number): Promise<GetReportResponse> {
+    return firstValueFrom(
+      this.http.get<GetReportResponse>(`${this.baseUrl}/api/analysis/${id}`)
+    );
   }
 }

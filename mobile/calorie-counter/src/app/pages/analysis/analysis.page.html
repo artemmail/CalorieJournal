@@ -1,16 +1,70 @@
-<mat-tab-group (selectedIndexChange)="changePeriod($event)">
-  <mat-tab label="День"></mat-tab>
-  <mat-tab label="Неделя"></mat-tab>
-  <mat-tab label="Месяц"></mat-tab>
-  <mat-tab label="Квартал"></mat-tab>
-</mat-tab-group>
+<mat-card class="toolbar">
+  <button mat-raised-button color="primary" [disabled]="hasProcessing || loading" [matMenuTriggerFor]="menu">
+    <mat-icon>add</mat-icon>
+    Создать отчёт
+  </button>
+  <mat-menu #menu="matMenu">
+    <button mat-menu-item (click)="create('day')">День</button>
+    <button mat-menu-item (click)="create('week')">Неделя</button>
+    <button mat-menu-item (click)="create('month')">Месяц</button>
+    <button mat-menu-item (click)="create('quarter')">Квартал</button>
+  </mat-menu>
 
-<mat-card *ngIf="a.loading">Загрузка отчёта...</mat-card>
-  <mat-card *ngIf="!a.loading && a.report?.status === 'processing'">
-    <p>Отчёт формируется, попробуйте позже.</p>
-    <button mat-raised-button color="primary" (click)="a.refresh(period)">Обновить</button>
-  </mat-card>
-  <mat-card *ngIf="!a.loading && a.report?.status === 'ok'">
-    <button mat-raised-button color="primary" (click)="a.refresh(period)">Обновить</button>
-    <div [innerHTML]="a.report?.markdown | markdown"></div>
-  </mat-card>
+  <span class="spacer"></span>
+
+  <button mat-stroked-button (click)="refresh()">
+    <mat-icon>refresh</mat-icon>
+    Обновить
+  </button>
+</mat-card>
+
+<mat-card *ngIf="loading">Загрузка…</mat-card>
+
+<mat-card>
+  <table mat-table [dataSource]="rows" class="history">
+
+    <ng-container matColumnDef="date">
+      <th mat-header-cell *matHeaderCellDef>Дата</th>
+      <td mat-cell *matCellDef="let r">{{ r.createdAtUtc | date:'yyyy-MM-dd HH:mm' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Название</th>
+      <td mat-cell *matCellDef="let r" (click)="open(r)" class="link">{{ r.name }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="period">
+      <th mat-header-cell *matHeaderCellDef>Тип</th>
+      <td mat-cell *matCellDef="let r">{{ periodLabel(r.period) }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef>Статус</th>
+      <td mat-cell *matCellDef="let r">
+        <mat-chip-set>
+          <mat-chip *ngIf="r.isProcessing" selected>processing</mat-chip>
+          <mat-chip *ngIf="!r.isProcessing && r.hasMarkdown">ok</mat-chip>
+        </mat-chip-set>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef></th>
+      <td mat-cell *matCellDef="let r">
+        <button mat-icon-button (click)="open(r)" [disabled]="r.isProcessing">
+          <mat-icon>open_in_new</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="cols"></tr>
+    <tr mat-row *matRowDef="let row; columns: cols;"></tr>
+  </table>
+
+  <div *ngIf="rows.length === 0 && !loading" class="empty">Пока нет сохранённых отчётов.</div>
+</mat-card>
+
+<mat-card *ngIf="selectedMarkdown">
+  <h3>{{ selectedName }}</h3>
+  <div [innerHTML]="selectedMarkdown | markdown"></div>
+</mat-card>

@@ -8,6 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +56,7 @@ builder.Services.AddScoped<TelegramReportService>();
 builder.Services.AddScoped<StatsService>();
 builder.Services.AddScoped<PersonalCardService>();
 builder.Services.AddScoped<DietAnalysisService>();
+builder.Services.AddHostedService<AnalysisQueueWorker>();
 
 // ===== Controllers / API =====
 builder.Services.AddControllers(); // AppAuthController / MealsController
@@ -99,6 +102,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2)
         };
+    });
+
+
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(o =>
+    {
+        // принимать/отдавать enum как строки: "day","week","month","quarter"
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     });
 
 builder.Services.AddAuthorization();
