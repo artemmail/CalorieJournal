@@ -66,3 +66,7 @@ appsettings.*.local.json
 # Или игнорируй конкретные подпапки, если они генерируются сборкой:
 # wwwroot/assets/
 # wwwroot/*.map
+
+# secrets
+
+FoodBot/appsettings*.json
