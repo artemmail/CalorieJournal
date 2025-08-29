@@ -302,5 +302,19 @@ namespace FoodBot.Controllers
             stream.Position = 0;
             return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename);
         }
+
+        // ---------- Удаление блюда ----------
+        // DELETE /api/meals/{id}
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken ct)
+        {
+            var chatId = GetChatId();
+            var m = await _db.Meals.Where(x => x.ChatId == chatId && x.Id == id).FirstOrDefaultAsync(ct);
+            if (m == null) return NotFound();
+
+            _db.Meals.Remove(m);
+            await _db.SaveChangesAsync(ct);
+            return NoContent();
+        }
     }
 }

@@ -36,6 +36,7 @@ import { VoiceService } from '../../services/voice.service';
       </button>
     </div>
     <div mat-dialog-actions align="end">
+      <button mat-button color="warn" (click)="remove()">Удалить</button>
       <button mat-button (click)="dialogRef.close()">Отмена</button>
       <button mat-raised-button color="primary" (click)="send()" [disabled]="!note.trim()">Отправить</button>
     </div>
@@ -76,6 +77,16 @@ export class HistoryClarifyDialogComponent {
       next: (r: ClarifyResult) => this.dialogRef.close(r),
       error: () => {
         this.snack.open('Ошибка уточнения', 'OK', { duration: 1500 });
+      }
+    });
+  }
+
+  remove() {
+    if (!confirm('Удалить запись?')) return;
+    this.api.deleteMeal(this.data.mealId).subscribe({
+      next: () => this.dialogRef.close({ deleted: true }),
+      error: () => {
+        this.snack.open('Не удалось удалить', 'OK', { duration: 1500 });
       }
     });
   }

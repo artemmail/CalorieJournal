@@ -104,12 +104,20 @@ export class HistoryPage implements OnInit, OnDestroy {
   }
 
   openDialog(item: MealListItem) {
-    this.dialog.open(HistoryDetailDialogComponent, {
+    const ref = this.dialog.open(HistoryDetailDialogComponent, {
       data: { item, imageUrl: this.imgUrl(item.id) },
       maxWidth: "100vw",
       maxHeight: "100vh",
       width: "95vw",
       height: "95vh"
+    });
+    ref.afterClosed().subscribe(r => {
+      if (r?.deleted) {
+        this.items = this.items.filter(x => x.id !== item.id);
+        this.total = Math.max(0, this.total - 1);
+        this.recomputeDateTotals();
+        this.loadMore();
+      }
     });
   }
 

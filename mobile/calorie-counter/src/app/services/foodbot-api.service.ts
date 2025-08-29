@@ -23,6 +23,9 @@ export class FoodbotApiService {
   getMeal(id: number): Observable<MealDetails> {
     return this.http.get<MealDetails>(`${this.baseUrl}/api/meals/${id}`);
   }
+  deleteMeal(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/meals/${id}`);
+  }
   getMealImageBlob(id: number): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/api/meals/${id}/image`, { responseType: "blob" as const });
   }
