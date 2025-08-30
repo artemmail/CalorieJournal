@@ -33,8 +33,13 @@ export class StatsService {
 
   getDaily(from: Date, to: Date): Observable<DayStats[]> {
     const params = new HttpParams()
-      .set('from', from.toISOString().split('T')[0])
-      .set('to', to.toISOString().split('T')[0]);
+      .set('from', this.formatDate(from))
+      .set('to', this.formatDate(to));
     return this.http.get<DayStats[]>(`${this.baseUrl}/api/stats/daily`, { params });
+  }
+
+  private formatDate(d: Date): string {
+    const shifted = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return shifted.toISOString().split('T')[0];
   }
 }
