@@ -1,0 +1,27 @@
+:host {
+  display: block;
+}
+
+.app-shell {
+  position: relative;
+}
+
+.app-drawer {
+  width: 260px;
+  z-index: 1000;
+}
+
+.app-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.container {
+  padding: 12px;
+}

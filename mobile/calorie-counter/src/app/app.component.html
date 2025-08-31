@@ -1,19 +1,17 @@
-﻿<mat-toolbar color="primary" class="topbar">
-  <span>Calorie Counter</span>
-  <span class="spacer"></span>
-  <a mat-icon-button aria-label="История" routerLink="/history"><mat-icon>history</mat-icon></a>
-  <a mat-icon-button aria-label="Добавить" routerLink="/add"><mat-icon>add_a_photo</mat-icon></a>
-  <a mat-icon-button aria-label="Анализ" routerLink="/analysis"><mat-icon>analytics</mat-icon></a>
-  <a mat-icon-button aria-label="Статистика" routerLink="/stats"><mat-icon>bar_chart</mat-icon></a>
-  <a mat-icon-button aria-label="Профиль" routerLink="/profile"><mat-icon>person</mat-icon></a>
-</mat-toolbar>
+<mat-sidenav-container class="app-shell">
+  <mat-sidenav #drawer mode="over" class="app-drawer" fixedInViewport>
+    <app-side-menu (close)="drawer.close()"></app-side-menu>
+  </mat-sidenav>
 
-<div class="container">
-  <router-outlet></router-outlet>
-</div>
-
-<style>
-.topbar { position: sticky; top: 0; z-index: 10; }
-.container { padding: 12px; }
-.spacer { flex: 1 1 auto; }
-</style>
+  <mat-sidenav-content class="app-content">
+    <mat-toolbar color="primary" class="topbar">
+      <button mat-icon-button (click)="drawer.toggle()">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span>Calorie Counter</span>
+    </mat-toolbar>
+    <div class="container">
+      <router-outlet></router-outlet>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>
