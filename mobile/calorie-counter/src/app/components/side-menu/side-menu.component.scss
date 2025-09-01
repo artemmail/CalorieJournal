@@ -6,7 +6,7 @@ a.mat-list-item {
   text-decoration: none;
 }
 
-mat-icon {
+mat-icon[matListItemIcon] {
   vertical-align: middle;
   font-size: 20px;
   margin-right: 10px;
