@@ -84,8 +84,10 @@ export class HistoryClarifyDialogComponent {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.chunks = [];
       this.recorder = new MediaRecorder(stream);
-      this.recorder.ondataavailable = e => { if (e.data.size > 0) this.chunks.push(e.data); };
-      this.recorder.onstop = () => stream.getTracks().forEach(t => t.stop());
+      this.recorder.addEventListener('dataavailable', e => {
+        if (e.data.size > 0) this.chunks.push(e.data);
+      });
+      this.recorder.addEventListener('stop', () => stream.getTracks().forEach(t => t.stop()), { once: true });
       this.recorder.start();
     } catch {
       this.recorder = undefined;
@@ -95,9 +97,12 @@ export class HistoryClarifyDialogComponent {
 
   async stopRecord() {
     if (!this.recorder) return;
-    this.recorder.stop();
-    const chunks = this.chunks.slice();
+    const recorder = this.recorder;
     this.recorder = undefined;
+    const stopped = new Promise<void>(resolve => recorder.addEventListener('stop', () => resolve(), { once: true }));
+    recorder.stop();
+    await stopped;
+    const chunks = this.chunks.slice();
     this.transcribing = true;
     try {
       const blob = new Blob(chunks, { type: 'audio/webm' });
