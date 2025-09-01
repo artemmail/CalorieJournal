@@ -55,6 +55,13 @@ export class FoodbotApiService {
     return this.http.post<ClarifyResult>(`${this.baseUrl}/api/meals/${mealId}/clarify-voice`, form);
   }
 
+  transcribeVoice(file: File, language = "ru"): Observable<{ text: string }> {
+    const form = new FormData();
+    form.append("audio", file, file.name);
+    form.append("language", language);
+    return this.http.post<{ text: string }>(`${this.baseUrl}/api/stt`, form);
+  }
+
   // Отчёт Excel
   getReport(): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/api/meals/report`, { responseType: "blob" as const });
