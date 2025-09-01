@@ -51,10 +51,22 @@ export class HistoryDetailDialogComponent implements OnInit {
   /** Аккуратно подгоняет высоту диалога под контент */
   fitDialog() {
     // UpdateSize ставит стиль на .cdk-overlay-pane;
-    // ширину подгоняем под фото, высоту — по контенту
+    // ширину подгоняем под фото с учетом размеров экрана
     Promise.resolve().then(() => {
-      const w = this.photo?.nativeElement?.width;
-      this.dialogRef.updateSize(w ? w + 'px' : '', 'auto');
+      const img = this.photo?.nativeElement;
+      if (!img) {
+        this.dialogRef.updateSize('', 'auto');
+        return;
+      }
+      const maxW = window.innerWidth * 0.9;
+      const maxH = window.innerHeight * 0.55;
+      let w = img.naturalWidth;
+      const h = img.naturalHeight;
+      if (h > maxH) {
+        w = w * (maxH / h);
+      }
+      w = Math.min(w, maxW);
+      this.dialogRef.updateSize(`${Math.round(w)}px`, 'auto');
     });
   }
 
