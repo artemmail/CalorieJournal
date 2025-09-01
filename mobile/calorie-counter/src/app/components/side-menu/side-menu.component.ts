@@ -9,6 +9,7 @@ import { RouterModule } from '@angular/router';
   standalone: true,
   imports: [CommonModule, MatListModule, MatIconModule, RouterModule],
   templateUrl: './side-menu.component.html',
+  styleUrls: ['./side-menu.component.scss'],
 })
 export class SideMenuComponent {
   @Output() close = new EventEmitter<void>();
