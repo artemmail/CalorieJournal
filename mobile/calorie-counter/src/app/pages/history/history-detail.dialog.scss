@@ -38,7 +38,13 @@
 }
 
 .macros { font-size: 13px; line-height: 1.2; }
-.ingredients { font-size: 12.5px; line-height: 1.2; }
+/* длинные ингредиенты будут переноситься */
+.ingredients {
+  font-size: 12.5px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 /* Таблица компактная, не на всю ширину */
 .composition { align-self: flex-start; max-width: 100%; overflow-x: auto; }
