@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from "@angular/core";
+import { Component, Inject, OnInit, ViewChild, ElementRef } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
@@ -24,6 +24,8 @@ import { HistoryClarifyDialogComponent } from "./history-clarify.dialog";
 export class HistoryDetailDialogComponent implements OnInit {
   displayedColumns = ['name','percent','grams','proteins_g','fats_g','carbs_g','calories_kcal'];
 
+  @ViewChild('photo') photo?: ElementRef<HTMLImageElement>;
+
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { item: MealListItem; imageUrl: string },
     private api: FoodbotApiService,
@@ -48,8 +50,12 @@ export class HistoryDetailDialogComponent implements OnInit {
 
   /** Аккуратно подгоняет высоту диалога под контент */
   fitDialog() {
-    // UpdateSize ставит стиль на .cdk-overlay-pane; '' = не менять ширину, 'auto' = высота по контенту
-    Promise.resolve().then(() => this.dialogRef.updateSize('', 'auto'));
+    // UpdateSize ставит стиль на .cdk-overlay-pane;
+    // ширину подгоняем под фото, высоту — по контенту
+    Promise.resolve().then(() => {
+      const w = this.photo?.nativeElement?.width;
+      this.dialogRef.updateSize(w ? w + 'px' : '', 'auto');
+    });
   }
 
   openClarify() {
