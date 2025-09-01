@@ -7,9 +7,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FoodbotApiService } from '../../services/foodbot-api.service';
 import { ClarifyResult } from '../../services/foodbot-api.types';
-import { VoiceService } from '../../services/voice.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-history-clarify-dialog',
@@ -22,7 +23,8 @@ import { VoiceService } from '../../services/voice.service';
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatProgressSpinnerModule
   ],
   template: `
     <h2 mat-dialog-title>Уточнение</h2>
@@ -31,9 +33,15 @@ import { VoiceService } from '../../services/voice.service';
         <mat-label>Текст</mat-label>
         <textarea matInput [(ngModel)]="note"></textarea>
       </mat-form-field>
-      <button mat-icon-button color="primary" (click)="speak()" [disabled]="loadingVoice">
+      <button mat-icon-button color="primary"
+              (mousedown)="startRecord($event)" (touchstart)="startRecord($event)"
+              (mouseup)="stopRecord()" (mouseleave)="stopRecord()" (touchend)="stopRecord()"
+              [disabled]="transcribing">
         <mat-icon>mic</mat-icon>
       </button>
+    </div>
+    <div class="overlay" *ngIf="transcribing">
+      <mat-spinner></mat-spinner>
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button color="warn" (click)="remove()">Удалить</button>
@@ -44,29 +52,62 @@ import { VoiceService } from '../../services/voice.service';
   styles: [`
     .content { display: flex; align-items: flex-start; gap: 8px; }
     .note-field { flex: 1; }
+    :host { display: block; position: relative; }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.6);
+      z-index: 10;
+    }
   `]
 })
 export class HistoryClarifyDialogComponent {
   note = '';
-  loadingVoice = false;
+  transcribing = false;
+  private recorder?: MediaRecorder;
+  private chunks: Blob[] = [];
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { mealId: number },
     private api: FoodbotApiService,
     private snack: MatSnackBar,
-    private voice: VoiceService,
     public dialogRef: MatDialogRef<HistoryClarifyDialogComponent>
   ) {}
 
-  async speak() {
-    this.loadingVoice = true;
+  async startRecord(ev: Event) {
+    ev.preventDefault();
+    if (this.transcribing || this.recorder) return;
     try {
-      const text = await this.voice.listenOnce('ru-RU');
-      if (text) this.note = text;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.chunks = [];
+      this.recorder = new MediaRecorder(stream);
+      this.recorder.ondataavailable = e => { if (e.data.size > 0) this.chunks.push(e.data); };
+      this.recorder.onstop = () => stream.getTracks().forEach(t => t.stop());
+      this.recorder.start();
+    } catch {
+      this.recorder = undefined;
+      this.snack.open('Не удалось получить доступ к микрофону', 'OK', { duration: 1500 });
+    }
+  }
+
+  async stopRecord() {
+    if (!this.recorder) return;
+    this.recorder.stop();
+    const chunks = this.chunks.slice();
+    this.recorder = undefined;
+    this.transcribing = true;
+    try {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      const file = new File([blob], 'voice.webm', { type: blob.type });
+      const r = await firstValueFrom(this.api.transcribeVoice(file));
+      if (r.text) this.note = r.text;
     } catch {
       this.snack.open('Не удалось распознать речь', 'OK', { duration: 1500 });
     } finally {
-      this.loadingVoice = false;
+      this.transcribing = false;
     }
   }
 
