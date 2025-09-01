@@ -1,10 +1,22 @@
 a.mat-list-item {
   display: flex;
   align-items: center;
+  margin-bottom: 15px;
+  font-size: 16px;
+  text-decoration: none;
 }
 
 mat-icon {
   vertical-align: middle;
-  font-size: 24px;
-  margin-right: 8px;
+  font-size: 20px;
+  margin-right: 10px;
+  color: #4877A6;
+}
+
+span[matListItemTitle] {
+  color: #2B2B2B;
+}
+
+a.mat-list-item:hover {
+  opacity: 0.8;
 }
