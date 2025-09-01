@@ -1,5 +1,5 @@
 <mat-sidenav-container class="app-shell">
-  <mat-sidenav #drawer mode="over" class="app-drawer" fixedInViewport>
+  <mat-sidenav #drawer mode="over" class="app-drawer" fixedInViewport [autoFocus]="false">
     <app-side-menu (close)="drawer.close()"></app-side-menu>
   </mat-sidenav>
 
