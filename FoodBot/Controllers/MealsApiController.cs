@@ -227,7 +227,7 @@ namespace FoodBot.Controllers
             {
                 if (req.time.HasValue)
                 {
-                    m.CreatedAtUtc = req.time.Value;
+                    m.CreatedAtUtc = req.time.Value.ToUniversalTime();
                     await _db.SaveChangesAsync(ct);
                 }
 
@@ -304,7 +304,7 @@ namespace FoodBot.Controllers
             m.WeightG = conv2.Result.weight_g;
             m.ReasoningPrompt = conv2.ReasoningPrompt;
             if (req.time.HasValue)
-                m.CreatedAtUtc = req.time.Value;
+                m.CreatedAtUtc = req.time.Value.ToUniversalTime();
 
             await _db.SaveChangesAsync(ct);
 

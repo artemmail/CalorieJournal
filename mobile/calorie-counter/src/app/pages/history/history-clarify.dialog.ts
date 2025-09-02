@@ -92,7 +92,8 @@ export class HistoryClarifyDialogComponent {
     public dialogRef: MatDialogRef<HistoryClarifyDialogComponent>
   ) {
     this.createdAt = new Date(data.createdAtUtc);
-    this.time = this.createdAt.toISOString().substring(11, 16);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    this.time = `${pad(this.createdAt.getHours())}:${pad(this.createdAt.getMinutes())}`;
     this.initialTime = this.time;
   }
 
