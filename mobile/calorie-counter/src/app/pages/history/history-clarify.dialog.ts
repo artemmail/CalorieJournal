@@ -44,6 +44,10 @@ import { firstValueFrom } from 'rxjs';
         <mat-label>Текст</mat-label>
         <textarea matInput rows="5" [(ngModel)]="note"></textarea>
       </mat-form-field>
+      <mat-form-field appearance="fill" class="time-field">
+        <mat-label>Время</mat-label>
+        <input matInput type="time" [(ngModel)]="time">
+      </mat-form-field>
     </div>
     <div class="overlay" *ngIf="transcribing">
       <mat-spinner></mat-spinner>
@@ -51,7 +55,7 @@ import { firstValueFrom } from 'rxjs';
     <div mat-dialog-actions align="end">
       <button mat-button color="warn" (click)="remove()">Удалить</button>
       <button mat-button (click)="dialogRef.close()">Отмена</button>
-      <button mat-raised-button color="primary" (click)="send()" [disabled]="!note.trim()">Отправить</button>
+      <button mat-raised-button color="primary" (click)="send()" [disabled]="!note.trim() && time === initialTime">Отправить</button>
     </div>
   `,
   styles: [`
@@ -74,16 +78,23 @@ import { firstValueFrom } from 'rxjs';
 })
 export class HistoryClarifyDialogComponent {
   note = '';
+  time = '';
   transcribing = false;
   private recorder?: MediaRecorder;
   private chunks: Blob[] = [];
+  private createdAt: Date;
+  private initialTime: string;
 
   constructor(
-    @Inject(MAT_DIALOG_DATA) public data: { mealId: number },
+    @Inject(MAT_DIALOG_DATA) public data: { mealId: number; createdAtUtc: string },
     private api: FoodbotApiService,
     private snack: MatSnackBar,
     public dialogRef: MatDialogRef<HistoryClarifyDialogComponent>
-  ) {}
+  ) {
+    this.createdAt = new Date(data.createdAtUtc);
+    this.time = this.createdAt.toISOString().substring(11, 16);
+    this.initialTime = this.time;
+  }
 
   async startRecord(ev: Event) {
     ev.preventDefault();
@@ -126,9 +137,20 @@ export class HistoryClarifyDialogComponent {
 
   send() {
     const note = this.note.trim();
-    if (!note) return;
-    this.api.clarifyText(this.data.mealId, note).subscribe({
-      next: (r: ClarifyResult) => this.dialogRef.close(r),
+    const timeChanged = this.time !== this.initialTime;
+    if (!note && !timeChanged) return;
+    let iso: string | undefined;
+    if (timeChanged) {
+      const [h, m] = this.time.split(':').map(v => parseInt(v, 10));
+      const dt = new Date(this.createdAt);
+      dt.setHours(h, m, 0, 0);
+      iso = dt.toISOString();
+    }
+    this.api.clarifyText(this.data.mealId, note || undefined, iso).subscribe({
+      next: (r: ClarifyResult) => {
+        const createdAtUtc = iso ?? this.data.createdAtUtc;
+        this.dialogRef.close({ ...r, createdAtUtc });
+      },
       error: () => {
         this.snack.open('Ошибка уточнения', 'OK', { duration: 1500 });
       }
