@@ -83,7 +83,7 @@ export class HistoryClarifyDialogComponent {
   private recorder?: MediaRecorder;
   private chunks: Blob[] = [];
   private createdAt: Date;
-  private initialTime: string;
+  readonly initialTime: string;
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { mealId: number; createdAtUtc: string },
