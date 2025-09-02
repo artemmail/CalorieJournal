@@ -53,7 +53,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                             UserId = 0,
                             Username = "app",
                             CreatedAtUtc = DateTimeOffset.UtcNow,
-                            FileId = null,
+                            FileId = string.Empty,
                             FileMime = next.FileMime,
                             ImageBytes = next.ImageBytes,
                             DishName = conv.Result.dish,
