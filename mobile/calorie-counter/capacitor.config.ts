@@ -2,7 +2,7 @@
 
 const config: CapacitorConfig = {
   appId: 'com.yourscriptor.calorie',
-  appName: 'Calorie Counter',
+  appName: 'HealthyMeals',
   webDir: 'dist/calorie-counter/browser',
   bundledWebRuntime: false,
   android: { allowMixedContent: true }
