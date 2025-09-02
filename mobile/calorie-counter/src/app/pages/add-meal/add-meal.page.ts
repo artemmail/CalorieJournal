@@ -43,8 +43,6 @@ export class AddMealPage implements OnDestroy {
   uploadProgress: number | null = null;
   progressMode: "determinate" | "indeterminate" = "determinate";
 
-  lastResult: any;
-
   constructor(private fb: FormBuilder, private api: FoodbotApiService, private snack: MatSnackBar) {
     this.form = this.fb.group({
       note: [""]
@@ -78,8 +76,8 @@ export class AddMealPage implements OnDestroy {
   async captureFromPreview() {
     const picOpts: CameraPreviewPictureOptions = { quality: 90 };
     const r = await CameraPreview.capture(picOpts); // { value: base64 }
-    if (r?.value) await this.uploadBase64(r.value);
     await this.stopPreview();
+    if (r?.value) await this.uploadBase64(r.value);
   }
 
   async uploadBase64(b64: string) {
@@ -95,9 +93,8 @@ export class AddMealPage implements OnDestroy {
           this.uploadProgress = Math.round(100 * event.loaded / event.total);
           if (event.loaded === event.total) this.progressMode = "indeterminate";
         } else if (event.type === HttpEventType.Response) {
-          this.lastResult = event.body;
           this.uploadProgress = null;
-          this.snack.open("Фото отправлено. Расчёт готов.", "OK", { duration: 1500 });
+          this.snack.open("Фото отправлено. Обработка начнётся скоро.", "OK", { duration: 1500 });
         }
       },
       error: () => {

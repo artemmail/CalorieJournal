@@ -57,6 +57,7 @@ builder.Services.AddScoped<StatsService>();
 builder.Services.AddScoped<PersonalCardService>();
 builder.Services.AddScoped<DietAnalysisService>();
 builder.Services.AddHostedService<AnalysisQueueWorker>();
+builder.Services.AddHostedService<PhotoQueueWorker>();
 
 // ===== Controllers / API =====
 builder.Services.AddControllers(); // AppAuthController / MealsController
