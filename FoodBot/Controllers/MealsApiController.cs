@@ -213,7 +213,7 @@ namespace FoodBot.Controllers
         }
 
         // ---------- Уточнение: текст ----------
-        public sealed record ClarifyTextReq(string note);
+        public sealed record ClarifyTextReq(string? note, DateTimeOffset? time);
 
         // POST /api/meals/{id}/clarify-text
         [HttpPost("{id:int}/clarify-text")]
@@ -222,6 +222,54 @@ namespace FoodBot.Controllers
             var chatId = GetChatId();
             var m = await _db.Meals.Where(x => x.ChatId == chatId && x.Id == id).FirstOrDefaultAsync(ct);
             if (m == null) return NotFound();
+
+            if (string.IsNullOrWhiteSpace(req.note))
+            {
+                if (req.time.HasValue)
+                {
+                    m.CreatedAtUtc = req.time.Value;
+                    await _db.SaveChangesAsync(ct);
+                }
+
+                var ingredients = string.IsNullOrWhiteSpace(m.IngredientsJson)
+                    ? Array.Empty<string>()
+                    : (System.Text.Json.JsonSerializer.Deserialize<string[]>(m.IngredientsJson!) ?? Array.Empty<string>());
+
+                Step1Snapshot? step1 = null;
+                if (!string.IsNullOrWhiteSpace(m.Step1Json))
+                {
+                    try
+                    {
+                        step1 = System.Text.Json.JsonSerializer.Deserialize<Step1Snapshot>(
+                            m.Step1Json!,
+                            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    }
+                    catch { /* ignore */ }
+                }
+
+                var products = ProductJsonHelper.DeserializeProducts(m.ProductsJson);
+
+                return Ok(new
+                {
+                    m.Id,
+                    CreatedAtUtc = m.CreatedAtUtc,
+                    Result = new
+                    {
+                        dish = m.DishName,
+                        ingredients,
+                        proteins_g = m.ProteinsG,
+                        fats_g = m.FatsG,
+                        carbs_g = m.CarbsG,
+                        calories_kcal = m.CaloriesKcal,
+                        weight_g = m.WeightG,
+                        confidence = m.Confidence
+                    },
+                    Products = products,
+                    Step1 = step1,
+                    ReasoningPrompt = m.ReasoningPrompt,
+                    CalcPlanJson = string.Empty
+                });
+            }
 
             NutritionConversation? conv2 = null;
 
@@ -233,14 +281,14 @@ namespace FoodBot.Controllers
                         m.Step1Json!,
                         new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (step1 is not null)
-                        conv2 = await _nutrition.ClarifyFromStep1Async(step1, req.note ?? "", ct);
+                        conv2 = await _nutrition.ClarifyFromStep1Async(step1, req.note!, ct);
                 }
                 catch { conv2 = null; }
             }
 
             if (conv2 is null && m.ImageBytes is { Length: > 0 })
             {
-                conv2 = await _nutrition.AnalyzeWithNoteAsync(m.ImageBytes, req.note ?? "", ct: ct);
+                conv2 = await _nutrition.AnalyzeWithNoteAsync(m.ImageBytes, req.note!, ct: ct);
             }
 
             if (conv2 is null) return BadRequest("clarify_failed");
@@ -255,13 +303,15 @@ namespace FoodBot.Controllers
             m.Confidence = conv2.Result.confidence;
             m.WeightG = conv2.Result.weight_g;
             m.ReasoningPrompt = conv2.ReasoningPrompt;
-            m.CreatedAtUtc = DateTimeOffset.UtcNow;
+            if (req.time.HasValue)
+                m.CreatedAtUtc = req.time.Value;
 
             await _db.SaveChangesAsync(ct);
 
             return Ok(new
             {
                 m.Id,
+                CreatedAtUtc = m.CreatedAtUtc,
                 Result = conv2.Result,
                 Products = ProductJsonHelper.DeserializeProducts(m.ProductsJson),
                 Step1 = conv2.Step1,
@@ -289,7 +339,7 @@ namespace FoodBot.Controllers
             if (string.IsNullOrWhiteSpace(text)) return BadRequest("stt_failed");
 
             // применяем как текстовое уточнение
-            return await ClarifyText(id, new ClarifyTextReq(text!), ct);
+            return await ClarifyText(id, new ClarifyTextReq(text!, null), ct);
         }
 
         // ---------- Excel отчёт ----------

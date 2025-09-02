@@ -77,6 +77,7 @@ export interface UploadResult {
 
 export interface ClarifyResult {
   id: number;
+  createdAtUtc: string;
   result: NutritionResult;
   products: ProductInfo[];
   step1: Step1Snapshot;

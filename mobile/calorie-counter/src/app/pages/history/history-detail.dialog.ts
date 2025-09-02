@@ -71,7 +71,9 @@ export class HistoryDetailDialogComponent implements OnInit {
   }
 
   openClarify() {
-    const ref = this.dialog.open(HistoryClarifyDialogComponent, { data: { mealId: this.data.item.id } });
+    const ref = this.dialog.open(HistoryClarifyDialogComponent, {
+      data: { mealId: this.data.item.id, createdAtUtc: this.data.item.createdAtUtc }
+    });
     ref.afterClosed().subscribe((r: ClarifyResult | { deleted: true } | undefined) => {
       if (!r) return;
       if ((r as any).deleted) {
@@ -80,6 +82,7 @@ export class HistoryDetailDialogComponent implements OnInit {
         return;
       }
       const res = r as ClarifyResult;
+      this.data.item.createdAtUtc = res.createdAtUtc;
       this.data.item.dishName = res.result.dish;
       this.data.item.caloriesKcal = res.result.calories_kcal;
       this.data.item.proteinsG = res.result.proteins_g;
