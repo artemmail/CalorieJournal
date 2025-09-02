@@ -6,7 +6,6 @@ import {
   ClarifyResult,
   MealDetails,
   MealsListResponse,
-  UploadResult,
   PersonalCard
 } from "./foodbot-api.types";
 
@@ -34,10 +33,10 @@ export class FoodbotApiService {
   }
 
   // Загрузка фото
-  uploadPhoto(file: File): Observable<HttpEvent<UploadResult>> {
+  uploadPhoto(file: File): Observable<HttpEvent<{ queued: boolean }>> {
     const form = new FormData();
     form.append("image", file, file.name);
-    return this.http.post<UploadResult>(
+    return this.http.post<{ queued: boolean }>(
       `${this.baseUrl}/api/meals/upload`,
       form,
       { reportProgress: true, observe: "events" }

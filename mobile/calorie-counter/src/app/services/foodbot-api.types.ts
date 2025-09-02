@@ -66,15 +66,6 @@ export interface MealDetails {
   hasImage: boolean;
 }
 
-export interface UploadResult {
-  id: number;
-  result: NutritionResult;
-  products: ProductInfo[];
-  step1: Step1Snapshot;
-  reasoningPrompt: string;
-  calcPlanJson: string;
-}
-
 export interface ClarifyResult {
   id: number;
   createdAtUtc: string;

@@ -22,10 +22,4 @@
     <img [src]="photoDataUrl" alt="snapshot" />
   </div>
 
-  <mat-card *ngIf="lastResult">
-    <h3>Результат</h3>
-    <p><b>{{ lastResult.result.dish }}</b></p>
-    <p>{{ lastResult.result.calories_kcal }} ккал · Б {{ lastResult.result.proteins_g }} · Ж {{ lastResult.result.fats_g }} · У {{ lastResult.result.carbs_g }} · {{ lastResult.result.weight_g }} г</p>
-    <p *ngIf="lastResult.result.ingredients?.length">Ингредиенты: {{ lastResult.result.ingredients.join(", ") }}</p>
   </mat-card>
-</mat-card>

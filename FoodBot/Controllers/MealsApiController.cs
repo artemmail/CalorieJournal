@@ -172,44 +172,19 @@ namespace FoodBot.Controllers
             await image.CopyToAsync(ms, ct);
             var bytes = ms.ToArray();
 
-            var conv = await _nutrition.AnalyzeAsync(bytes, ct: ct);
-            if (conv is null) return BadRequest("analyze_failed");
-
             var chatId = GetChatId();
-            var entry = new MealEntry
+            var pending = new PendingMeal
             {
                 ChatId = chatId,
-                UserId = 0,
-                Username = "app",
                 CreatedAtUtc = DateTimeOffset.UtcNow,
-                FileId = null,
                 FileMime = image.ContentType ?? "image/jpeg",
                 ImageBytes = bytes,
-                DishName = conv.Result.dish,
-                IngredientsJson = System.Text.Json.JsonSerializer.Serialize(conv.Result.ingredients),
-                ProductsJson = ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson),
-                ProteinsG = conv.Result.proteins_g,
-                FatsG = conv.Result.fats_g,
-                CarbsG = conv.Result.carbs_g,
-                CaloriesKcal = conv.Result.calories_kcal,
-                Confidence = conv.Result.confidence,
-                WeightG = conv.Result.weight_g,
-                Model = "app",
-                Step1Json = System.Text.Json.JsonSerializer.Serialize(conv.Step1),
-                ReasoningPrompt = conv.ReasoningPrompt
+                Attempts = 0
             };
-            _db.Meals.Add(entry);
+            _db.PendingMeals.Add(pending);
             await _db.SaveChangesAsync(ct);
 
-            return Ok(new
-            {
-                entry.Id,
-                Result = conv.Result,
-                Products = ProductJsonHelper.DeserializeProducts(entry.ProductsJson),
-                Step1 = conv.Step1,
-                conv.ReasoningPrompt,
-                conv.CalcPlanJson
-            });
+            return Ok(new { queued = true });
         }
 
         // ---------- Уточнение: текст ----------

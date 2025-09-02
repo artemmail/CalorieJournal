@@ -7,6 +7,7 @@ public class BotDbContext : DbContext
 {
     public BotDbContext(DbContextOptions<BotDbContext> options) : base(options) {}
     public DbSet<MealEntry> Meals => Set<MealEntry>();
+    public DbSet<PendingMeal> PendingMeals => Set<PendingMeal>();
 
 
     public DbSet<AppStartCode> StartCodes => Set<AppStartCode>();
@@ -19,6 +20,9 @@ public class BotDbContext : DbContext
 
         modelBuilder.Entity<MealEntry>()
          .HasIndex(x => new { x.ChatId, x.CreatedAtUtc });
+
+        modelBuilder.Entity<PendingMeal>()
+            .HasIndex(x => new { x.ChatId, x.CreatedAtUtc });
 
         modelBuilder.Entity<AppStartCode>()
         .HasIndex(x => x.Code)
