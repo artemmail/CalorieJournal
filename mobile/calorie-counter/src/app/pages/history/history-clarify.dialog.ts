@@ -27,13 +27,9 @@ import { firstValueFrom } from 'rxjs';
     MatProgressSpinnerModule
   ],
   template: `
-    <h2 mat-dialog-title>Уточнение</h2>
-    <div mat-dialog-content class="content">
-      <mat-form-field appearance="fill" class="note-field">
-        <mat-label>Текст</mat-label>
-        <textarea matInput rows="5" [(ngModel)]="note"></textarea>
-      </mat-form-field>
-      <div class="mic-area">
+    <h2 mat-dialog-title class="title">
+      <span>Уточнение</span>
+      <span class="mic-container">
         <button mat-icon-button color="primary"
                 (mousedown)="startRecord($event)" (touchstart)="startRecord($event)"
                 (mouseup)="stopRecord()" (mouseleave)="stopRecord()" (touchend)="stopRecord()"
@@ -41,7 +37,13 @@ import { firstValueFrom } from 'rxjs';
           <mat-icon>mic</mat-icon>
         </button>
         <div class="mic-hint">Удерживайте кнопку для записи</div>
-      </div>
+      </span>
+    </h2>
+    <div mat-dialog-content>
+      <mat-form-field appearance="fill" class="note-field">
+        <mat-label>Текст</mat-label>
+        <textarea matInput rows="5" [(ngModel)]="note"></textarea>
+      </mat-form-field>
     </div>
     <div class="overlay" *ngIf="transcribing">
       <mat-spinner></mat-spinner>
@@ -53,10 +55,10 @@ import { firstValueFrom } from 'rxjs';
     </div>
   `,
   styles: [`
-    .content { display: flex; align-items: flex-start; gap: 16px; }
-    .note-field { flex: 1; }
+    .note-field { width: 100%; }
     .note-field textarea { min-height: 120px; }
-    .mic-area { display: flex; flex-direction: column; align-items: center; }
+    .title { display: flex; align-items: center; }
+    .mic-container { display: flex; flex-direction: column; align-items: center; margin-left: 8px; }
     .mic-hint { font-size: 12px; margin-top: 4px; text-align: center; color: rgba(0,0,0,0.6); }
     :host { display: block; position: relative; }
     .overlay {
