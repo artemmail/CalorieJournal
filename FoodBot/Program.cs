@@ -73,7 +73,8 @@ builder.Services.AddCors(options =>
             "http://localhost:4200",     // ng serve
             "https://localhost:4200",
             "http://youscriptor.ru",      // твой HTTP-домен API (добавь https:// при наличии TLS)
-            "https://stock-charts.ru"      // твой HTTP-домен API (добавь https:// при наличии TLS)
+            "https://stock-charts.ru",      // твой HTTP-домен API (добавь https:// при наличии TLS)
+            "https://healthymeals.space"      // твой HTTP-домен API (добавь https:// при наличии TLS)
         )
         .AllowAnyMethod()
         .AllowAnyHeader()
