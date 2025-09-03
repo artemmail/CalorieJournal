@@ -15,16 +15,16 @@ public sealed class MealService : IMealService
         _repo = repo;
     }
 
-    public Task<MealListResult> ListAsync(long chatId, int limit, int offset, CancellationToken ct)
+    public async Task<MealListResult> ListAsync(long chatId, int limit, int offset, CancellationToken ct)
     {
         var baseQuery = _repo.Meals
             .AsNoTracking()
             .Where(m => m.ChatId == chatId)
             .OrderByDescending(m => m.CreatedAtUtc);
 
-        var total = baseQuery.Count();
+        var total = await baseQuery.CountAsync(ct);
 
-        var rows = baseQuery
+        var rows = await baseQuery
             .Skip(offset)
             .Take(limit)
             .Select(m => new
@@ -41,7 +41,7 @@ public sealed class MealService : IMealService
                 m.ProductsJson,
                 HasImage = m.ImageBytes != null && m.ImageBytes.Length > 0
             })
-            .ToList();
+            .ToListAsync(ct);
 
         var items = rows.Select(r => new MealListItem(
             r.Id,
@@ -59,14 +59,14 @@ public sealed class MealService : IMealService
             r.HasImage
         )).ToList();
 
-        return Task.FromResult(new MealListResult(total, offset, limit, items));
+        return new MealListResult(total, offset, limit, items);
     }
 
-    public Task<MealDetails?> GetDetailsAsync(long chatId, int id, CancellationToken ct)
+    public async Task<MealDetails?> GetDetailsAsync(long chatId, int id, CancellationToken ct)
     {
-        var m = _repo.Meals.AsNoTracking()
-            .FirstOrDefault(x => x.ChatId == chatId && x.Id == id);
-        if (m == null) return Task.FromResult<MealDetails?>(null);
+        var m = await _repo.Meals.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
+        if (m == null) return null;
 
         var ingredients = string.IsNullOrWhiteSpace(m.IngredientsJson)
             ? Array.Empty<string>()
@@ -100,19 +100,19 @@ public sealed class MealService : IMealService
             m.ReasoningPrompt,
             m.ImageBytes != null && m.ImageBytes.Length > 0
         );
-        return Task.FromResult<MealDetails?>(details);
+        return details;
     }
 
-    public Task<(byte[] bytes, string mime)?> GetImageAsync(long chatId, int id, CancellationToken ct)
+    public async Task<(byte[] bytes, string mime)?> GetImageAsync(long chatId, int id, CancellationToken ct)
     {
-        var m = _repo.Meals.AsNoTracking()
+        var m = await _repo.Meals.AsNoTracking()
             .Where(x => x.ChatId == chatId && x.Id == id)
             .Select(x => new { x.ImageBytes, x.FileMime })
-            .FirstOrDefault();
+            .FirstOrDefaultAsync(ct);
         if (m == null || m.ImageBytes == null || m.ImageBytes.Length == 0)
-            return Task.FromResult<(byte[] bytes, string mime)?>(null);
+            return null;
         var mime = string.IsNullOrWhiteSpace(m.FileMime) ? "image/jpeg" : m.FileMime!;
-        return Task.FromResult<(byte[] bytes, string mime)?>(new(m.ImageBytes, mime));
+        return new(m.ImageBytes, mime);
     }
 
     public Task QueueImageAsync(long chatId, byte[] bytes, string fileMime, CancellationToken ct)
@@ -130,7 +130,7 @@ public sealed class MealService : IMealService
 
     public async Task<ClarifyTextResult?> ClarifyTextAsync(long chatId, int id, string? note, DateTimeOffset? time, CancellationToken ct)
     {
-        var m = _repo.Meals.FirstOrDefault(x => x.ChatId == chatId && x.Id == id);
+        var m = await _repo.Meals.FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
         if (m == null) return null;
 
         if (string.IsNullOrWhiteSpace(note))
@@ -190,7 +190,7 @@ public sealed class MealService : IMealService
 
     public async Task<bool> DeleteAsync(long chatId, int id, CancellationToken ct)
     {
-        var m = _repo.Meals.FirstOrDefault(x => x.ChatId == chatId && x.Id == id);
+        var m = await _repo.Meals.FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
         if (m == null) return false;
         await _repo.RemoveMealAsync(m, ct);
         return true;

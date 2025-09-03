@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
 using FoodBot.Data;
@@ -17,20 +18,28 @@ public class MealServiceTests
 
     private sealed class FakeRepo : IMealRepository
     {
-        public List<MealEntry> MealsData;
-        public List<PendingMeal> PendingMealData = new();
-        public List<PendingClarify> PendingClarifyData = new();
-        public FakeRepo(List<MealEntry> meals) { MealsData = meals; }
-        public IQueryable<MealEntry> Meals => MealsData.AsQueryable();
-        public IQueryable<PendingMeal> PendingMeals => PendingMealData.AsQueryable();
-        public IQueryable<PendingClarify> PendingClarifies => PendingClarifyData.AsQueryable();
+        private readonly BotDbContext _ctx;
+
+        public FakeRepo(IEnumerable<MealEntry> meals)
+        {
+            var options = new DbContextOptionsBuilder<BotDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            _ctx = new BotDbContext(options);
+            _ctx.Meals.AddRange(meals);
+            _ctx.SaveChanges();
+        }
+
+        public IQueryable<MealEntry> Meals => _ctx.Meals;
+        public IQueryable<PendingMeal> PendingMeals => _ctx.PendingMeals;
+        public IQueryable<PendingClarify> PendingClarifies => _ctx.PendingClarifies;
         public Task QueuePendingMealAsync(PendingMeal meal, CancellationToken ct)
-        { PendingMealData.Add(meal); return Task.CompletedTask; }
+        { _ctx.PendingMeals.Add(meal); return _ctx.SaveChangesAsync(ct); }
         public Task QueuePendingClarifyAsync(PendingClarify clarify, CancellationToken ct)
-        { PendingClarifyData.Add(clarify); return Task.CompletedTask; }
+        { _ctx.PendingClarifies.Add(clarify); return _ctx.SaveChangesAsync(ct); }
         public Task RemoveMealAsync(MealEntry meal, CancellationToken ct)
-        { MealsData.Remove(meal); return Task.CompletedTask; }
-        public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
+        { _ctx.Meals.Remove(meal); return _ctx.SaveChangesAsync(ct); }
+        public Task SaveChangesAsync(CancellationToken ct) => _ctx.SaveChangesAsync(ct);
     }
 
     [Fact]
@@ -38,9 +47,9 @@ public class MealServiceTests
     {
         var meals = new List<MealEntry>
         {
-            new MealEntry { Id = 1, ChatId = 1, CreatedAtUtc = DateTimeOffset.UtcNow },
-            new MealEntry { Id = 2, ChatId = 1, CreatedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1) },
-            new MealEntry { Id = 3, ChatId = 2, CreatedAtUtc = DateTimeOffset.UtcNow }
+            new MealEntry { Id = 1, ChatId = 1, CreatedAtUtc = DateTimeOffset.UtcNow, FileId = "f" },
+            new MealEntry { Id = 2, ChatId = 1, CreatedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-1), FileId = "f" },
+            new MealEntry { Id = 3, ChatId = 2, CreatedAtUtc = DateTimeOffset.UtcNow, FileId = "f" }
         };
         var service = CreateService(meals);
         var res = await service.ListAsync(1, 10, 0, CancellationToken.None);
@@ -53,12 +62,13 @@ public class MealServiceTests
     {
         var meals = new List<MealEntry>
         {
-            new MealEntry { Id = 1, ChatId = 1, CreatedAtUtc = DateTimeOffset.UtcNow }
+            new MealEntry { Id = 1, ChatId = 1, CreatedAtUtc = DateTimeOffset.UtcNow, FileId = "f" }
         };
         var service = CreateService(meals);
         var ok = await service.DeleteAsync(1, 1, CancellationToken.None);
         Assert.True(ok);
-        Assert.Empty(meals);
+        var list = await service.ListAsync(1, 10, 0, CancellationToken.None);
+        Assert.Empty(list.Items);
         ok = await service.DeleteAsync(1, 1, CancellationToken.None);
         Assert.False(ok);
     }
