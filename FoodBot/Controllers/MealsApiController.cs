@@ -4,14 +4,10 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
-using FoodBot.Data;
 using FoodBot.Services;
 using FoodBot.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Step1Snapshot = FoodBot.Services.Step1Snapshot;
-using NutritionConversation = FoodBot.Services.NutritionConversation;
 
 
 namespace FoodBot.Controllers
@@ -21,15 +17,13 @@ namespace FoodBot.Controllers
     [Authorize(AuthenticationSchemes = "Bearer")]
     public sealed class MealsController : ControllerBase
     {
-        private readonly BotDbContext _db;
-        private readonly NutritionService _nutrition;
+        private readonly IMealService _meals;
         private readonly TelegramReportService _report;
         private readonly SpeechToTextService _stt;
 
-        public MealsController(BotDbContext db, NutritionService nutrition, TelegramReportService report, SpeechToTextService stt)
+        public MealsController(IMealService meals, TelegramReportService report, SpeechToTextService stt)
         {
-            _db = db;
-            _nutrition = nutrition;
+            _meals = meals;
             _report = report;
             _stt = stt;
         }
@@ -46,52 +40,8 @@ namespace FoodBot.Controllers
             limit = Math.Clamp(limit, 1, 100);
             offset = Math.Max(0, offset);
 
-            var baseQuery = _db.Meals
-                .AsNoTracking()
-                .Where(m => m.ChatId == chatId)
-                .OrderByDescending(m => m.CreatedAtUtc);
-
-            var total = await baseQuery.CountAsync(ct);
-
-            // 1) забираем «сырые» данные без JsonSerializer в выражении
-            var rows = await baseQuery
-                .Skip(offset)
-                .Take(limit)
-                .Select(m => new
-                {
-                    m.Id,
-                    m.CreatedAtUtc,
-                    m.DishName,
-                    m.WeightG,
-                    m.CaloriesKcal,
-                    m.ProteinsG,
-                    m.FatsG,
-                    m.CarbsG,
-                    m.IngredientsJson,
-                    m.ProductsJson,
-                    HasImage = EF.Functions.DataLength(m.ImageBytes) > 0
-                })
-                .ToListAsync(ct);
-
-            // 2) десериализация уже в памяти
-            var items = rows.Select(r => new
-            {
-                r.Id,
-                r.CreatedAtUtc,
-                r.DishName,
-                r.WeightG,
-                r.CaloriesKcal,
-                r.ProteinsG,
-                r.FatsG,
-                r.CarbsG,
-                Ingredients = string.IsNullOrWhiteSpace(r.IngredientsJson)
-                    ? Array.Empty<string>()
-                    : (System.Text.Json.JsonSerializer.Deserialize<string[]>(r.IngredientsJson!) ?? Array.Empty<string>()),
-                Products = ProductJsonHelper.DeserializeProducts(r.ProductsJson),
-                r.HasImage
-            }).ToList();
-
-            return Ok(new { total, offset, limit, items });
+            var result = await _meals.ListAsync(chatId, limit, offset, ct);
+            return Ok(result);
         }
 
         // ---------- Детали блюда ----------
@@ -101,29 +51,8 @@ namespace FoodBot.Controllers
         {
             var chatId = GetChatId();
 
-            var m = await _db.Meals.AsNoTracking()
-                .Where(x => x.ChatId == chatId && x.Id == id)
-                .FirstOrDefaultAsync(ct);
+            var m = await _meals.GetDetailsAsync(chatId, id, ct);
             if (m == null) return NotFound();
-
-            var ingredients = string.IsNullOrWhiteSpace(m.IngredientsJson)
-                ? Array.Empty<string>()
-                : (System.Text.Json.JsonSerializer.Deserialize<string[]>(m.IngredientsJson!) ?? Array.Empty<string>());
-
-            Step1Snapshot? step1 = null;
-            if (!string.IsNullOrWhiteSpace(m.Step1Json))
-            {
-                try
-                {
-                    step1 = System.Text.Json.JsonSerializer.Deserialize<Step1Snapshot>(
-                        m.Step1Json!,
-                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                }
-                catch { /* ignore bad JSON */ }
-            }
-
-            var products = ProductJsonHelper.DeserializeProducts(m.ProductsJson);
-
             return Ok(new
             {
                 m.Id,
@@ -135,11 +64,11 @@ namespace FoodBot.Controllers
                 m.FatsG,
                 m.CarbsG,
                 m.Confidence,
-                Ingredients = ingredients,
-                Products = products,
-                Step1 = step1,
+                Ingredients = m.Ingredients,
+                Products = m.Products,
+                Step1 = m.Step1,
                 ReasoningPrompt = m.ReasoningPrompt,
-                HasImage = m.ImageBytes != null && m.ImageBytes.Length > 0
+                HasImage = m.HasImage
             });
         }
 
@@ -149,15 +78,9 @@ namespace FoodBot.Controllers
         public async Task<IActionResult> Image([FromRoute] int id, CancellationToken ct)
         {
             var chatId = GetChatId();
-            var m = await _db.Meals.AsNoTracking()
-                .Where(x => x.ChatId == chatId && x.Id == id)
-                .Select(x => new { x.ImageBytes, x.FileMime })
-                .FirstOrDefaultAsync(ct);
-
-            if (m == null || m.ImageBytes == null || m.ImageBytes.Length == 0) return NotFound();
-
-            var mime = string.IsNullOrWhiteSpace(m.FileMime) ? "image/jpeg" : m.FileMime!;
-            return File(m.ImageBytes, mime);
+            var img = await _meals.GetImageAsync(chatId, id, ct);
+            if (img == null) return NotFound();
+            return File(img.Value.bytes, img.Value.mime);
         }
 
         // ---------- Загрузка фото ----------
@@ -173,17 +96,7 @@ namespace FoodBot.Controllers
             var bytes = ms.ToArray();
 
             var chatId = GetChatId();
-            var pending = new PendingMeal
-            {
-                ChatId = chatId,
-                CreatedAtUtc = DateTimeOffset.UtcNow,
-                FileMime = image.ContentType ?? "image/jpeg",
-                ImageBytes = bytes,
-                Attempts = 0
-            };
-            _db.PendingMeals.Add(pending);
-            await _db.SaveChangesAsync(ct);
-
+            await _meals.QueueImageAsync(chatId, bytes, image.ContentType ?? "image/jpeg", ct);
             return Ok(new { queued = true });
         }
 
@@ -195,69 +108,30 @@ namespace FoodBot.Controllers
         public async Task<IActionResult> ClarifyText([FromRoute] int id, [FromBody] ClarifyTextReq req, CancellationToken ct)
         {
             var chatId = GetChatId();
-            var m = await _db.Meals.Where(x => x.ChatId == chatId && x.Id == id).FirstOrDefaultAsync(ct);
-            if (m == null) return NotFound();
-
-            if (string.IsNullOrWhiteSpace(req.note))
+            var result = await _meals.ClarifyTextAsync(chatId, id, req.note, req.time, ct);
+            if (result == null) return NotFound();
+            if (result.Queued) return Ok(new { queued = true });
+            var d = result.Details!;
+            return Ok(new
             {
-                if (req.time.HasValue)
+                d.Id,
+                CreatedAtUtc = d.CreatedAtUtc,
+                Result = new
                 {
-                    m.CreatedAtUtc = req.time.Value.ToUniversalTime();
-                    await _db.SaveChangesAsync(ct);
-                }
-
-                var ingredients = string.IsNullOrWhiteSpace(m.IngredientsJson)
-                    ? Array.Empty<string>()
-                    : (System.Text.Json.JsonSerializer.Deserialize<string[]>(m.IngredientsJson!) ?? Array.Empty<string>());
-
-                Step1Snapshot? step1 = null;
-                if (!string.IsNullOrWhiteSpace(m.Step1Json))
-                {
-                    try
-                    {
-                        step1 = System.Text.Json.JsonSerializer.Deserialize<Step1Snapshot>(
-                            m.Step1Json!,
-                            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    }
-                    catch { /* ignore */ }
-                }
-
-                var products = ProductJsonHelper.DeserializeProducts(m.ProductsJson);
-
-                return Ok(new
-                {
-                    m.Id,
-                    CreatedAtUtc = m.CreatedAtUtc,
-                    Result = new
-                    {
-                        dish = m.DishName,
-                        ingredients,
-                        proteins_g = m.ProteinsG,
-                        fats_g = m.FatsG,
-                        carbs_g = m.CarbsG,
-                        calories_kcal = m.CaloriesKcal,
-                        weight_g = m.WeightG,
-                        confidence = m.Confidence
-                    },
-                    Products = products,
-                    Step1 = step1,
-                    ReasoningPrompt = m.ReasoningPrompt,
-                    CalcPlanJson = string.Empty
-                });
-            }
-
-            var pending = new PendingClarify
-            {
-                ChatId = chatId,
-                MealId = id,
-                Note = req.note!,
-                NewTime = req.time?.ToUniversalTime(),
-                CreatedAtUtc = DateTimeOffset.UtcNow,
-                Attempts = 0
-            };
-            _db.PendingClarifies.Add(pending);
-            await _db.SaveChangesAsync(ct);
-            return Ok(new { queued = true });
+                    dish = d.DishName,
+                    ingredients = d.Ingredients,
+                    proteins_g = d.ProteinsG,
+                    fats_g = d.FatsG,
+                    carbs_g = d.CarbsG,
+                    calories_kcal = d.CaloriesKcal,
+                    weight_g = d.WeightG,
+                    confidence = d.Confidence
+                },
+                Products = d.Products,
+                Step1 = d.Step1,
+                ReasoningPrompt = d.ReasoningPrompt,
+                CalcPlanJson = string.Empty
+            });
         }
 
         // ---------- Уточнение: голос ----------
@@ -267,8 +141,6 @@ namespace FoodBot.Controllers
         public async Task<IActionResult> ClarifyVoice([FromRoute] int id, [FromForm] IFormFile audio, [FromForm] string? language, CancellationToken ct)
         {
             var chatId = GetChatId();
-            var m = await _db.Meals.Where(x => x.ChatId == chatId && x.Id == id).FirstOrDefaultAsync(ct);
-            if (m == null) return NotFound();
             if (audio == null || audio.Length == 0) return BadRequest("audio required");
 
             await using var ms = new MemoryStream();
@@ -278,8 +150,9 @@ namespace FoodBot.Controllers
             var text = await _stt.TranscribeAsync(bytes, language ?? "ru", audio.FileName ?? "audio", audio.ContentType ?? "application/octet-stream", ct);
             if (string.IsNullOrWhiteSpace(text)) return BadRequest("stt_failed");
 
-            // применяем как текстовое уточнение
-            return await ClarifyText(id, new ClarifyTextReq(text!, null), ct);
+            var result = await _meals.ClarifyTextAsync(chatId, id, text, null, ct);
+            if (result == null) return NotFound();
+            return Ok(new { queued = true });
         }
 
         // ---------- Excel отчёт ----------
@@ -299,11 +172,8 @@ namespace FoodBot.Controllers
         public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken ct)
         {
             var chatId = GetChatId();
-            var m = await _db.Meals.Where(x => x.ChatId == chatId && x.Id == id).FirstOrDefaultAsync(ct);
-            if (m == null) return NotFound();
-
-            _db.Meals.Remove(m);
-            await _db.SaveChangesAsync(ct);
+            var ok = await _meals.DeleteAsync(chatId, id, ct);
+            if (!ok) return NotFound();
             return NoContent();
         }
     }

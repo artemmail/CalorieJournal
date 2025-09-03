@@ -56,6 +56,9 @@ builder.Services.AddScoped<TelegramReportService>();
 builder.Services.AddScoped<StatsService>();
 builder.Services.AddScoped<PersonalCardService>();
 builder.Services.AddScoped<DietAnalysisService>();
+builder.Services.AddScoped<IMealRepository, MealRepository>();
+builder.Services.AddScoped<IMealService, MealService>();
+builder.Services.AddScoped<IAppAuthService, AppAuthService>();
 builder.Services.AddHostedService<AnalysisQueueWorker>();
 builder.Services.AddHostedService<PhotoQueueWorker>();
 
