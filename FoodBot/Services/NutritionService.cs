@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
@@ -19,16 +18,17 @@ namespace FoodBot.Services
         private readonly string _reasoningModel;     // Шаг 2 (финал считает ИИ)
         private readonly bool _debugLog;
         private readonly FoodMatcher _matcher;
-
-        private readonly ConcurrentDictionary<Guid, List<object>> _threads = new();
-        private readonly ConcurrentDictionary<Guid, MatchedFoodRow[]> _threadFoods = new();
-        private readonly ConcurrentDictionary<Guid, string[]> _threadIngredients = new();
-        private readonly ConcurrentDictionary<Guid, string> _threadImageDataUrl = new();
-        private readonly ConcurrentDictionary<Guid, Step1Snapshot> _threadStep1 = new();
+        private readonly INutritionSessionService _sessions;
 
         // ? сохраняем внешний интерфейс: добавили опциональный параметр ai
-        public NutritionService(IConfiguration cfg, IHttpClientFactory f, IWebHostEnvironment env, IOpenAiClient? ai = null)
+        public NutritionService(
+            IConfiguration cfg,
+            IHttpClientFactory f,
+            IWebHostEnvironment env,
+            INutritionSessionService sessions,
+            IOpenAiClient? ai = null)
         {
+            _sessions = sessions;
             if (ai is not null)
             {
                 _ai = ai; // настройки OpenAI инкапсулированы в клиенте
@@ -84,21 +84,21 @@ namespace FoodBot.Services
 
         public async Task<NutritionConversation?> ClarifyAsync(Guid threadId, string userNote, CancellationToken ct)
         {
-            if (!_threads.TryGetValue(threadId, out var history))
+            if (!_sessions.TryGet(threadId, out var session))
                 throw new InvalidOperationException("Unknown threadId. Start with AnalyzeAsync.");
 
-            if (!_threadImageDataUrl.TryGetValue(threadId, out var dataUrl))
-                throw new InvalidOperationException("Original image is not available for this thread.");
+            var history = session.History;
+            var dataUrl = session.ImageDataUrl;
 
             var step1 = await _ai.DetectFromImageAsync(dataUrl, userNote, _visionModel, ct);
             if (step1 is null || step1.ingredients.Length == 0) return null;
 
-            _threadStep1[threadId] = step1;
-            _threadIngredients[threadId] = step1.ingredients;
+            session.Step1 = step1;
+            session.Ingredients = step1.ingredients;
 
             var matches = _matcher.MatchFoodsDetailed(step1.ingredients);
             var matched = _matcher.CollapseMatchedRows(matches);
-            _threadFoods[threadId] = matched;
+            session.MatchedFoods = matched;
 
             var foodsJson = _matcher.BuildFoodsJsonForPrompt(matched);
             var unmatched = _matcher.BuildUnmatchedCommaList(matches);
@@ -223,8 +223,7 @@ namespace FoodBot.Services
             Func<int, Task>? progress,
             CancellationToken ct)
         {
-            var threadId = Guid.NewGuid();
-            _threadImageDataUrl[threadId] = dataUrl;
+            var session = _sessions.Create(dataUrl);
 
             if (progress is not null)
                 await progress(1); // start vision step
@@ -235,12 +234,12 @@ namespace FoodBot.Services
             if (progress is not null)
                 await progress(2); // start final compute
 
-            _threadStep1[threadId] = step1;
-            _threadIngredients[threadId] = step1.ingredients;
+            session.Step1 = step1;
+            session.Ingredients = step1.ingredients;
 
             var matches = _matcher.MatchFoodsDetailed(step1.ingredients);
             var matchedRows = _matcher.CollapseMatchedRows(matches);
-            _threadFoods[threadId] = matchedRows;
+            session.MatchedFoods = matchedRows;
 
             var foodsJson = _matcher.BuildFoodsJsonForPrompt(matchedRows);
             var unmatched = _matcher.BuildUnmatchedCommaList(matches);
@@ -282,7 +281,7 @@ namespace FoodBot.Services
             }
 
             msgs.Add(new { role = "assistant", content = JsonSerializer.Serialize(finalAi) });
-            _threads[threadId] = msgs;
+            session.History.AddRange(msgs);
 
             var final = new NutritionResult(
                 dish: finalAi.dish ?? step1.dish,
@@ -298,7 +297,7 @@ namespace FoodBot.Services
             var finalJson = JsonSerializer.Serialize(finalAi, new JsonSerializerOptions { PropertyNamingPolicy = null });
 
             return new NutritionConversation(
-                threadId,
+                session.Id,
                 final,
                 matchedRows,
                 step1,
