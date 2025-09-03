@@ -1,8 +1,18 @@
 using System;
-using FoodBot.Services; // MatchedFoodRow
 
 namespace FoodBot.Models
 {
+    public sealed record MatchedFoodRow(
+        string name,
+        string usda_id,
+        decimal per100g_proteins_g,
+        decimal per100g_fats_g,
+        decimal per100g_carbs_g,
+        decimal kcal_per_g
+    );
+
+    public sealed record IngredientMatch(string original, MatchedFoodRow? matched);
+
     public sealed record Step1Snapshot(
         string dish,
         string[] ingredients,

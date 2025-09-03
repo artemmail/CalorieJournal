@@ -2,6 +2,7 @@ using System.Linq;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using FoodBot.Data;
+using FoodBot.Models;
 
 namespace FoodBot.Services;
 
