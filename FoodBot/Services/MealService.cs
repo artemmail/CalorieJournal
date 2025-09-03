@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using FoodBot.Data;
 
 namespace FoodBot.Services;
