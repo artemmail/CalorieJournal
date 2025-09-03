@@ -18,6 +18,9 @@ builder.Services.AddDbContext<BotDbContext>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("Sql")));
 
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+
+builder.Services.AddSingleton<INutritionSessionService, NutritionSessionService>();
 
 
 
@@ -44,8 +47,9 @@ builder.Services.AddSingleton<NutritionService>(sp =>
     var cfg = sp.GetRequiredService<IConfiguration>();
     var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
     var env = sp.GetRequiredService<IWebHostEnvironment>();
+    var sessions = sp.GetRequiredService<INutritionSessionService>();
     var ai = sp.GetRequiredService<IOpenAiClient>();
-    return new NutritionService(cfg, httpFactory, env, ai);
+    return new NutritionService(cfg, httpFactory, env, sessions, ai);
 });
 
 
