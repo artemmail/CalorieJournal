@@ -246,53 +246,18 @@ namespace FoodBot.Controllers
                 });
             }
 
-            NutritionConversation? conv2 = null;
-
-            if (!string.IsNullOrWhiteSpace(m.Step1Json))
+            var pending = new PendingClarify
             {
-                try
-                {
-                    var step1 = System.Text.Json.JsonSerializer.Deserialize<Step1Snapshot>(
-                        m.Step1Json!,
-                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    if (step1 is not null)
-                        conv2 = await _nutrition.ClarifyFromStep1Async(step1, req.note!, ct);
-                }
-                catch { conv2 = null; }
-            }
-
-            if (conv2 is null && m.ImageBytes is { Length: > 0 })
-            {
-                conv2 = await _nutrition.AnalyzeWithNoteAsync(m.ImageBytes, req.note!, ct: ct);
-            }
-
-            if (conv2 is null) return BadRequest("clarify_failed");
-
-            m.DishName = conv2.Result.dish;
-            m.IngredientsJson = System.Text.Json.JsonSerializer.Serialize(conv2.Result.ingredients);
-            m.ProductsJson = ProductJsonHelper.BuildProductsJson(conv2.CalcPlanJson);
-            m.ProteinsG = conv2.Result.proteins_g;
-            m.FatsG = conv2.Result.fats_g;
-            m.CarbsG = conv2.Result.carbs_g;
-            m.CaloriesKcal = conv2.Result.calories_kcal;
-            m.Confidence = conv2.Result.confidence;
-            m.WeightG = conv2.Result.weight_g;
-            m.ReasoningPrompt = conv2.ReasoningPrompt;
-            if (req.time.HasValue)
-                m.CreatedAtUtc = req.time.Value.ToUniversalTime();
-
+                ChatId = chatId,
+                MealId = id,
+                Note = req.note!,
+                NewTime = req.time?.ToUniversalTime(),
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                Attempts = 0
+            };
+            _db.PendingClarifies.Add(pending);
             await _db.SaveChangesAsync(ct);
-
-            return Ok(new
-            {
-                m.Id,
-                CreatedAtUtc = m.CreatedAtUtc,
-                Result = conv2.Result,
-                Products = ProductJsonHelper.DeserializeProducts(m.ProductsJson),
-                Step1 = conv2.Step1,
-                conv2.ReasoningPrompt,
-                conv2.CalcPlanJson
-            });
+            return Ok(new { queued = true });
         }
 
         // ---------- Уточнение: голос ----------
