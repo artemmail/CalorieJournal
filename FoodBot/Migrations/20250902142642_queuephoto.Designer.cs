@@ -4,6 +4,7 @@ using FoodBot.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FoodBot.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    partial class BotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250902142642_queuephoto")]
+    partial class queuephoto
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -171,40 +174,6 @@ namespace FoodBot.Migrations
                     b.HasIndex("ChatId", "CreatedAtUtc");
 
                     b.ToTable("Meals");
-                });
-
-            modelBuilder.Entity("FoodBot.Data.PendingClarify", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("int");
-
-                    b.Property<long>("ChatId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<int>("MealId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset?>("NewTime")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Note")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChatId", "CreatedAtUtc");
-
-                    b.ToTable("PendingClarifies");
                 });
 
             modelBuilder.Entity("FoodBot.Data.PendingMeal", b =>
