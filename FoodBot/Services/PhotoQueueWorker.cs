@@ -32,15 +32,90 @@ public sealed class PhotoQueueWorker : BackgroundService
                 var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
                 var nutrition = scope.ServiceProvider.GetRequiredService<NutritionService>();
 
-                var next = await db.PendingMeals
+                var nextPhoto = await db.PendingMeals
+                    .OrderBy(x => x.CreatedAtUtc)
+                    .FirstOrDefaultAsync(stoppingToken);
+                var nextClar = await db.PendingClarifies
                     .OrderBy(x => x.CreatedAtUtc)
                     .FirstOrDefaultAsync(stoppingToken);
 
-                if (next == null)
+                if (nextPhoto == null && nextClar == null)
                 {
                     await Task.Delay(2000, stoppingToken);
                     continue;
                 }
+
+                if (nextClar != null && (nextPhoto == null || nextClar.CreatedAtUtc <= nextPhoto.CreatedAtUtc))
+                {
+                    try
+                    {
+                        var meal = await db.Meals.Where(m => m.ChatId == nextClar.ChatId && m.Id == nextClar.MealId)
+                            .FirstOrDefaultAsync(stoppingToken);
+                        if (meal == null)
+                        {
+                            db.PendingClarifies.Remove(nextClar);
+                            await db.SaveChangesAsync(stoppingToken);
+                            continue;
+                        }
+
+                        NutritionConversation? conv2 = null;
+                        if (!string.IsNullOrWhiteSpace(meal.Step1Json))
+                        {
+                            try
+                            {
+                                var step1 = JsonSerializer.Deserialize<Step1Snapshot>(
+                                    meal.Step1Json!,
+                                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                                if (step1 is not null)
+                                    conv2 = await nutrition.ClarifyFromStep1Async(step1, nextClar.Note, stoppingToken);
+                            }
+                            catch { conv2 = null; }
+                        }
+
+                        if (conv2 is null && meal.ImageBytes is { Length: > 0 })
+                        {
+                            conv2 = await nutrition.AnalyzeWithNoteAsync(meal.ImageBytes, nextClar.Note, ct: stoppingToken);
+                        }
+
+                        if (conv2 != null)
+                        {
+                            meal.DishName = conv2.Result.dish;
+                            meal.IngredientsJson = JsonSerializer.Serialize(conv2.Result.ingredients);
+                            meal.ProductsJson = ProductJsonHelper.BuildProductsJson(conv2.CalcPlanJson);
+                            meal.ProteinsG = conv2.Result.proteins_g;
+                            meal.FatsG = conv2.Result.fats_g;
+                            meal.CarbsG = conv2.Result.carbs_g;
+                            meal.CaloriesKcal = conv2.Result.calories_kcal;
+                            meal.Confidence = conv2.Result.confidence;
+                            meal.WeightG = conv2.Result.weight_g;
+                            meal.ReasoningPrompt = conv2.ReasoningPrompt;
+                            if (nextClar.NewTime.HasValue)
+                                meal.CreatedAtUtc = nextClar.NewTime.Value.ToUniversalTime();
+
+                            db.PendingClarifies.Remove(nextClar);
+                            await db.SaveChangesAsync(stoppingToken);
+                        }
+                        else
+                        {
+                            nextClar.Attempts++;
+                            if (nextClar.Attempts >= 3)
+                                db.PendingClarifies.Remove(nextClar);
+                            await db.SaveChangesAsync(stoppingToken);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.LogError(ex, "PhotoQueueWorker clarification failed for {Id}", nextClar.Id);
+                        nextClar.Attempts++;
+                        if (nextClar.Attempts >= 3)
+                            db.PendingClarifies.Remove(nextClar);
+                        await db.SaveChangesAsync(stoppingToken);
+                        await Task.Delay(2000, stoppingToken);
+                    }
+                    continue;
+                }
+
+                var next = nextPhoto!;
 
                 try
                 {

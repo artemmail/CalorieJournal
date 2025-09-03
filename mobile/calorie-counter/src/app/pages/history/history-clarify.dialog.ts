@@ -148,9 +148,14 @@ export class HistoryClarifyDialogComponent {
       iso = dt.toISOString();
     }
     this.api.clarifyText(this.data.mealId, note || undefined, iso).subscribe({
-      next: (r: ClarifyResult) => {
+      next: (r: ClarifyResult | { queued: boolean }) => {
+        if ((r as any).queued) {
+          this.dialogRef.close({ queued: true });
+          return;
+        }
+        const res = r as ClarifyResult;
         const createdAtUtc = iso ?? this.data.createdAtUtc;
-        this.dialogRef.close({ ...r, createdAtUtc });
+        this.dialogRef.close({ ...res, createdAtUtc });
       },
       error: () => {
         this.snack.open('Ошибка уточнения', 'OK', { duration: 1500 });

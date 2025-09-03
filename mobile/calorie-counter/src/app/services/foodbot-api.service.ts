@@ -44,11 +44,11 @@ export class FoodbotApiService {
   }
 
   // Уточнения
-  clarifyText(mealId: number, note?: string, time?: string): Observable<ClarifyResult> {
+  clarifyText(mealId: number, note?: string, time?: string): Observable<ClarifyResult | { queued: boolean }> {
     const body: any = {};
     if (note) body.note = note;
     if (time) body.time = time;
-    return this.http.post<ClarifyResult>(`${this.baseUrl}/api/meals/${mealId}/clarify-text`, body);
+    return this.http.post<ClarifyResult | { queued: boolean }>(`${this.baseUrl}/api/meals/${mealId}/clarify-text`, body);
   }
   clarifyVoice(mealId: number, file: File, language = "ru"): Observable<ClarifyResult> {
     const form = new FormData();

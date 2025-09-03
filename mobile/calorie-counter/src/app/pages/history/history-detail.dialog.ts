@@ -74,11 +74,15 @@ export class HistoryDetailDialogComponent implements OnInit {
     const ref = this.dialog.open(HistoryClarifyDialogComponent, {
       data: { mealId: this.data.item.id, createdAtUtc: this.data.item.createdAtUtc }
     });
-    ref.afterClosed().subscribe((r: ClarifyResult | { deleted: true } | undefined) => {
+    ref.afterClosed().subscribe((r: ClarifyResult | { deleted: true } | { queued: true } | undefined) => {
       if (!r) return;
       if ((r as any).deleted) {
         this.snack.open('Запись удалена', 'OK', { duration: 1500 });
         this.dialogRef.close({ deleted: true });
+        return;
+      }
+      if ((r as any).queued) {
+        this.snack.open('Уточнение отправлено', 'OK', { duration: 1500 });
         return;
       }
       const res = r as ClarifyResult;
