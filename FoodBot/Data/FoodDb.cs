@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace FoodBot.Services
+namespace FoodBot.Data
 {
     /// <summary>
     /// Загружает foods.json, нормализует единицы измерения:
