@@ -110,7 +110,7 @@ public sealed class ReportDataLoader
             .ToList();
 
         var utcOffset = tz.GetUtcOffset(nowLocal.DateTime);
-        var utcOffsetStr = utcOffset.ToString(@"hh\\:mm");
+        var utcOffsetStr = utcOffset.ToString("hh\\:mm");
         var nowLocalStr = nowLocal.ToString("yyyy-MM-dd HH:mm");
         var nowLocalHourStr = nowLocal.ToString("HH");
         var nowLocalDateStr = nowLocal.ToString("yyyy-MM-dd");
