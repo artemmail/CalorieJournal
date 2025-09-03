@@ -58,6 +58,9 @@ public static class BotExtensions
         services.AddScoped<TelegramReportService>();
         services.AddScoped<StatsService>();
         services.AddScoped<PersonalCardService>();
+        services.AddScoped<ReportDataLoader>();
+        services.AddScoped<AnalysisPromptBuilder>();
+        services.AddScoped<AnalysisGenerator>();
         services.AddScoped<DietAnalysisService>();
         services.AddScoped<IMealRepository, MealRepository>();
         services.AddScoped<IMealService, MealService>();

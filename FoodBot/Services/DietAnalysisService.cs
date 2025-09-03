@@ -1,34 +1,31 @@
 ﻿using System;
 using System.Linq;
-using System.Text.Json;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using FoodBot.Data;
 using FoodBot.Models;
-using System.Text;
 using System.Collections.Generic;
-using System.Globalization;
+
 
 namespace FoodBot.Services;
 
 public sealed class DietAnalysisService
 {
     private readonly BotDbContext _db;
-    private readonly IHttpClientFactory _httpFactory;
-    private readonly string _apiKey;
+    private readonly ReportDataLoader _loader;
+    private readonly AnalysisPromptBuilder _promptBuilder;
+    private readonly AnalysisGenerator _generator;
 
     // Константа часового пояса: Москва (кросс-платформенно)
     private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
-    public DietAnalysisService(BotDbContext db, IHttpClientFactory httpFactory, IConfiguration cfg)
+    public DietAnalysisService(BotDbContext db, ReportDataLoader loader, AnalysisPromptBuilder promptBuilder, AnalysisGenerator generator)
     {
         _db = db;
-        _httpFactory = httpFactory;
-        _apiKey = cfg["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI:ApiKey missing");
+        _loader = loader;
+        _promptBuilder = promptBuilder;
+        _generator = generator;
     }
 
     // === NEW: публичные методы для истории/очереди ===
@@ -306,201 +303,9 @@ public sealed class DietAnalysisService
 
     private async Task<string> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
-        var tz = MoscowTz;
-        var nowUtc = DateTimeOffset.UtcNow;
-        var nowLocal = TimeZoneInfo.ConvertTime(nowUtc, tz);
-
-        var (periodStartUtc, periodHuman, recScopeHint, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
-
-        var card = await _db.PersonalCards
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
-
-        int? age = null;
-        if (card?.BirthYear is int by && by > 1900 && by <= nowLocal.Year)
-            age = nowLocal.Year - by;
-
-        var mealsRaw = await _db.Meals.AsNoTracking()
-            .Where(m => m.ChatId == chatId &&
-                        m.CreatedAtUtc >= periodStartUtc.UtcDateTime &&
-                        m.CreatedAtUtc <= nowUtc.UtcDateTime)
-            .OrderBy(m => m.CreatedAtUtc)
-            .Select(m => new
-            {
-                m.DishName,
-                m.CreatedAtUtc,
-                m.CaloriesKcal,
-                m.ProteinsG,
-                m.FatsG,
-                m.CarbsG
-            })
-            .ToListAsync(ct);
-
-        var meals = mealsRaw.Select(m =>
-        {
-            var local = TimeZoneInfo.ConvertTimeFromUtc(m.CreatedAtUtc.UtcDateTime, tz);
-            return new
-            {
-                dish = m.DishName,
-                localDate = local.ToString("yyyy-MM-dd"),
-                localTime = local.ToString("HH:mm"),
-                localDateTimeIso = local.ToString("yyyy-MM-dd HH:mm"),
-                calories = m.CaloriesKcal ?? 0,
-                proteins = m.ProteinsG ?? 0,
-                fats = m.FatsG ?? 0,
-                carbs = m.CarbsG ?? 0
-            };
-        }).ToList();
-
-        var totals = new
-        {
-            calories = meals.Sum(x => x.calories),
-            proteins = meals.Sum(x => x.proteins),
-            fats = meals.Sum(x => x.fats),
-            carbs = meals.Sum(x => x.carbs),
-            mealsCount = meals.Count()
-        };
-
-        List<string>? hourGrid = null;
-        string? lastMealLocalTime = null;
-        double? hoursSinceLastMeal = null;
-
-        if (period == AnalysisPeriod.Day)
-        {
-            hourGrid = new List<string>();
-            var startHour = (nowLocal.Minute == 0) ? nowLocal.Hour : nowLocal.Hour + 1;
-            for (int h = Math.Min(startHour, 23); h <= 23; h++) hourGrid.Add($"{h:00}:00");
-
-            if (meals.Any())
-            {
-                var lastLocal = meals
-                    .Select(m => DateTime.ParseExact(m.localDateTimeIso, "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
-                    .Max();
-
-                lastMealLocalTime = lastLocal.ToString("HH:mm");
-                hoursSinceLastMeal = (nowLocal.DateTime - lastLocal).TotalHours;
-            }
-        }
-
-        var byHour = meals
-            .GroupBy(m => int.Parse(m.localTime[..2], CultureInfo.InvariantCulture))
-            .Select(g => new { hour = g.Key, cnt = g.Count(), kcal = g.Sum(x => x.calories) })
-            .OrderBy(x => x.hour)
-            .ToList();
-
-        var byDay = meals
-            .GroupBy(m => m.localDate)
-            .Select(g => new
-            {
-                date = g.Key,
-                meals = g.Count(),
-                kcal = g.Sum(x => x.calories),
-                prot = g.Sum(x => x.proteins),
-                fat = g.Sum(x => x.fats),
-                carb = g.Sum(x => x.carbs)
-            })
-            .OrderBy(x => x.date)
-            .ToList();
-
-        var utcOffset = tz.GetUtcOffset(nowLocal.DateTime);
-        var utcOffsetStr = utcOffset.ToString(@"hh\:mm");
-        var nowLocalStr = nowLocal.ToString("yyyy-MM-dd HH:mm");
-        var nowLocalHourStr = nowLocal.ToString("HH");
-        var nowLocalDateStr = nowLocal.ToString("yyyy-MM-dd");
-        var periodKindStr = period.ToString();
-        var periodStartLocalStr = periodStartLocal.ToString("yyyy-MM-dd HH:mm");
-        var periodEndLocalStr = nowLocalStr;
-        var periodStartUtcStr = periodStartUtc.ToString("yyyy-MM-dd HH:mm:ss");
-        var periodEndUtcStr = nowUtc.ToString("yyyy-MM-dd HH:mm:ss");
-
-        var data = new
-        {
-            timezone = new { id = tz.Id, label = "Europe/Moscow / Russian Standard Time", utcOffset = utcOffsetStr },
-            period = new
-            {
-                kind = periodKindStr,
-                label = periodHuman,
-                startLocal = periodStartLocalStr,
-                endLocal = periodEndLocalStr,
-                startUtc = periodStartUtcStr,
-                endUtc = periodEndUtcStr
-            },
-            now = new { local = nowLocalStr, localHour = nowLocalHourStr, localDate = nowLocalDateStr },
-            client = new { name = card?.Name, age, goals = card?.DietGoals, restrictions = card?.MedicalRestrictions },
-            meals,
-            totals,
-            grouping = new { byHour, byDay },
-            dailyPlanContext = new { isDaily = period == AnalysisPeriod.Day, remainingHourGrid = hourGrid, lastMealLocalTime, hoursSinceLastMeal }
-        };
-
-        var instructionsRu =
-$@"Ты — внимательный клинический нутрициолог.
-Анализируй ТОЛЬКО фактически съеденное с начала периода до текущего момента.
-Весь анализ привязывай к локальному времени пользователя (Москва, UTC+3). Учитывай время каждого приёма.
-
-## Что уже съедено ({periodHuman})
-Таблица: Дата | Время | Блюдо | Ккал | Б | Ж | У | Комментарий.
-
-## Итоги периода на сейчас
-Сумма Ккал, Б/Ж/У, кол-во приёмов, краткие выводы.
-
-## Общая характеристика стиля питания
-Тайминг, привычки, калорийность, БЖУ, что поменять (4–7 пунктов).
-
-## Индивидуальные нюансы
-Учитывай возраст, цели, ограничения.
-
-## Рекомендации
-- Если день → почасовой план на остаток дня (по remainingHourGrid).
-- Если неделя/месяц/квартал → общие рекомендации на период; план на конец дня НЕ нужен.
-Стиль — конкретно и без воды.
-";
-
-        var periodPrompt = period switch
-        {
-            AnalysisPeriod.Day => "Сформируй почасовой план на остаток текущего дня, используя remainingHourGrid.",
-            AnalysisPeriod.Week => "Сформируй общие рекомендации на текущую неделю. План на конец дня не нужен.",
-            AnalysisPeriod.Month => "Сформируй общие рекомендации на текущий месяц. План на конец дня не нужен.",
-            AnalysisPeriod.Quarter => "Сформируй общие рекомендации на текущий квартал. План на конец дня не нужен.",
-            _ => "Сформируй рекомендации на указанный период."
-        };
-
-        var reqObj = new
-        {
-            model = "gpt-4o-mini",
-            input = new object[]
-            {
-                new { role = "system", content = "You are a helpful dietologist." },
-                new
-                {
-                    role = "user",
-                    content = new object[]
-                    {
-                        new { type = "input_text", text = instructionsRu },
-                        new { type = "input_text", text = periodPrompt },
-                        new { type = "input_text", text = JsonSerializer.Serialize(data) }
-                    }
-                }
-            }
-        };
-
-        var body = JsonSerializer.Serialize(reqObj);
-        var http = _httpFactory.CreateClient();
-        using var msg = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
-        msg.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        msg.Content = new StringContent(body, Encoding.UTF8, "application/json");
-
-        using var resp = await http.SendAsync(msg, ct);
-        resp.EnsureSuccessStatusCode();
-        var respText = await resp.Content.ReadAsStringAsync(ct);
-
-        using var doc = JsonDocument.Parse(respText);
-        var content = doc.RootElement.GetProperty("output")[0]
-            .GetProperty("content")[0]
-            .GetProperty("text")
-            .GetString();
-
-        return content ?? string.Empty;
+        var reportData = await _loader.LoadAsync(chatId, period, ct);
+        var body = _promptBuilder.Build(reportData, period);
+        return await _generator.GenerateAsync(body, ct);
     }
 
     // === Утилиты ===
