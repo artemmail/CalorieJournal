@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using FoodBot.Services;
@@ -28,15 +27,12 @@ namespace FoodBot.Controllers
             _stt = stt;
         }
 
-        private long GetChatId() =>
-            long.TryParse(User.FindFirstValue("chat_id"), out var id) ? id : throw new UnauthorizedAccessException();
-
         // ---------- История (список) ----------
         // GET /api/meals?limit=30&offset=0
         [HttpGet]
         public async Task<IActionResult> List([FromQuery] int limit = 30, [FromQuery] int offset = 0, CancellationToken ct = default)
         {
-            var chatId = GetChatId();
+            var chatId = User.GetChatId();
             limit = Math.Clamp(limit, 1, 100);
             offset = Math.Max(0, offset);
 
@@ -49,7 +45,7 @@ namespace FoodBot.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> Details([FromRoute] int id, CancellationToken ct)
         {
-            var chatId = GetChatId();
+            var chatId = User.GetChatId();
 
             var m = await _meals.GetDetailsAsync(chatId, id, ct);
             if (m == null) return NotFound();
@@ -77,7 +73,7 @@ namespace FoodBot.Controllers
         [HttpGet("{id:int}/image")]
         public async Task<IActionResult> Image([FromRoute] int id, CancellationToken ct)
         {
-            var chatId = GetChatId();
+            var chatId = User.GetChatId();
             var img = await _meals.GetImageAsync(chatId, id, ct);
             if (img == null) return NotFound();
             return File(img.Value.bytes, img.Value.mime);
@@ -95,7 +91,7 @@ namespace FoodBot.Controllers
             await image.CopyToAsync(ms, ct);
             var bytes = ms.ToArray();
 
-            var chatId = GetChatId();
+            var chatId = User.GetChatId();
             await _meals.QueueImageAsync(chatId, bytes, image.ContentType ?? "image/jpeg", ct);
             return Ok(new { queued = true });
         }
@@ -107,7 +103,7 @@ namespace FoodBot.Controllers
         [HttpPost("{id:int}/clarify-text")]
         public async Task<IActionResult> ClarifyText([FromRoute] int id, [FromBody] ClarifyTextReq req, CancellationToken ct)
         {
-            var chatId = GetChatId();
+            var chatId = User.GetChatId();
             var result = await _meals.ClarifyTextAsync(chatId, id, req.note, req.time, ct);
             if (result == null) return NotFound();
             if (result.Queued) return Ok(new { queued = true });
@@ -140,7 +136,7 @@ namespace FoodBot.Controllers
         [RequestSizeLimit(30_000_000)]
         public async Task<IActionResult> ClarifyVoice([FromRoute] int id, [FromForm] IFormFile audio, [FromForm] string? language, CancellationToken ct)
         {
-            var chatId = GetChatId();
+            var chatId = User.GetChatId();
             if (audio == null || audio.Length == 0) return BadRequest("audio required");
 
             await using var ms = new MemoryStream();
@@ -160,7 +156,7 @@ namespace FoodBot.Controllers
         [HttpGet("report")]
         public async Task<IActionResult> Report(CancellationToken ct)
         {
-            var chatId = GetChatId();
+            var chatId = User.GetChatId();
             var (stream, filename) = await _report.BuildUserReportAsync(chatId, ct);
             stream.Position = 0;
             return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename);
@@ -171,7 +167,7 @@ namespace FoodBot.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken ct)
         {
-            var chatId = GetChatId();
+            var chatId = User.GetChatId();
             var ok = await _meals.DeleteAsync(chatId, id, ct);
             if (!ok) return NotFound();
             return NoContent();

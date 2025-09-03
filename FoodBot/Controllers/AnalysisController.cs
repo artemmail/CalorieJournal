@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using FoodBot.Models;
@@ -20,14 +19,11 @@ public sealed class AnalysisController : ControllerBase
         _service = service;
     }
 
-    private long GetChatId() =>
-        long.TryParse(User.FindFirstValue("chat_id"), out var id) ? id : throw new UnauthorizedAccessException();
-
-    // История
+    // РСЃС‚РѕСЂРёСЏ
     [HttpGet("reports")]
     public async Task<IActionResult> List(CancellationToken ct)
     {
-        var chatId = GetChatId();
+        var chatId = User.GetChatId();
         var list = await _service.ListReportsAsync(chatId, ct);
         return Ok(list.Select(x => new {
             id = x.Id,
@@ -40,13 +36,13 @@ public sealed class AnalysisController : ControllerBase
         }));
     }
 
-    // Создать новый (ставим в очередь, с проверкой checksum)
+    // РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ (СЃС‚Р°РІРёРј РІ РѕС‡РµСЂРµРґСЊ, СЃ РїСЂРѕРІРµСЂРєРѕР№ checksum)
     public sealed record CreateReportRequest(AnalysisPeriod period);
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateReportRequest req, CancellationToken ct)
     {
-        var chatId = GetChatId();
+        var chatId = User.GetChatId();
         var (status, report) = await _service.StartReportAsync(chatId, req.period, ct);
         return Ok(new
         {
@@ -57,11 +53,11 @@ public sealed class AnalysisController : ControllerBase
         });
     }
 
-    // Получить готовый
+    // РџРѕР»СѓС‡РёС‚СЊ РіРѕС‚РѕРІС‹Р№
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById([FromRoute] long id, CancellationToken ct)
     {
-        var chatId = GetChatId();
+        var chatId = User.GetChatId();
         var r = await _service.GetReportAsync(chatId, id, ct);
         if (r == null) return NotFound();
 
@@ -78,12 +74,12 @@ public sealed class AnalysisController : ControllerBase
         });
     }
 
-    // --- старые маршруты оставлены для обратной совместимости с прежним UI ---
+    // --- СЃС‚Р°СЂС‹Рµ РјР°СЂС€СЂСѓС‚С‹ РѕСЃС‚Р°РІР»РµРЅС‹ РґР»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё СЃ РїСЂРµР¶РЅРёРј UI ---
 
     [HttpGet("day")]
     public async Task<IActionResult> GetDay(CancellationToken ct)
     {
-        var chatId = GetChatId();
+        var chatId = User.GetChatId();
         var report = await _service.GetDailyAsync(chatId, ct);
         if (report.IsProcessing)
             return Accepted(new { status = "processing" });
@@ -93,7 +89,7 @@ public sealed class AnalysisController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] AnalysisPeriod period, CancellationToken ct)
     {
-        var chatId = GetChatId();
+        var chatId = User.GetChatId();
         if (period == AnalysisPeriod.Day)
         {
             var report = await _service.GetDailyAsync(chatId, ct);
