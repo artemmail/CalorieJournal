@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { HttpClient, HttpResponse } from '@angular/common/http';
+import { firstValueFrom, Observable } from 'rxjs';
 import { FoodBotAuthLinkService } from './foodbot-auth-link.service';
 
 export type AnalysisPeriod = 'day' | 'week' | 'month' | 'quarter';
@@ -56,5 +56,13 @@ export class AnalysisService {
     return firstValueFrom(
       this.http.get<GetReportResponse>(`${this.baseUrl}/api/analysis/${id}`)
     );
+  }
+
+  /** Скачать отчёт в PDF */
+  downloadPdf(id: number): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.baseUrl}/api/analysis/${id}/pdf`, {
+      responseType: 'blob',
+      observe: 'response',
+    });
   }
 }

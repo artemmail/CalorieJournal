@@ -13,10 +13,12 @@ namespace FoodBot.Controllers;
 public sealed class AnalysisController : ControllerBase
 {
     private readonly DietAnalysisService _service;
+    private readonly AnalysisPdfService _pdf;
 
-    public AnalysisController(DietAnalysisService service)
+    public AnalysisController(DietAnalysisService service, AnalysisPdfService pdf)
     {
         _service = service;
+        _pdf = pdf;
     }
 
     // История
@@ -72,6 +74,19 @@ public sealed class AnalysisController : ControllerBase
             name = r.Name,
             period = r.Period.ToString().ToLower()
         });
+    }
+
+    [HttpGet("{id:long}/pdf")]
+    public async Task<IActionResult> GetPdf([FromRoute] long id, CancellationToken ct)
+    {
+        var chatId = User.GetChatId();
+        var r = await _service.GetReportAsync(chatId, id, ct);
+        if (r == null) return NotFound();
+        if (r.IsProcessing || string.IsNullOrEmpty(r.Markdown)) return BadRequest();
+
+        var (stream, fileName) = await _pdf.BuildAsync(r.Name ?? $"report_{id}", r.Markdown, ct);
+        stream.Position = 0;
+        return File(stream, "application/pdf", fileName);
     }
 
     // --- старые маршруты оставлены для обратной совместимости с прежним UI ---
