@@ -13,12 +13,14 @@ public sealed class AnalysisPdfService
     private readonly string _pandocPath;
     private readonly string _pandocWorkingDir;
     private readonly string _pandocFont;
+    private readonly string _pandocMargin;
 
     public AnalysisPdfService(IConfiguration cfg)
     {
         _pandocPath = cfg["PandocPath"] ?? "pandoc";
         _pandocWorkingDir = cfg["PandocWorkingDirectory"] ?? Directory.GetCurrentDirectory();
         _pandocFont = cfg["PandocMainFont"] ?? "DejaVu Sans";
+        _pandocMargin = cfg["PandocMargin"] ?? "0.75cm";
     }
 
     public async Task<(MemoryStream Stream, string FileName)> BuildAsync(string baseName, string markdown, CancellationToken ct = default)
@@ -31,7 +33,7 @@ public sealed class AnalysisPdfService
         var psi = new ProcessStartInfo
         {
             FileName = _pandocPath,
-            Arguments = $"\"{mdPath}\" -o \"{pdfPath}\" --pdf-engine=xelatex -V mainfont=\"{_pandocFont}\"",
+            Arguments = $"\"{mdPath}\" -o \"{pdfPath}\" --pdf-engine=xelatex -V mainfont=\"{_pandocFont}\" -V geometry:margin={_pandocMargin}",
             WorkingDirectory = _pandocWorkingDir,
             RedirectStandardError = true,
             RedirectStandardOutput = true
