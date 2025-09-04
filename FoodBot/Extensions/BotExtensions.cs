@@ -56,6 +56,7 @@ public static class BotExtensions
 
         services.AddSingleton<SpeechToTextService>();
         services.AddScoped<TelegramReportService>();
+        services.AddScoped<PdfReportService>();
         services.AddScoped<StatsService>();
         services.AddScoped<PersonalCardService>();
         services.AddScoped<ReportDataLoader>();
