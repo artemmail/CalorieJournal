@@ -1,3 +1,13 @@
+<mat-card class="toolbar">
+  <button mat-icon-button routerLink="/analysis">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span class="spacer"></span>
+  <button mat-icon-button (click)="downloadPdf()" [disabled]="processing || loading || !markdown">
+    <mat-icon>picture_as_pdf</mat-icon>
+  </button>
+</mat-card>
+
 <mat-card *ngIf="loading">Загрузка…</mat-card>
 
 <mat-card *ngIf="!loading && processing">Отчёт ещё формируется…</mat-card>
