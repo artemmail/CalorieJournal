@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { StatsService } from '../../services/stats.service';
@@ -18,7 +19,7 @@ interface DayRow {
 @Component({
   selector: 'app-stats',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatCardModule, MatButtonToggleModule, MatFormFieldModule, MatSelectModule],
+  imports: [CommonModule, FormsModule, MatCardModule, MatButtonToggleModule, MatFormFieldModule, MatSelectModule, MatButtonModule],
   templateUrl: './stats.page.html',
   styleUrls: ['./stats.page.scss']
 })
@@ -27,6 +28,9 @@ export class StatsPage implements OnInit {
   selectedPeriod: Period = 'week';
   customStart = '';
   customEnd = '';
+
+  periodStart!: Date;
+  periodEnd!: Date;
 
   data: DayRow[] = [];
   maxCalories = 0;
@@ -60,6 +64,9 @@ export class StatsPage implements OnInit {
       if (this.customStart) start = new Date(this.customStart);
       if (this.customEnd)   end.setTime(new Date(this.customEnd).getTime());
     }
+
+    this.periodStart = start;
+    this.periodEnd = end;
 
     this.stats.getDaily(start, end).subscribe(res => {
       this.data = res.map(d => ({ date: new Date(d.date), totals: d.totals }));
@@ -132,5 +139,23 @@ export class StatsPage implements OnInit {
     if (x < 100)  return Math.round(x / 5) * 5;
     if (x < 1000) return Math.round(x / 10) * 10;
     return Math.round(x / 20) * 20;
+  }
+
+  downloadPdf() {
+    if (!this.periodStart || !this.periodEnd) return;
+
+    this.stats.downloadPdf(this.periodStart, this.periodEnd).subscribe(res => {
+      const blob = res.body;
+      if (!blob) return;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const disposition = res.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      a.download = match ? match[1] : 'report.pdf';
+      a.href = url;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    });
   }
 }
