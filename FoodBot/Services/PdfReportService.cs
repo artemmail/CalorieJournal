@@ -50,6 +50,8 @@ public sealed class PdfReportService
         var sb = new StringBuilder();
         sb.AppendLine("\\documentclass{article}");
         sb.AppendLine("\\usepackage[utf8]{inputenc}");
+        sb.AppendLine("\\usepackage[T2A]{fontenc}");
+        sb.AppendLine("\\usepackage[russian]{babel}");
         sb.AppendLine("\\usepackage{graphicx}");
         sb.AppendLine("\\begin{document}");
         sb.AppendLine("\\section*{Отчёт о питании}");
