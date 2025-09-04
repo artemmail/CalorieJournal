@@ -98,7 +98,7 @@ public sealed class PdfReportService
         var texPath = Path.Combine(tempDir, "report.tex");
         await File.WriteAllTextAsync(texPath, sb.ToString(), ct);
 
-        var psi = new ProcessStartInfo(_latexPath, "-interaction=nonstopmode report.tex")
+        var psi = new ProcessStartInfo(_latexPath, "-interaction=nonstopmode -halt-on-error report.tex")
         {
             WorkingDirectory = tempDir,
             RedirectStandardError = true,
@@ -109,7 +109,15 @@ public sealed class PdfReportService
         {
             if (proc != null)
             {
+                proc.OutputDataReceived += (_, _) => { };
+                proc.ErrorDataReceived += (_, _) => { };
+                proc.BeginOutputReadLine();
+                proc.BeginErrorReadLine();
                 await proc.WaitForExitAsync(ct);
+                if (proc.ExitCode != 0)
+                {
+                    throw new InvalidOperationException($"pdflatex exited with code {proc.ExitCode}");
+                }
             }
         }
 
