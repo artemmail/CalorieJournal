@@ -63,8 +63,3 @@
 
   <div *ngIf="rows.length === 0 && !loading" class="empty">Пока нет сохранённых отчётов.</div>
 </mat-card>
-
-<mat-card *ngIf="selectedMarkdown">
-  <h3>{{ selectedName }}</h3>
-  <div [innerHTML]="selectedMarkdown | markdown"></div>
-</mat-card>

@@ -8,7 +8,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analysis.service';
-import { MarkdownPipe } from '../../pipes/markdown.pipe';
 
 @Component({
   selector: 'app-analysis',
@@ -22,8 +21,7 @@ import { MarkdownPipe } from '../../pipes/markdown.pipe';
     MatIconModule,
     MatMenuModule,
     MatChipsModule,
-    MatSnackBarModule,
-    MarkdownPipe
+    MatSnackBarModule
   ],
   templateUrl: './analysis.page.html',
   styleUrls: ['./analysis.page.scss']
@@ -33,10 +31,6 @@ export class AnalysisPage implements OnInit, OnDestroy {
   rows: ReportRow[] = [];
   loading = false;
   hasProcessing = false;
-
-  selectedMarkdown: string | null = null;
-  selectedName = '';
-  selectedId: number | null = null;
 
   private timer?: any;
 
@@ -81,17 +75,8 @@ export class AnalysisPage implements OnInit, OnDestroy {
     }
   }
 
-  async open(row: ReportRow) {
-    this.selectedId = row.id;
-    this.selectedName = row.name;
-    this.selectedMarkdown = null;
-
-    const res = await this.api.getById(row.id);
-    if (res.status === 'processing') {
-      this.sb.open('Отчёт ещё формируется…', 'OK', { duration: 2500 });
-      return;
-    }
-    this.selectedMarkdown = res.markdown ?? '';
+  open(row: ReportRow) {
+    window.open(`/analysis/${row.id}`, '_blank');
   }
 
   periodLabel(p: AnalysisPeriod) {
