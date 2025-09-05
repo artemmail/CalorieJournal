@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { FoodBotAuthLinkService } from './foodbot-auth-link.service';
 
@@ -22,6 +22,10 @@ export interface DayStats {
 }
 
 @Injectable({ providedIn: 'root' })
+export interface PdfJobResponse {
+  jobId: string;
+}
+
 export class StatsService {
   constructor(private http: HttpClient, private auth: FoodBotAuthLinkService) {}
   private get baseUrl(): string { return this.auth.apiBaseUrl; }
@@ -38,15 +42,11 @@ export class StatsService {
     return this.http.get<DayStats[]>(`${this.baseUrl}/api/stats/daily`, { params });
   }
 
-  downloadPdf(from: Date, to: Date): Observable<HttpResponse<Blob>> {
+  downloadPdf(from: Date, to: Date): Observable<PdfJobResponse> {
     const params = new HttpParams()
       .set('from', this.formatDate(from))
       .set('to', this.formatDate(to));
-    return this.http.get(`${this.baseUrl}/api/report/pdf`, {
-      params,
-      responseType: 'blob',
-      observe: 'response',
-    });
+    return this.http.post<PdfJobResponse>(`${this.baseUrl}/api/report/pdf`, {}, { params });
   }
 
   private formatDate(d: Date): string {

@@ -6,6 +6,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { StatsService } from '../../services/stats.service';
 
 type ViewMode = 'chart' | 'table';
@@ -19,7 +20,7 @@ interface DayRow {
 @Component({
   selector: 'app-stats',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatCardModule, MatButtonToggleModule, MatFormFieldModule, MatSelectModule, MatButtonModule],
+  imports: [CommonModule, FormsModule, MatCardModule, MatButtonToggleModule, MatFormFieldModule, MatSelectModule, MatButtonModule, MatSnackBarModule],
   templateUrl: './stats.page.html',
   styleUrls: ['./stats.page.scss']
 })
@@ -48,7 +49,7 @@ export class StatsPage implements OnInit {
     totalMacroKcal: 0
   };
 
-  constructor(private stats: StatsService) {}
+  constructor(private stats: StatsService, private sb: MatSnackBar) {}
 
   ngOnInit() { this.updatePeriod(); }
 
@@ -143,19 +144,9 @@ export class StatsPage implements OnInit {
 
   downloadPdf() {
     if (!this.periodStart || !this.periodEnd) return;
-
-    this.stats.downloadPdf(this.periodStart, this.periodEnd).subscribe(res => {
-      const blob = res.body;
-      if (!blob) return;
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const disposition = res.headers.get('content-disposition') || '';
-      const match = disposition.match(/filename="?([^";]+)"?/);
-      a.download = match ? match[1] : 'report.pdf';
-      a.href = url;
-      a.click();
-      window.URL.revokeObjectURL(url);
+    this.stats.downloadPdf(this.periodStart, this.periodEnd).subscribe({
+      next: () => this.sb.open('Отчёт поставлен в очередь. Готовый PDF придёт в Telegram.', 'OK', { duration: 3000 }),
+      error: () => this.sb.open('Не удалось поставить отчёт в очередь.', 'Закрыть', { duration: 4000 })
     });
   }
 }
