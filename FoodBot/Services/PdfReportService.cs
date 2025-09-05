@@ -9,6 +9,7 @@ using System.Linq;
 using FoodBot.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FoodBot.Services;
 
@@ -17,10 +18,13 @@ public sealed class PdfReportService
     private readonly BotDbContext _db;
     private readonly string _latexPath;
 
-    public PdfReportService(BotDbContext db, IConfiguration cfg)
+    private readonly ILogger<PdfReportService> _log;
+
+    public PdfReportService(BotDbContext db, IConfiguration cfg, ILogger<PdfReportService> log)
     {
         _db = db;
         _latexPath = cfg["PdfReport:LaTeXPath"] ?? @"C:\texlive\2025\bin\windows\pdflatex";
+        _log = log;
     }
 
     public async Task<(MemoryStream Stream, string FileName)> BuildAsync(
@@ -172,11 +176,17 @@ public sealed class PdfReportService
         {
             if (proc != null)
             {
-                proc.BeginOutputReadLine();
-                proc.BeginErrorReadLine();
-                await proc.WaitForExitAsync(ct);
+                var stdOutTask = proc.StandardOutput.ReadToEndAsync();
+                var stdErrTask = proc.StandardError.ReadToEndAsync();
+                await Task.WhenAll(proc.WaitForExitAsync(ct), stdOutTask, stdErrTask);
                 if (proc.ExitCode != 0)
-                    throw new InvalidOperationException($"pdflatex exited with code {proc.ExitCode}");
+                {
+                    var output = await stdOutTask;
+                    var error = await stdErrTask;
+                    var message = $"pdflatex exited with code {proc.ExitCode}.\nSTDOUT: {output}\nSTDERR: {error}";
+                    _log.LogError(message);
+                    throw new InvalidOperationException(message);
+                }
             }
         }
 
