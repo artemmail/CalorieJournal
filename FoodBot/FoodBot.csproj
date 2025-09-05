@@ -20,4 +20,10 @@
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="System.Net.Http.Json" Version="9.0.8" />
   </ItemGroup>
+
+  <Target Name="BuildClientApp" BeforeTargets="Build">
+    <RemoveDir Directories="$(ProjectDir)wwwroot" />
+    <Exec WorkingDirectory="../mobile/calorie-counter" Command="npm install" />
+    <Exec WorkingDirectory="../mobile/calorie-counter" Command="npm run build -- --output-path ../../FoodBot/wwwroot --configuration production" />
+  </Target>
 </Project>
