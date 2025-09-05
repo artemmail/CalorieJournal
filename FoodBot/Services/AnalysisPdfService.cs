@@ -39,14 +39,16 @@ public sealed class AnalysisPdfService
             RedirectStandardOutput = true
         };
 
-        using var proc = Process.Start(psi)!;
+        using var proc = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start process '{_pandocPath}'");
         var stdErrTask = proc.StandardError.ReadToEndAsync();
         var stdOutTask = proc.StandardOutput.ReadToEndAsync();
+
         await proc.WaitForExitAsync(ct);
+        var stdErr = await stdErrTask;
+        var stdOut = await stdOutTask;
         if (proc.ExitCode != 0)
         {
-            var err = await stdErrTask;
-            throw new InvalidOperationException($"Pandoc exited with code {proc.ExitCode}: {err}");
+            throw new InvalidOperationException($"Pandoc exited with code {proc.ExitCode}. Stdout: {stdOut}\nStderr: {stdErr}");
         }
 
         var bytes = await File.ReadAllBytesAsync(pdfPath, ct);
