@@ -39,6 +39,7 @@ export interface MealListItem {
   ingredients: string[];
   products: ProductInfo[];
   hasImage: boolean;
+  updateQueued: boolean;
   expanded?: boolean;
 }
 

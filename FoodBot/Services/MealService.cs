@@ -24,6 +24,11 @@ public sealed class MealService : IMealService
 
         var total = await baseQuery.CountAsync(ct);
 
+        var pendingIds = await _repo.PendingClarifies.AsNoTracking()
+            .Where(p => p.ChatId == chatId)
+            .Select(p => p.MealId)
+            .ToListAsync(ct);
+
         var rows = await baseQuery
             .Skip(offset)
             .Take(limit)
@@ -56,7 +61,8 @@ public sealed class MealService : IMealService
                 ? Array.Empty<string>()
                 : (JsonSerializer.Deserialize<string[]>(r.IngredientsJson!) ?? Array.Empty<string>()),
             ProductJsonHelper.DeserializeProducts(r.ProductsJson),
-            r.HasImage
+            r.HasImage,
+            pendingIds.Contains(r.Id)
         )).ToList();
 
         return new MealListResult(total, offset, limit, items);

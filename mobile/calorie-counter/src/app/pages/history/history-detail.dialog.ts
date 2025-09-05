@@ -86,6 +86,7 @@ export class HistoryDetailDialogComponent implements OnInit {
       }
       if ('queued' in r && r.queued) {
         this.clarifyNote = r.note ?? this.clarifyNote;
+        this.data.item.updateQueued = true;
         this.snack.open('Уточнение отправлено', 'OK', { duration: 1500 });
         return;
       }
@@ -102,6 +103,7 @@ export class HistoryDetailDialogComponent implements OnInit {
       this.data.item.weightG = res.result.weight_g;
       this.data.item.ingredients = res.result.ingredients;
       this.data.item.products = res.products;
+      this.data.item.updateQueued = false;
       this.snack.open('Уточнение применено', 'OK', { duration: 1500 });
       this.dialogRef.close();
     });

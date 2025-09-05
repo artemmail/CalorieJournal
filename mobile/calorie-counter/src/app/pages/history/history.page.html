@@ -23,6 +23,7 @@
           <div class="macros">
             Б {{ m.proteinsG ?? "—" }} · Ж {{ m.fatsG ?? "—" }} · У {{ m.carbsG ?? "—" }} · {{ m.weightG ?? "—" }} г
           </div>
+          <div class="queued" *ngIf="m.updateQueued">Обновляется…</div>
           <div class="ing" *ngIf="m.ingredients?.length">Ингредиенты: {{ m.ingredients.join(", ") }}</div>
         </div>
       </div>

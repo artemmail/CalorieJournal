@@ -10,9 +10,9 @@ using Xunit;
 
 public class MealServiceTests
 {
-    private MealService CreateService(List<MealEntry> meals)
+    private MealService CreateService(List<MealEntry> meals, List<PendingClarify>? clarifies = null)
     {
-        var repo = new FakeRepo(meals);
+        var repo = new FakeRepo(meals, clarifies ?? new());
         return new MealService(repo);
     }
 
@@ -20,13 +20,14 @@ public class MealServiceTests
     {
         private readonly BotDbContext _ctx;
 
-        public FakeRepo(IEnumerable<MealEntry> meals)
+        public FakeRepo(IEnumerable<MealEntry> meals, IEnumerable<PendingClarify> clarifies)
         {
             var options = new DbContextOptionsBuilder<BotDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
             _ctx = new BotDbContext(options);
             _ctx.Meals.AddRange(meals);
+            _ctx.PendingClarifies.AddRange(clarifies);
             _ctx.SaveChanges();
         }
 
@@ -71,5 +72,18 @@ public class MealServiceTests
         Assert.Empty(list.Items);
         ok = await service.DeleteAsync(1, 1, CancellationToken.None);
         Assert.False(ok);
+    }
+
+    [Fact]
+    public async Task ListAsync_FlagsQueuedUpdates()
+    {
+        var meal = new MealEntry { Id = 1, ChatId = 1, CreatedAtUtc = DateTimeOffset.UtcNow, FileId = "f" };
+        var clarifies = new List<PendingClarify>
+        {
+            new PendingClarify { Id = 1, ChatId = 1, MealId = 1, Note = "n", CreatedAtUtc = DateTimeOffset.UtcNow, Attempts = 0 }
+        };
+        var service = CreateService(new List<MealEntry> { meal }, clarifies);
+        var res = await service.ListAsync(1, 10, 0, CancellationToken.None);
+        Assert.True(res.Items.Single().UpdateQueued);
     }
 }
