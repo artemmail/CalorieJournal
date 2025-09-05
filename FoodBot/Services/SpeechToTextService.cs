@@ -31,33 +31,61 @@ namespace FoodBot.Services
         /// <param name="language">Код языка ISO (например, "ru" или "en"). Можно null — автоопределение.</param>
         public async Task<string?> TranscribeAsync(byte[] audioBytes, string? language, string? fileName, string? contentType, CancellationToken ct)
         {
-            using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/audio/transcriptions");
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            const int maxAttempts = 3;
+            Exception? lastError = null;
 
-            var form = new MultipartFormDataContent();
+            for (var attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                try
+                {
+                    using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/audio/transcriptions");
+                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
-            var file = new ByteArrayContent(audioBytes);
-            file.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
-            form.Add(file, "file", string.IsNullOrWhiteSpace(fileName) ? "audio.ogg" : fileName);
+                    var form = new MultipartFormDataContent();
 
-            form.Add(new StringContent(_model), "model");
-            form.Add(new StringContent("json"), "response_format");
-            if (!string.IsNullOrWhiteSpace(language))
-                form.Add(new StringContent(language), "language");
+                    var file = new ByteArrayContent(audioBytes);
+                    file.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+                    form.Add(file, "file", string.IsNullOrWhiteSpace(fileName) ? "audio.ogg" : fileName);
 
-            req.Content = form;
+                    form.Add(new StringContent(_model), "model");
+                    form.Add(new StringContent("json"), "response_format");
+                    if (!string.IsNullOrWhiteSpace(language))
+                        form.Add(new StringContent(language), "language");
 
-            using var resp = await _http.SendAsync(req, ct);
-            var text = await resp.Content.ReadAsStringAsync(ct);
+                    req.Content = form;
 
-            if (!resp.IsSuccessStatusCode)
-                throw new InvalidOperationException($"OpenAI STT error {(int)resp.StatusCode}: {text}");
+                    using var resp = await _http.SendAsync(req, ct);
+                    var text = await resp.Content.ReadAsStringAsync(ct);
 
-            using var doc = JsonDocument.Parse(text);
-            if (doc.RootElement.TryGetProperty("text", out var te))
-                return te.GetString();
+                    if (!resp.IsSuccessStatusCode)
+                        throw new HttpRequestException($"OpenAI STT error {(int)resp.StatusCode}: {text}");
 
-            return null;
+                    using var doc = JsonDocument.Parse(text);
+                    if (doc.RootElement.TryGetProperty("text", out var te))
+                        return te.GetString();
+
+                    return null;
+                }
+                catch (HttpRequestException ex)
+                {
+                    lastError = ex;
+                }
+                catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+                {
+                    lastError = ex;
+                }
+
+                if (lastError != null)
+                {
+                    if (attempt == maxAttempts - 1)
+                        throw new InvalidOperationException(lastError.Message, lastError);
+
+                    var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    await Task.Delay(delay, ct);
+                }
+            }
+
+            throw new InvalidOperationException(lastError?.Message ?? "unknown error", lastError);
         }
     }
 }
