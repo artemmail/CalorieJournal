@@ -7,12 +7,21 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { Router } from "@angular/router";
 import { FoodBotAuthLinkService, ExchangeStartCodeResponse } from "../../services/foodbot-auth-link.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTabsModule } from "@angular/material/tabs";
 import { showErrorAlert } from "../../utils/alerts";
 
 @Component({
   selector: "app-auth",
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatSnackBarModule, MatProgressSpinnerModule],
+    imports: [
+      CommonModule,
+      MatCardModule,
+      MatButtonModule,
+      MatIconModule,
+      MatSnackBarModule,
+      MatProgressSpinnerModule,
+      MatTabsModule
+    ],
   templateUrl: "./auth.page.html",
   styleUrls: ["./auth.page.scss"]
 })
