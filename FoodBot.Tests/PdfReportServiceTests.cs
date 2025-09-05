@@ -6,6 +6,7 @@ using FoodBot.Data;
 using FoodBot.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 public class PdfReportServiceTests
@@ -43,7 +44,9 @@ public class PdfReportServiceTests
             })
             .Build();
 
-        var service = new PdfReportService(ctx, cfg);
+        using var loggerFactory = LoggerFactory.Create(b => { });
+        var logger = loggerFactory.CreateLogger<PdfReportService>();
+        var service = new PdfReportService(ctx, cfg, logger);
         var (stream, fileName) = await service.BuildAsync(1, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
 
         Assert.False(string.IsNullOrEmpty(fileName));
