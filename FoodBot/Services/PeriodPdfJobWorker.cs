@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 using System.IO;
 
 namespace FoodBot.Services;
@@ -29,7 +28,6 @@ public sealed class PeriodPdfJobWorker : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
                 var pdf = scope.ServiceProvider.GetRequiredService<PdfReportService>();
-                var bot = scope.ServiceProvider.GetRequiredService<TelegramBotClient>();
 
                 var job = await db.PeriodPdfJobs
                     .Where(j => j.Status == PeriodPdfJobStatus.Queued)
@@ -57,13 +55,28 @@ public sealed class PeriodPdfJobWorker : BackgroundService
                         await stream.CopyToAsync(fs, stoppingToken);
                     }
 
-                    await using (var sendStream = File.OpenRead(filePath))
+                    job.FilePath = filePath;
+
+                    var bot = scope.ServiceProvider.GetService<ITelegramBotClient>();
+                    if (bot != null)
                     {
-                        await bot.SendDocument(job.ChatId, InputFile.FromStream(sendStream, fileName), cancellationToken: stoppingToken);
+                        var sender = new TelegramPdfSender(bot);
+                        try
+                        {
+                            await using var sendStream = File.OpenRead(filePath);
+                            await sender.SendAsync(job.ChatId, sendStream, fileName, stoppingToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.LogError(ex, "Failed to send period PDF job {Id}", job.Id);
+                        }
+                    }
+                    else
+                    {
+                        _log.LogWarning("ITelegramBotClient not available for period PDF job {Id}", job.Id);
                     }
 
                     job.Status = PeriodPdfJobStatus.Done;
-                    job.FilePath = filePath;
                     job.FinishedAtUtc = DateTimeOffset.UtcNow;
                     await db.SaveChangesAsync(stoppingToken);
                 }
