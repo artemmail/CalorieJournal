@@ -96,6 +96,7 @@ public sealed class MealService : IMealService
             m.Confidence,
             ingredients,
             products,
+            m.ClarifyNote,
             step1,
             m.ReasoningPrompt,
             m.ImageBytes != null && m.ImageBytes.Length > 0
@@ -168,12 +169,16 @@ public sealed class MealService : IMealService
                 m.Confidence,
                 ingredients,
                 products,
+                m.ClarifyNote,
                 step1,
                 m.ReasoningPrompt,
                 m.ImageBytes != null && m.ImageBytes.Length > 0
             );
             return new ClarifyTextResult(false, details);
         }
+
+        m.ClarifyNote = note;
+        await _repo.SaveChangesAsync(ct);
 
         var pending = new PendingClarify
         {

@@ -43,6 +43,7 @@ public sealed record MealDetails
     decimal? Confidence,
     string[] Ingredients,
     FoodBot.Models.ProductInfo[] Products,
+    string? ClarifyNote,
     Step1Snapshot? Step1,
     string? ReasoningPrompt,
     bool HasImage

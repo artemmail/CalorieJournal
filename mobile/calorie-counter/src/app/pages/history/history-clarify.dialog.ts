@@ -156,7 +156,7 @@ export class HistoryClarifyDialogComponent {
   readonly initialTime: string;
 
   constructor(
-    @Inject(MAT_DIALOG_DATA) public data: { mealId: number; createdAtUtc: string },
+    @Inject(MAT_DIALOG_DATA) public data: { mealId: number; createdAtUtc: string; note?: string },
     private api: FoodbotApiService,
     private snack: MatSnackBar,
     public dialogRef: MatDialogRef<HistoryClarifyDialogComponent>
@@ -165,6 +165,7 @@ export class HistoryClarifyDialogComponent {
     const pad = (n: number) => n.toString().padStart(2, '0');
     this.time = `${pad(this.createdAt.getHours())}:${pad(this.createdAt.getMinutes())}`;
     this.initialTime = this.time;
+    this.note = data.note ?? '';
   }
 
   async startRecord(ev: Event) {
@@ -222,12 +223,12 @@ export class HistoryClarifyDialogComponent {
     this.api.clarifyText(this.data.mealId, note || undefined, iso).subscribe({
       next: (r: ClarifyResult | { queued: boolean }) => {
         if ((r as any).queued) {
-          this.dialogRef.close({ queued: true });
+          this.dialogRef.close({ queued: true, note });
           return;
         }
         const res = r as ClarifyResult;
         const createdAtUtc = iso ?? this.data.createdAtUtc;
-        this.dialogRef.close({ ...res, createdAtUtc });
+        this.dialogRef.close({ ...res, createdAtUtc, note });
       },
       error: () => {
         this.snack.open('Ошибка уточнения', 'OK', { duration: 1500 });
