@@ -1,7 +1,9 @@
 using System.Threading;
 using System.Threading.Tasks;
+using FoodBot.Data;
 using FoodBot.Models;
 using FoodBot.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,12 +15,12 @@ namespace FoodBot.Controllers;
 public sealed class AnalysisController : ControllerBase
 {
     private readonly DietAnalysisService _service;
-    private readonly AnalysisPdfService _pdf;
+    private readonly BotDbContext _db;
 
-    public AnalysisController(DietAnalysisService service, AnalysisPdfService pdf)
+    public AnalysisController(DietAnalysisService service, BotDbContext db)
     {
         _service = service;
-        _pdf = pdf;
+        _db = db;
     }
 
     // История
@@ -84,8 +86,32 @@ public sealed class AnalysisController : ControllerBase
         if (r == null) return NotFound();
         if (r.IsProcessing || string.IsNullOrEmpty(r.Markdown)) return BadRequest();
 
-        var (stream, fileName) = await _pdf.BuildAsync(r.Name ?? $"report_{id}", r.Markdown, ct);
-        stream.Position = 0;
+        var job = new AnalysisPdfJob
+        {
+            ChatId = chatId,
+            ReportId = id,
+            Status = AnalysisPdfJobStatus.Queued,
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+        _db.AnalysisPdfJobs.Add(job);
+        await _db.SaveChangesAsync(ct);
+
+        return Accepted(new { id = job.Id, status = job.Status.ToString().ToLower() });
+    }
+
+    [HttpGet("pdf-jobs/{id:long}")]
+    public async Task<IActionResult> GetPdfJob([FromRoute] long id, CancellationToken ct)
+    {
+        var chatId = User.GetChatId();
+        var job = await _db.AnalysisPdfJobs.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.ChatId == chatId, ct);
+        if (job == null) return NotFound();
+
+        if (job.Status != AnalysisPdfJobStatus.Done || string.IsNullOrEmpty(job.FilePath) || !System.IO.File.Exists(job.FilePath))
+            return Accepted(new { status = job.Status.ToString().ToLower() });
+
+        var stream = System.IO.File.OpenRead(job.FilePath);
+        var fileName = System.IO.Path.GetFileName(job.FilePath);
         return File(stream, "application/pdf", fileName);
     }
 
