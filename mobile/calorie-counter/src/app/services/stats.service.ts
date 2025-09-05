@@ -21,11 +21,11 @@ export interface DayStats {
   totals: MacroTotals;
 }
 
-@Injectable({ providedIn: 'root' })
 export interface PdfJobResponse {
   jobId: string;
 }
 
+@Injectable({ providedIn: 'root' })
 export class StatsService {
   constructor(private http: HttpClient, private auth: FoodBotAuthLinkService) {}
   private get baseUrl(): string { return this.auth.apiBaseUrl; }
