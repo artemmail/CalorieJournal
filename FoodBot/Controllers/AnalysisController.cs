@@ -79,7 +79,7 @@ public sealed class AnalysisController : ControllerBase
         });
     }
 
-    [HttpGet("{id:long}/pdf")]
+    [HttpPost("{id:long}/pdf")]
     public async Task<IActionResult> GetPdf([FromRoute] long id, CancellationToken ct)
     {
         var chatId = User.GetChatId();
