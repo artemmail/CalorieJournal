@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { firstValueFrom, Observable } from 'rxjs';
+import { firstValueFrom, Observable, EMPTY, timer } from 'rxjs';
+import { filter, switchMap, take } from 'rxjs/operators';
 import { FoodBotAuthLinkService } from './foodbot-auth-link.service';
 
 export type AnalysisPeriod = 'day' | 'week' | 'month' | 'quarter';
@@ -31,6 +32,14 @@ export interface GetReportResponse {
   period?: AnalysisPeriod;
 }
 
+export interface PdfJobResponse {
+  jobId: string;
+}
+
+export interface PdfJobStatusResponse {
+  status: 'processing' | 'ready';
+}
+
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
   constructor(private http: HttpClient, private auth: FoodBotAuthLinkService) {}
@@ -58,11 +67,31 @@ export class AnalysisService {
     );
   }
 
-  /** Скачать отчёт в PDF */
+  /** Запустить генерацию PDF и скачать, когда будет готово */
   downloadPdf(id: number): Observable<HttpResponse<Blob>> {
-    return this.http.get(`${this.baseUrl}/api/analysis/${id}/pdf`, {
-      responseType: 'blob',
-      observe: 'response',
-    });
+    return this.createPdfJob(id).pipe(
+      switchMap(res => this.pollPdfJob(res.jobId))
+    );
+  }
+
+  /** Запросить создание PDF, возвращает идентификатор задания */
+  createPdfJob(id: number): Observable<PdfJobResponse> {
+    return this.http.post<PdfJobResponse>(`${this.baseUrl}/api/analysis/${id}/pdf`, {});
+  }
+
+  /** Опросить статус задания до готовности и скачать файл */
+  pollPdfJob(jobId: string): Observable<HttpResponse<Blob>> {
+    return timer(0, 1000).pipe(
+      switchMap(() => this.http.get<PdfJobStatusResponse>(`${this.baseUrl}/api/analysis/pdf-jobs/${jobId}`)),
+      switchMap(res => {
+        if (res.status !== 'ready') return EMPTY;
+        return this.http.get(`${this.baseUrl}/api/analysis/pdf-jobs/${jobId}`, {
+          responseType: 'blob',
+          observe: 'response',
+        });
+      }),
+      filter(x => !!x),
+      take(1)
+    );
   }
 }

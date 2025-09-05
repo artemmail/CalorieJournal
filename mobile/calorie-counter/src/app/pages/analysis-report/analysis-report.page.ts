@@ -4,13 +4,14 @@ import { ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AnalysisService } from '../../services/analysis.service';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 
 @Component({
   selector: 'app-analysis-report',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MarkdownPipe],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatSnackBarModule, MarkdownPipe],
   templateUrl: './analysis-report.page.html',
   styleUrls: ['./analysis-report.page.scss']
 })
@@ -21,7 +22,7 @@ export class AnalysisReportPage implements OnInit {
   loading = false;
   id = 0;
 
-  constructor(private route: ActivatedRoute, private api: AnalysisService) {}
+  constructor(private route: ActivatedRoute, private api: AnalysisService, private sb: MatSnackBar) {}
 
   async ngOnInit() {
     this.id = Number(this.route.snapshot.paramMap.get('id'));
@@ -41,17 +42,9 @@ export class AnalysisReportPage implements OnInit {
 
   downloadPdf() {
     if (!this.id) return;
-    this.api.downloadPdf(this.id).subscribe(res => {
-      const blob = res.body;
-      if (!blob) return;
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const disposition = res.headers.get('content-disposition') || '';
-      const match = disposition.match(/filename="?([^";]+)"?/);
-      a.download = match ? match[1] : 'report.pdf';
-      a.href = url;
-      a.click();
-      window.URL.revokeObjectURL(url);
+    this.api.createPdfJob(this.id).subscribe({
+      next: () => this.sb.open('Отчёт поставлен в очередь. Готовый PDF придёт в Telegram.', 'OK', { duration: 3000 }),
+      error: () => this.sb.open('Не удалось поставить отчёт в очередь.', 'Закрыть', { duration: 4000 })
     });
   }
 }
