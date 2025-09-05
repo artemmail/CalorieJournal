@@ -89,7 +89,9 @@ export class HistoryDetailDialogComponent implements OnInit {
         this.snack.open('Уточнение отправлено', 'OK', { duration: 1500 });
         return;
       }
-      this.clarifyNote = r.note ?? this.clarifyNote;
+      if ('note' in r) {
+        this.clarifyNote = r.note ?? this.clarifyNote;
+      }
       const res = r as ClarifyResult;
       this.data.item.createdAtUtc = res.createdAtUtc;
       this.data.item.dishName = res.result.dish;
