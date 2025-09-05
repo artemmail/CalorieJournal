@@ -18,8 +18,8 @@ public sealed class PdfReportController : ControllerBase
         _db = db;
     }
 
-    [HttpGet("pdf")]
-    public async Task<IActionResult> Get(
+    [HttpPost("pdf")]
+    public async Task<IActionResult> Post(
         [FromQuery] DateTime from,
         [FromQuery] DateTime to,
         CancellationToken ct = default)
