@@ -27,7 +27,8 @@ public sealed record MealListItem
     decimal? CarbsG,
     string[] Ingredients,
     FoodBot.Models.ProductInfo[] Products,
-    bool HasImage
+    bool HasImage,
+    bool UpdateQueued
 );
 
 public sealed record MealDetails
