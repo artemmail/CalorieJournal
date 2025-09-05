@@ -52,4 +52,49 @@ public class PdfReportServiceTests
         Assert.False(string.IsNullOrEmpty(fileName));
         Assert.True(stream.Length > 0);
     }
+
+    [Fact]
+    public async Task BuildAsync_SupportsPngImages()
+    {
+        var options = new DbContextOptionsBuilder<BotDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        using var ctx = new BotDbContext(options);
+        ctx.PersonalCards.Add(new PersonalCard
+        {
+            ChatId = 1,
+            Name = "Test User",
+            BirthYear = 2000,
+            DietGoals = "Goal",
+            MedicalRestrictions = "None"
+        });
+        ctx.Meals.Add(new MealEntry
+        {
+            Id = 1,
+            ChatId = 1,
+            UserId = 1,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            FileId = "file",
+            DishName = "Салат",
+            ImageBytes = Convert.FromBase64String(
+                "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAEklEQVR4nGP8z4APMOGVHbHSAEEsAROxCnMTAAAAAElFTkSuQmCC"),
+            FileMime = "image/png"
+        });
+        await ctx.SaveChangesAsync();
+
+        var cfg = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["PdfReport:LaTeXPath"] = "pdflatex"
+            })
+            .Build();
+
+        using var loggerFactory = LoggerFactory.Create(b => { });
+        var logger = loggerFactory.CreateLogger<PdfReportService>();
+        var service = new PdfReportService(ctx, cfg, logger);
+        var (stream, fileName) = await service.BuildAsync(1, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
+
+        Assert.False(string.IsNullOrEmpty(fileName));
+        Assert.True(stream.Length > 0);
+    }
 }

@@ -113,7 +113,18 @@ public sealed class PdfReportService
             string? imgFile = null;
             if (m.ImageBytes?.Length > 0)
             {
-                imgFile = Path.Combine(tempDir, $"img{i}.jpg");
+                var ext = "jpg";
+                if (!string.IsNullOrWhiteSpace(m.FileMime))
+                {
+                    var mime = m.FileMime.ToLowerInvariant();
+                    var idx = mime.IndexOf('/');
+                    if (idx >= 0 && idx < mime.Length - 1)
+                    {
+                        ext = mime.Substring(idx + 1);
+                        if (ext == "jpeg") ext = "jpg";
+                    }
+                }
+                imgFile = Path.Combine(tempDir, $"img{i}.{ext}");
                 await File.WriteAllBytesAsync(imgFile, m.ImageBytes, ct);
             }
 
