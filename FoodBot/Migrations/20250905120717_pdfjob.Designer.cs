@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FoodBot.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    [Migration("20250905094932_AnalysisPdfJobs")]
-    partial class AnalysisPdfJobs
+    [Migration("20250905120717_pdfjob")]
+    partial class pdfjob
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
