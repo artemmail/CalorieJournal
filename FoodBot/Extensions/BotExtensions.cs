@@ -101,7 +101,8 @@ public static class BotExtensions
 
         var botToken = cfg["Telegram:BotToken"]
                        ?? throw new InvalidOperationException("Telegram:BotToken missing");
-        services.AddSingleton(new TelegramBotClient(botToken));
+        services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botToken));
+        services.AddSingleton(sp => (TelegramBotClient)sp.GetRequiredService<ITelegramBotClient>());
         services.AddSingleton<UpdateHandler>();
         services.AddHostedService<LongPollingService>();
 
