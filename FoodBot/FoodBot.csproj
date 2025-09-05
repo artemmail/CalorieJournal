@@ -24,6 +24,6 @@
   <Target Name="BuildClientApp" BeforeTargets="Build">
     <RemoveDir Directories="$(ProjectDir)wwwroot" />
     <Exec WorkingDirectory="../mobile/calorie-counter" Command="npm install" />
-    <Exec WorkingDirectory="../mobile/calorie-counter" Command="npm run build -- --output-path ../../FoodBot/wwwroot --configuration production" />
+    <Exec WorkingDirectory="../mobile/calorie-counter" Command="npm run build -- --configuration production" />
   </Target>
 </Project>
