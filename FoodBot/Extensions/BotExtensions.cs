@@ -69,6 +69,7 @@ public static class BotExtensions
         services.AddScoped<IAppAuthService, AppAuthService>();
         services.AddHostedService<AnalysisQueueWorker>();
         services.AddHostedService<PhotoQueueWorker>();
+        services.AddHostedService<PeriodPdfJobWorker>();
 
         services
             .AddControllers()

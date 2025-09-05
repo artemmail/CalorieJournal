@@ -1,6 +1,8 @@
+using FoodBot.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using FoodBot.Services;
+using Microsoft.EntityFrameworkCore;
+using System.IO;
 
 namespace FoodBot.Controllers;
 
@@ -9,11 +11,11 @@ namespace FoodBot.Controllers;
 [Authorize(AuthenticationSchemes = "Bearer")]
 public sealed class PdfReportController : ControllerBase
 {
-    private readonly PdfReportService _reports;
+    private readonly BotDbContext _db;
 
-    public PdfReportController(PdfReportService reports)
+    public PdfReportController(BotDbContext db)
     {
-        _reports = reports;
+        _db = db;
     }
 
     [HttpGet("pdf")]
@@ -22,9 +24,39 @@ public sealed class PdfReportController : ControllerBase
         [FromQuery] DateTime to,
         CancellationToken ct = default)
     {
-        var (stream, fileName) = await _reports.BuildAsync(User.GetChatId(), from, to, ct);
-        stream.Position = 0;
-        return File(stream, "application/pdf", fileName);
+        var job = new PeriodPdfJob
+        {
+            ChatId = User.GetChatId(),
+            From = from,
+            To = to,
+            Status = PeriodPdfJobStatus.Queued,
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+        _db.PeriodPdfJobs.Add(job);
+        await _db.SaveChangesAsync(ct);
+        return Accepted(new { id = job.Id });
+    }
+
+    [HttpGet("pdf-jobs/{id:long}")]
+    public async Task<IActionResult> GetJob([FromRoute] long id, CancellationToken ct = default)
+    {
+        var chatId = User.GetChatId();
+        var job = await _db.PeriodPdfJobs.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.ChatId == chatId, ct);
+        if (job == null) return NotFound();
+
+        if (job.Status == PeriodPdfJobStatus.Done &&
+            !string.IsNullOrEmpty(job.FilePath) && System.IO.File.Exists(job.FilePath))
+        {
+            var bytes = await System.IO.File.ReadAllBytesAsync(job.FilePath, ct);
+            var fn = Path.GetFileName(job.FilePath);
+            return File(bytes, "application/pdf", fn);
+        }
+
+        if (job.Status == PeriodPdfJobStatus.Error)
+            return Ok(new { status = "error" });
+
+        return Accepted(new { status = job.Status.ToString().ToLowerInvariant() });
     }
 }
 
