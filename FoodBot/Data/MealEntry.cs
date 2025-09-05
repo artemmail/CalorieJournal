@@ -35,4 +35,7 @@ public class MealEntry
     // NEW: snapshot шага 1 и (необяз.) последний reasoning-промпт
     public string? Step1Json { get; set; }
     public string? ReasoningPrompt { get; set; }
+
+    // Последнее уточнение от пользователя
+    public string? ClarifyNote { get; set; }
 }

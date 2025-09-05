@@ -62,6 +62,7 @@ namespace FoodBot.Controllers
                 m.Confidence,
                 Ingredients = m.Ingredients,
                 Products = m.Products,
+                ClarifyNote = m.ClarifyNote,
                 Step1 = m.Step1,
                 ReasoningPrompt = m.ReasoningPrompt,
                 HasImage = m.HasImage
@@ -124,6 +125,7 @@ namespace FoodBot.Controllers
                     confidence = d.Confidence
                 },
                 Products = d.Products,
+                ClarifyNote = d.ClarifyNote,
                 Step1 = d.Step1,
                 ReasoningPrompt = d.ReasoningPrompt,
                 CalcPlanJson = string.Empty

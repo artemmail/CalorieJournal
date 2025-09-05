@@ -61,6 +61,7 @@ export interface MealDetails {
   confidence: number | null;
   ingredients: string[];
   products: ProductInfo[];
+  clarifyNote: string | null;
   step1: Step1Snapshot | null;
   reasoningPrompt: string | null;
   hasImage: boolean;

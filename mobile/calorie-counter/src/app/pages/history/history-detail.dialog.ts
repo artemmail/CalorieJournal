@@ -26,6 +26,8 @@ export class HistoryDetailDialogComponent implements OnInit {
 
   @ViewChild('photo') photo?: ElementRef<HTMLImageElement>;
 
+  private clarifyNote = '';
+
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { item: MealListItem; imageUrl: string },
     private api: FoodbotApiService,
@@ -39,6 +41,7 @@ export class HistoryDetailDialogComponent implements OnInit {
       next: d => {
         this.data.item.ingredients = d.ingredients;
         this.data.item.products = d.products;
+        this.clarifyNote = d.clarifyNote ?? '';
         this.fitDialog(); // поджать после прихода данных
       },
       error: () => {}
@@ -72,19 +75,21 @@ export class HistoryDetailDialogComponent implements OnInit {
 
   openClarify() {
     const ref = this.dialog.open(HistoryClarifyDialogComponent, {
-      data: { mealId: this.data.item.id, createdAtUtc: this.data.item.createdAtUtc }
+      data: { mealId: this.data.item.id, createdAtUtc: this.data.item.createdAtUtc, note: this.clarifyNote }
     });
-    ref.afterClosed().subscribe((r: ClarifyResult | { deleted: true } | { queued: true } | undefined) => {
+    ref.afterClosed().subscribe((r: (ClarifyResult & { note?: string }) | { deleted: true } | { queued: true; note?: string } | undefined) => {
       if (!r) return;
-      if ((r as any).deleted) {
+      if ('deleted' in r && r.deleted) {
         this.snack.open('Запись удалена', 'OK', { duration: 1500 });
         this.dialogRef.close({ deleted: true });
         return;
       }
-      if ((r as any).queued) {
+      if ('queued' in r && r.queued) {
+        this.clarifyNote = r.note ?? this.clarifyNote;
         this.snack.open('Уточнение отправлено', 'OK', { duration: 1500 });
         return;
       }
+      this.clarifyNote = r.note ?? this.clarifyNote;
       const res = r as ClarifyResult;
       this.data.item.createdAtUtc = res.createdAtUtc;
       this.data.item.dishName = res.result.dish;
