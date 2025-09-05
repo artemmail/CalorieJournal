@@ -15,6 +15,7 @@ public class BotDbContext : DbContext
     public DbSet<PersonalCard> PersonalCards => Set<PersonalCard>();
     public DbSet<AnalysisReport1> AnalysisReports2 => Set<AnalysisReport1>();
     public DbSet<PeriodPdfJob> PeriodPdfJobs => Set<PeriodPdfJob>();
+    public DbSet<AnalysisPdfJob> AnalysisPdfJobs => Set<AnalysisPdfJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +47,9 @@ public class BotDbContext : DbContext
         modelBuilder.Entity<PeriodPdfJob>()
             .HasIndex(x => new { x.ChatId, x.CreatedAtUtc });
 
-       
+        modelBuilder.Entity<AnalysisPdfJob>()
+            .HasIndex(x => new { x.ChatId, x.CreatedAtUtc });
+
+
     }
 }

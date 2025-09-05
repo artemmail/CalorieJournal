@@ -64,12 +64,13 @@ public static class BotExtensions
         services.AddScoped<AnalysisGenerator>();
         services.AddScoped<DietAnalysisService>();
         services.AddScoped<AnalysisPdfService>();
-        services.AddScoped<IMealRepository, MealRepository>();
-        services.AddScoped<IMealService, MealService>();
-        services.AddScoped<IAppAuthService, AppAuthService>();
-        services.AddHostedService<AnalysisQueueWorker>();
-        services.AddHostedService<PhotoQueueWorker>();
-        services.AddHostedService<PeriodPdfJobWorker>();
+          services.AddScoped<IMealRepository, MealRepository>();
+          services.AddScoped<IMealService, MealService>();
+          services.AddScoped<IAppAuthService, AppAuthService>();
+          services.AddHostedService<AnalysisQueueWorker>();
+          services.AddHostedService<PhotoQueueWorker>();
+          services.AddHostedService<PeriodPdfJobWorker>();
+          services.AddHostedService<AnalysisPdfJobWorker>();
 
         services
             .AddControllers()
