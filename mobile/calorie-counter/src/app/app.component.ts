@@ -1,4 +1,4 @@
-import { Component, ViewChild } from "@angular/core";
+import { Component, ViewChild, OnInit } from "@angular/core";
 import { RouterOutlet, Router, NavigationEnd } from "@angular/router";
 import { filter } from 'rxjs/operators';
 import { MatToolbarModule } from "@angular/material/toolbar";
@@ -6,6 +6,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatSidenavModule, MatSidenav } from "@angular/material/sidenav";
 import { SideMenuComponent } from "./components/side-menu/side-menu.component";
+import { StatusBar } from "@capacitor/status-bar";
 
 @Component({
   selector: "app-root",
@@ -14,7 +15,7 @@ import { SideMenuComponent } from "./components/side-menu/side-menu.component";
   templateUrl: "./app.component.html",
   styleUrls: ["./app.component.scss"],
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'calorie-counter';
   @ViewChild('drawer') drawer!: MatSidenav;
 
@@ -26,5 +27,9 @@ export class AppComponent {
           this.drawer.close();
         }
       });
+  }
+
+  async ngOnInit() {
+    await StatusBar.setOverlaysWebView({ overlay: false });
   }
 }
