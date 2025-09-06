@@ -3,7 +3,7 @@
 const config: CapacitorConfig = {
   appId: 'com.yourscriptor.calorie',
   appName: 'HealthyMeals',
-  webDir: 'dist/calorie-counter/browser',
+  webDir: '../../FoodBot/wwwroot',
   bundledWebRuntime: false,
   android: { allowMixedContent: true }
 };
