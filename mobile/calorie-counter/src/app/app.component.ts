@@ -1,5 +1,5 @@
 import { Component, ViewChild, OnInit } from "@angular/core";
-import { RouterOutlet, Router, NavigationEnd } from "@angular/router";
+import { RouterOutlet, Router, NavigationEnd, RouterLink, RouterLinkActive } from "@angular/router";
 import { filter } from 'rxjs/operators';
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { MatIconModule } from "@angular/material/icon";
@@ -11,7 +11,7 @@ import { StatusBar } from "@capacitor/status-bar";
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, MatToolbarModule, MatIconModule, MatButtonModule, MatSidenavModule, SideMenuComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatToolbarModule, MatIconModule, MatButtonModule, MatSidenavModule, SideMenuComponent],
   templateUrl: "./app.component.html",
   styleUrls: ["./app.component.scss"],
 })
