@@ -1,51 +1,67 @@
-:host {
-  display: block;
-}
+:host { display: block; }
 
-.app-shell {
-  position: relative;
-}
+.app-shell { position: relative; }
 
 .app-drawer {
   width: 260px;
   z-index: 1000;
 }
 
+/* Контент ниже, но вкладыши мы вынесли ВНЕ этого блока */
 .app-content {
   display: flex;
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
+  position: relative;
+  /* Можно явно задать фон, но это НЕ повлияет на вкладыши сверху/снизу */
+  background: var(--mat-sys-surface, #ffffff);
 }
 
-.topbar {
+/* --- SAFE-AREA ВКЛАДЫШИ (КРАСНЫЕ) --- */
+/* Выше слоя контента/тулбаров, чтобы точно было видно */
+.safe-top,
+.safe-bottom {
   position: fixed;
-  top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
-  padding-top: var(--ion-safe-area-top, env(safe-area-inset-top, 0px));
+  z-index: 9999;               /* очень высоко, поверх всего */
+  pointer-events: none;
+  background: #ff0000 !important;  /* КРАСНЫЙ, принудительно */
 }
 
+.safe-top { top: 0; }
+.safe-bottom { bottom: 0; }
+
+/* --- ВЕРХНИЙ ТУЛБАР --- */
+.topbar {
+  position: fixed;
+  left: 0; right: 0;
+  top: 0;                       /* фактический сдвиг задаём инлайном */
+  z-index: 1001;                /* может быть ниже safe-top, но safe-top прозрачный для событий */
+  height: 64px;                 /* синхронизировано с TS */
+  display: flex;
+  align-items: center;
+}
+
+/* --- КОНТЕНТ --- */
 .container {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 12px;
-  margin-top: calc(64px + var(--ion-safe-area-top, env(safe-area-inset-top, 0px)));
-  margin-bottom: calc(56px + var(--ion-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
+/* --- НИЖНИЙ ТУЛБАР --- */
 .bottombar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  left: 0; right: 0;
+  bottom: 0;                    /* фактический сдвиг задаём инлайном */
   display: flex;
   justify-content: space-around;
   align-items: center;
-  height: calc(56px + var(--ion-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
-  padding-bottom: var(--ion-safe-area-bottom, env(safe-area-inset-bottom, 0px));
+  height: 56px;                 /* синхронизировано с TS */
+  z-index: 1001;
 }
 
 .bottombar a {

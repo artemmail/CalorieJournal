@@ -3,17 +3,27 @@
     <app-side-menu (close)="drawer.close()"></app-side-menu>
   </mat-sidenav>
 
+  <!-- ВЕРХ/НИЗ ВКЛАДЫШИ ВНЕ mat-sidenav-content (выше по слою) -->
+  <div class="safe-top" *ngIf="safeTop() > 0" [style.height.px]="safeTop()"></div>
+  <div class="safe-bottom" *ngIf="safeBottom() > 0" [style.height.px]="safeBottom()"></div>
+
   <mat-sidenav-content class="app-content">
-    <mat-toolbar color="primary" class="topbar">
+    <!-- Верхний тулбар (не растягиваем, только сдвигаем) -->
+    <mat-toolbar color="primary" class="topbar" [style.top.px]="safeTop()">
       <button mat-icon-button (click)="drawer.toggle()">
         <mat-icon>menu</mat-icon>
       </button>
       <span>HealthyMeals</span>
     </mat-toolbar>
-    <div class="container">
+
+    <div class="container"
+         [style.marginTop.px]="TOPBAR_HEIGHT + safeTop()"
+         [style.marginBottom.px]="BOTTOMBAR_HEIGHT + safeBottom()">
       <router-outlet></router-outlet>
     </div>
-    <mat-toolbar color="primary" class="bottombar">
+
+    <!-- Нижний тулбар (поднимаем на safeBottom) -->
+    <mat-toolbar color="primary" class="bottombar" [style.bottom.px]="safeBottom()">
       <a mat-button routerLink="/history" routerLinkActive="active">
         <mat-icon>history</mat-icon>
         <span>История</span>
