@@ -14,6 +14,8 @@
 .app-content {
   display: flex;
   flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .topbar {
@@ -26,6 +28,9 @@
 }
 
 .container {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
   margin-top: calc(64px + var(--ion-safe-area-top, env(safe-area-inset-top, 0px)));
   margin-bottom: calc(56px + var(--ion-safe-area-bottom, env(safe-area-inset-bottom, 0px)));

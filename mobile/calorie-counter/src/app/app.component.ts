@@ -35,6 +35,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   async ngOnInit() {
     if (Capacitor.getPlatform() !== 'web') {
       await StatusBar.setOverlaysWebView({ overlay: false });
+      await StatusBar.setBackgroundColor({ color: '#ffffff' });
       await StatusBar.setStyle({ style: StatusBarStyle.Dark });
       await NavigationBar.setNavigationBarColor({ color: '#ffffff', darkButtons: true });
     }

@@ -24,6 +24,12 @@
 @import "@fontsource/material-icons-sharp/index.css";
 
 html, body, ion-app, ion-content { height: 100dvh; }
+
+html, body {
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   font-family: "Roboto", sans-serif;
