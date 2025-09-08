@@ -6,7 +6,6 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatSidenavModule, MatSidenav } from "@angular/material/sidenav";
 import { SideMenuComponent } from "./components/side-menu/side-menu.component";
-import { StatusBar, Style as StatusBarStyle } from "@capacitor/status-bar";
 import { NavigationBar } from '@capgo/capacitor-navigation-bar';
 import { Capacitor } from '@capacitor/core';
 import { SafeArea } from 'capacitor-plugin-safe-area';
@@ -34,9 +33,6 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   async ngOnInit() {
     if (Capacitor.getPlatform() !== 'web') {
-      await StatusBar.setOverlaysWebView({ overlay: false });
-      await StatusBar.setBackgroundColor({ color: '#ffffff' });
-      await StatusBar.setStyle({ style: StatusBarStyle.Dark });
       await NavigationBar.setNavigationBarColor({ color: '#ffffff', darkButtons: true });
     }
   }
