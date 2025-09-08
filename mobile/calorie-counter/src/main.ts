@@ -9,14 +9,12 @@ import { AuthInterceptor } from "./app/services/auth.interceptor";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar } from "@capacitor/status-bar";
 
-// Configure Android status and navigation bars
+// Configure Android status bar
 (async () => {
   try {
     if (Capacitor.getPlatform() === "android") {
       await StatusBar.setOverlaysWebView({ overlay: false });
       await StatusBar.setBackgroundColor({ color: "#000000" });
-      const { NavigationBar } = await import("@capgo/capacitor-navigation-bar");
-      await NavigationBar.setNavigationBarColor({ color: "#000000", darkButtons: false });
     }
   } catch {}
 })();

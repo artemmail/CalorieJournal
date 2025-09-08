@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    setTheme(R.style.AppTheme_NoActionBar);
     WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
   }
 }
