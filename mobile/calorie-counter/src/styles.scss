@@ -23,11 +23,13 @@
 @import "@fontsource/material-icons-round/index.css";
 @import "@fontsource/material-icons-sharp/index.css";
 
-html, body { height: 100%; }
+html, body, ion-app, ion-content { height: 100dvh; }
 body {
   margin: 0;
   font-family: "Roboto", sans-serif;
   background: #f0f2f5;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+}
+
+ion-content::part(scroll) {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
