@@ -27,7 +27,7 @@
 .container {
   padding: 12px;
   margin-top: 64px;
-  margin-bottom: calc(56px + env(safe-area-inset-bottom));
+  margin-bottom: calc(56px + var(--ion-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
 .bottombar {
@@ -37,7 +37,7 @@
   right: 0;
   display: flex;
   justify-content: space-around;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--ion-safe-area-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 .bottombar a {
