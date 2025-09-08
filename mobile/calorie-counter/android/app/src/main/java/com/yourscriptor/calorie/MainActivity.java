@@ -1,6 +1,7 @@
 package com.yourscriptor.calorie;
 
 import android.os.Bundle;
+import android.view.View;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -12,10 +13,12 @@ public class MainActivity extends BridgeActivity {
     super.onCreate(savedInstanceState);
     setTheme(R.style.AppTheme_NoActionBar);
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-    ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
+    View rootView = findViewById(android.R.id.content);
+    ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
       int bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
       bridge.getWebView().evaluateJavascript("document.body.style.paddingBottom='" + bottom + "px';", null);
       return insets;
     });
+    ViewCompat.requestApplyInsets(rootView);
   }
 }
