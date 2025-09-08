@@ -1,6 +1,9 @@
 <div
   infiniteScroll
-  [scrollWindow]="true"
+  [scrollWindow]="false"
+  [infiniteScrollContainer]="'.container'"
+  [fromRoot]="true"
+  [immediateCheck]="true"
   [infiniteScrollDistance]="1"
   [infiniteScrollThrottle]="200"
   (scrolled)="onScrollDown()"
