@@ -16,8 +16,7 @@ import { StatusBar } from "@capacitor/status-bar";
       await StatusBar.setOverlaysWebView({ overlay: false });
       await StatusBar.setBackgroundColor({ color: "#000000" });
       const { NavigationBar } = await import("@capgo/capacitor-navigation-bar");
-      await NavigationBar.setColor({ color: "#000000" });
-      await NavigationBar.setButtonStyle({ style: "LIGHT" });
+      await NavigationBar.setNavigationBarColor({ color: "#000000", darkButtons: false });
     }
   } catch {}
 })();
