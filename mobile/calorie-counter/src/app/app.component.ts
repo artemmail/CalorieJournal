@@ -7,6 +7,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatSidenavModule, MatSidenav } from "@angular/material/sidenav";
 import { SideMenuComponent } from "./components/side-menu/side-menu.component";
 import { StatusBar } from "@capacitor/status-bar";
+import { SafeArea } from 'capacitor-plugin-safe-area';
 
 @Component({
   selector: "app-root",
@@ -33,11 +34,9 @@ export class AppComponent implements OnInit, AfterViewInit {
     await StatusBar.setOverlaysWebView({ overlay: false });
   }
 
-  ngAfterViewInit() {
-    const bar = document.querySelector('.bottombar') as HTMLElement;
-    const bottomInset = parseFloat(getComputedStyle(bar).paddingBottom) || 0;
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-    const statusHeight = screen.height - viewportHeight - bottomInset;
-    alert(`status bar height = ${statusHeight}px, navigation bar height = ${bottomInset}px`);
+  async ngAfterViewInit() {
+    const { insets } = await SafeArea.getSafeAreaInsets();
+    const { statusBarHeight } = await SafeArea.getStatusBarHeight();
+    alert(`status bar height = ${statusBarHeight}px, navigation bar height = ${insets.bottom}px`);
   }
 }

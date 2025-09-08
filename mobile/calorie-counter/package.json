@@ -33,6 +33,7 @@
     "@fontsource/material-icons-outlined": "^5.2.6",
     "@fontsource/material-icons-round": "^5.2.6",
     "@fontsource/material-icons-sharp": "^5.2.6",
+    "capacitor-plugin-safe-area": "^4.0.0",
     "marked": "^12.0.2",
     "ngx-infinite-scroll": "^20.0.0",
     "rxjs": "~7.8.0",
