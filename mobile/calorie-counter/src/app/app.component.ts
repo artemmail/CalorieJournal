@@ -37,6 +37,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   async ngAfterViewInit() {
     const { insets } = await SafeArea.getSafeAreaInsets();
     const { statusBarHeight } = await SafeArea.getStatusBarHeight();
-    alert(`status bar height = ${statusBarHeight}px, navigation bar height = ${insets.bottom}px`);
+    document.documentElement.style.setProperty('--ion-safe-area-top', `${statusBarHeight}px`);
+    document.documentElement.style.setProperty('--ion-safe-area-bottom', `${insets.bottom}px`);
   }
 }

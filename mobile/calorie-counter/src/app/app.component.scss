@@ -22,11 +22,12 @@
   left: 0;
   right: 0;
   z-index: 1000;
+  padding-top: var(--ion-safe-area-top, env(safe-area-inset-top, 0px));
 }
 
 .container {
   padding: 12px;
-  margin-top: 64px;
+  margin-top: calc(64px + var(--ion-safe-area-top, env(safe-area-inset-top, 0px)));
   margin-bottom: calc(56px + var(--ion-safe-area-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
