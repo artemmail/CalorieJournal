@@ -4,11 +4,15 @@
   </mat-sidenav>
 
   <!-- ВЕРХ/НИЗ ВКЛАДЫШИ ВНЕ mat-sidenav-content (выше по слою) -->
-  <div class="safe-top" *ngIf="safeTop() > 0" [style.height.px]="safeTop()"></div>
-  <div class="safe-bottom" *ngIf="safeBottom() > 0" [style.height.px]="safeBottom()"></div>
+  
+  
 
   <mat-sidenav-content class="app-content">
     <!-- Верхний тулбар (не растягиваем, только сдвигаем) -->
+     @if(safeTop() > 0)
+     {
+        <div class="safe-top" [style.height.px]="safeTop()"></div>
+     }
     <mat-toolbar color="primary" class="topbar" [style.top.px]="safeTop()">
       <button mat-icon-button (click)="drawer.toggle()">
         <mat-icon>menu</mat-icon>
@@ -37,5 +41,9 @@
         <span>Анализ</span>
       </a>
     </mat-toolbar>
+    @if(safeBottom() > 0)
+     {
+    <div class="safe-bottom" [style.height.px]="safeBottom()"></div>
+     }
   </mat-sidenav-content>
 </mat-sidenav-container>

@@ -41,13 +41,14 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   async ngOnInit() {
+    
     const isWeb = Capacitor.getPlatform() === 'web';
     if (!isWeb) {
       try {
         await StatusBar.setOverlaysWebView({ overlay: true });
         await StatusBar.setBackgroundColor({ color: '#00000000' });
         await NavigationBar.setNavigationBarColor({ color: '#00000000', darkButtons: true });
-      } catch { /* ok в вебе/без плагинов */ }
+      } catch {  }
     }
   }
 
@@ -60,19 +61,20 @@ export class AppComponent implements OnInit, AfterViewInit {
       let bottom = Math.max(insets?.bottom ?? 0, 0);
 
       /*
+      
       // 🔴 Фолбэк для веба: чтобы было видно красные вкладыши при нулевых инсетах
       const isWeb = Capacitor.getPlatform() === 'web';
       if (isWeb && top === 0 && bottom === 0) {
         top = 24;     // можно уменьшить/увеличить под себя
         bottom = 24;
-      }*/
-
+      }
+*/
       this.safeTop.set(top);
       this.safeBottom.set(bottom);
     } catch {
       // Ещё один фолбэк (веб/разработка)
-      this.safeTop.set(0);
-      this.safeBottom.set(0);
+      this.safeTop.set(24);
+      this.safeBottom.set(24);
     }
   }
 }

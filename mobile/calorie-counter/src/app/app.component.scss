@@ -27,11 +27,11 @@
   right: 0;
   z-index: 9999;               /* очень высоко, поверх всего */
   pointer-events: none;
-  background: #ff0000 !important;  /* КРАСНЫЙ, принудительно */
+  
 }
 
-.safe-top { top: 0; }
-.safe-bottom { bottom: 0; }
+.safe-top { top: 0; background: #000000 !important;  }
+.safe-bottom { bottom: 0; background: #ddd !important; }
 
 /* --- ВЕРХНИЙ ТУЛБАР --- */
 .topbar {
