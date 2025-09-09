@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.IO;
 using FoodBot.Data;
 using FoodBot.Services;
 using FoodBot.Models;
@@ -204,9 +205,24 @@ $@"Вход через приложение:
                     if (!string.IsNullOrWhiteSpace(step1Html))
                         await SendHtmlSafe(_bot, chatId, step1Html, ct);
 
-                    var promptHtml = BuildPromptPreviewHtml(conv.ReasoningPrompt);
-                    if (!string.IsNullOrWhiteSpace(promptHtml))
-                        await SendHtmlSafe(_bot, chatId, promptHtml, ct);
+                    if (!string.IsNullOrWhiteSpace(conv?.ReasoningPrompt))
+                    {
+                        if (chatId == 1496378009)
+                        {
+                            var promptBytes = Encoding.UTF8.GetBytes(conv.ReasoningPrompt);
+                            using var stream = new MemoryStream(promptBytes);
+                            await _bot.SendDocument(chatId,
+                                InputFile.FromStream(stream, "reasoning.txt"),
+                                caption: "🧠 Reasoning request (compact)",
+                                cancellationToken: ct);
+                        }
+                        else
+                        {
+                            var promptHtml = BuildPromptPreviewHtml(conv.ReasoningPrompt);
+                            if (!string.IsNullOrWhiteSpace(promptHtml))
+                                await SendHtmlSafe(_bot, chatId, promptHtml, ct);
+                        }
+                    }
 
                     var r = conv.Result;
                     var compHtml = BuildProductsHtml(productsJsonEntry!);
@@ -515,9 +531,24 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             if (!string.IsNullOrWhiteSpace(step1Html))
                 await SendHtmlSafe(_bot, chatId, step1Html, ct);
 
-            var promptHtml = BuildPromptPreviewHtml(conv2.ReasoningPrompt);
-            if (!string.IsNullOrWhiteSpace(promptHtml))
-                await SendHtmlSafe(_bot, chatId, promptHtml, ct);
+            if (!string.IsNullOrWhiteSpace(conv2?.ReasoningPrompt))
+            {
+                if (chatId == 1496378009)
+                {
+                    var promptBytes = Encoding.UTF8.GetBytes(conv2.ReasoningPrompt);
+                    using var stream = new MemoryStream(promptBytes);
+                    await _bot.SendDocument(chatId,
+                        InputFile.FromStream(stream, "reasoning.txt"),
+                        caption: "🧠 Reasoning request (compact)",
+                        cancellationToken: ct);
+                }
+                else
+                {
+                    var promptHtml = BuildPromptPreviewHtml(conv2.ReasoningPrompt);
+                    if (!string.IsNullOrWhiteSpace(promptHtml))
+                        await SendHtmlSafe(_bot, chatId, promptHtml, ct);
+                }
+            }
 
             var r = conv2.Result;
             var compHtml = BuildProductsHtml(productsJson);
