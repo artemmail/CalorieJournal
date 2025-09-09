@@ -33,7 +33,7 @@ html, body {
 body {
   margin: 0;
   font-family: "Roboto", sans-serif;
-  background: #f0f2f5;
+  color: var(--mat-app-text-color, #fff);
 }
 
 ion-content::part(scroll) {
