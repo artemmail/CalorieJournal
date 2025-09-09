@@ -216,12 +216,7 @@ $@"Вход через приложение:
                                 caption: "🧠 Reasoning request (compact)",
                                 cancellationToken: ct);
                         }
-                        else
-                        {
-                            var promptHtml = BuildPromptPreviewHtml(conv.ReasoningPrompt);
-                            if (!string.IsNullOrWhiteSpace(promptHtml))
-                                await SendHtmlSafe(_bot, chatId, promptHtml, ct);
-                        }
+                       
                     }
 
                     var r = conv.Result;
@@ -542,12 +537,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
                         caption: "🧠 Reasoning request (compact)",
                         cancellationToken: ct);
                 }
-                else
-                {
-                    var promptHtml = BuildPromptPreviewHtml(conv2.ReasoningPrompt);
-                    if (!string.IsNullOrWhiteSpace(promptHtml))
-                        await SendHtmlSafe(_bot, chatId, promptHtml, ct);
-                }
+                
             }
 
             var r = conv2.Result;
