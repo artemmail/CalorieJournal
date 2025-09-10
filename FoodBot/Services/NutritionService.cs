@@ -82,6 +82,14 @@ namespace FoodBot.Services
             return await AnalyzeCore(dataUrl, userNote, progress, ct);
         }
 
+        public Task<NutritionConversation?> AnalyzeTextAsync(string description, CancellationToken ct = default)
+        {
+            var result = new NutritionResult(description, Array.Empty<string>(), 0, 0, 0, 0, 0, 0);
+            var step1 = new Step1Snapshot(description, Array.Empty<string>(), Array.Empty<decimal>(), 0, 0);
+            var conv = new NutritionConversation(Guid.NewGuid(), result, Array.Empty<MatchedFoodRow>(), step1, string.Empty, string.Empty);
+            return Task.FromResult<NutritionConversation?>(conv);
+        }
+
         public async Task<NutritionConversation?> ClarifyAsync(Guid threadId, string userNote, CancellationToken ct)
         {
             if (!_sessions.TryGet(threadId, out var session))

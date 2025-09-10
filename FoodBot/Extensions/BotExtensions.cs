@@ -67,8 +67,10 @@ public static class BotExtensions
           services.AddScoped<IMealRepository, MealRepository>();
           services.AddScoped<IMealService, MealService>();
           services.AddScoped<IAppAuthService, AppAuthService>();
+        services.AddSingleton<MealImageService>();
           services.AddHostedService<AnalysisQueueWorker>();
           services.AddHostedService<PhotoQueueWorker>();
+        services.AddHostedService<TextMealQueueWorker>();
           services.AddHostedService<PeriodPdfJobWorker>();
           services.AddHostedService<AnalysisPdfJobWorker>();
 

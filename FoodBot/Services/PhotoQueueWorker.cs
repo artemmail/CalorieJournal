@@ -34,6 +34,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                 var nutrition = scope.ServiceProvider.GetRequiredService<NutritionService>();
 
                 var nextPhoto = await db.PendingMeals
+                    .Where(x => x.Description == null)
                     .OrderBy(x => x.CreatedAtUtc)
                     .FirstOrDefaultAsync(stoppingToken);
                 var nextClar = await db.PendingClarifies

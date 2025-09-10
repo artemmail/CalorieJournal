@@ -97,6 +97,35 @@ namespace FoodBot.Controllers
             return Ok(new { queued = true });
         }
 
+        // ---------- Добавление по тексту/голосу ----------
+        public sealed record AddTextReq(string text, bool generateImage);
+
+        // POST /api/meals/add-text
+        [HttpPost("add-text")]
+        public async Task<IActionResult> AddText([FromBody] AddTextReq req, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(req.text)) return BadRequest("text required");
+            var chatId = User.GetChatId();
+            await _meals.QueueTextAsync(chatId, req.text, req.generateImage, ct);
+            return Ok(new { queued = true });
+        }
+
+        // POST /api/meals/add-voice  (multipart/form-data: audio; optional language=ru)
+        [HttpPost("add-voice")]
+        [RequestSizeLimit(30_000_000)]
+        public async Task<IActionResult> AddVoice([FromForm] IFormFile audio, [FromForm] string? language, [FromForm] bool generateImage, CancellationToken ct)
+        {
+            if (audio == null || audio.Length == 0) return BadRequest("audio required");
+            var chatId = User.GetChatId();
+            await using var ms = new MemoryStream();
+            await audio.CopyToAsync(ms, ct);
+            var bytes = ms.ToArray();
+            var text = await _stt.TranscribeAsync(bytes, language ?? "ru", audio.FileName ?? "audio", audio.ContentType ?? "application/octet-stream", ct);
+            if (string.IsNullOrWhiteSpace(text)) return BadRequest("stt_failed");
+            await _meals.QueueTextAsync(chatId, text, generateImage, ct);
+            return Ok(new { queued = true });
+        }
+
         // ---------- Уточнение: текст ----------
         public sealed record ClarifyTextReq(string? note, DateTimeOffset? time);
 

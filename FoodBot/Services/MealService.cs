@@ -135,6 +135,19 @@ public sealed class MealService : IMealService
         return _repo.QueuePendingMealAsync(pending, ct);
     }
 
+    public Task QueueTextAsync(long chatId, string description, bool generateImage, CancellationToken ct)
+    {
+        var pending = new PendingMeal
+        {
+            ChatId = chatId,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            Description = description,
+            GenerateImage = generateImage,
+            Attempts = 0
+        };
+        return _repo.QueuePendingMealAsync(pending, ct);
+    }
+
     public async Task<ClarifyTextResult?> ClarifyTextAsync(long chatId, int id, string? note, DateTimeOffset? time, CancellationToken ct)
     {
         var m = await _repo.Meals.FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
