@@ -10,6 +10,8 @@ public class PendingMeal
     public DateTimeOffset CreatedAtUtc { get; set; }
     public string? FileMime { get; set; }
     public byte[] ImageBytes { get; set; } = Array.Empty<byte>();
+    public string? Description { get; set; }
+    public bool GenerateImage { get; set; }
     public int Attempts { get; set; }
 }
 

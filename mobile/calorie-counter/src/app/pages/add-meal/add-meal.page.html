@@ -5,9 +5,6 @@
     <button mat-raised-button color="primary" (click)="takePhotoSystem()" [disabled]="previewActive">
       <mat-icon>photo_camera</mat-icon> Системная камера
     </button>
-    <button mat-stroked-button color="primary" (click)="startPreview()" *ngIf="!previewActive">
-      <mat-icon>videocam</mat-icon> Включить превью
-    </button>
     <button mat-stroked-button color="warn" (click)="stopPreview()" *ngIf="previewActive">
       <mat-icon>stop</mat-icon> Выключить превью
     </button>
@@ -21,5 +18,32 @@
   <div class="last-shot" *ngIf="photoDataUrl">
     <img [src]="photoDataUrl" alt="snapshot" />
   </div>
+
+  <form [formGroup]="form" class="text-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Описание</mat-label>
+      <textarea matInput formControlName="note"></textarea>
+      <button *ngIf="form.value.note" mat-icon-button matSuffix aria-label="Очистить" (click)="form.controls['note'].setValue('')">
+        <mat-icon>close</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <div class="mic">
+      <button mat-icon-button color="primary"
+              matTooltip="Удерживайте для записи"
+              aria-label="Записать голос"
+              (mousedown)="startRecord($event)" (touchstart)="startRecord($event)"
+              (mouseup)="stopRecord()" (mouseleave)="stopRecord()" (touchend)="stopRecord()"
+              [class.recording]="!!recorder" [disabled]="transcribing">
+        <mat-icon>{{ recorder ? 'mic' : 'mic_none' }}</mat-icon>
+      </button>
+      <div class="hint" *ngIf="!recorder">Удерживайте для записи</div>
+      <div class="hint recording" *ngIf="recorder">Запись… отпустите, чтобы остановить</div>
+    </div>
+
+    <mat-progress-bar *ngIf="transcribing" mode="indeterminate"></mat-progress-bar>
+
+    <button mat-flat-button color="primary" (click)="sendText()" [disabled]="!form.value.note.trim()">Отправить</button>
+  </form>
 
   </mat-card>

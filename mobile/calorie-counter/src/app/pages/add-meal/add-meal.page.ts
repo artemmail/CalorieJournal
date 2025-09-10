@@ -9,6 +9,8 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { firstValueFrom } from "rxjs";
 
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from "@capacitor-community/camera-preview";
@@ -30,7 +32,7 @@ function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   imports: [
     CommonModule, ReactiveFormsModule,
     MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule,
-    MatProgressBarModule, MatSnackBarModule
+    MatProgressBarModule, MatSnackBarModule, MatTooltipModule
   ],
   templateUrl: "./add-meal.page.html",
   styleUrls: ["./add-meal.page.scss"]
@@ -39,6 +41,9 @@ export class AddMealPage implements OnDestroy {
   photoDataUrl?: string;    // превью для UI (через pipe convert)
   form!: FormGroup;
   previewActive = false;
+  transcribing = false;
+  recorder?: MediaRecorder;
+  private chunks: Blob[] = [];
 
   uploadProgress: number | null = null;
   progressMode: "determinate" | "indeterminate" = "determinate";
@@ -100,6 +105,61 @@ export class AddMealPage implements OnDestroy {
       error: () => {
         this.uploadProgress = null;
         this.snack.open("Не удалось отправить фото", "OK", { duration: 2000 });
+      }
+    });
+  }
+
+  async startRecord(ev: Event) {
+    ev.preventDefault();
+    if (this.transcribing || this.recorder) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.chunks = [];
+      this.recorder = new MediaRecorder(stream);
+      this.recorder.addEventListener('dataavailable', e => {
+        if (e.data.size > 0) this.chunks.push(e.data);
+      });
+      this.recorder.addEventListener('stop', () =>
+        stream.getTracks().forEach(t => t.stop()), { once: true });
+      this.recorder.start();
+    } catch {
+      this.recorder = undefined;
+      this.snack.open('Не удалось получить доступ к микрофону', 'OK', { duration: 1500 });
+    }
+  }
+
+  async stopRecord() {
+    if (!this.recorder) return;
+    const recorder = this.recorder;
+    this.recorder = undefined;
+    const stopped = new Promise<void>(resolve =>
+      recorder.addEventListener('stop', () => resolve(), { once: true }));
+    recorder.stop();
+    await stopped;
+    const chunks = this.chunks.slice();
+    this.transcribing = true;
+    try {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      const file = new File([blob], 'voice.webm', { type: blob.type });
+      const r = await firstValueFrom(this.api.transcribeVoice(file));
+      if (r.text) this.form.controls['note'].setValue(r.text);
+    } catch {
+      this.snack.open('Не удалось распознать речь', 'OK', { duration: 1500 });
+    } finally {
+      this.transcribing = false;
+    }
+  }
+
+  sendText() {
+    const note: string = this.form.value.note?.trim();
+    if (!note) return;
+    this.api.addMealText(note).subscribe({
+      next: () => {
+        this.snack.open('Описание отправлено. Обработка начнётся скоро.', 'OK', { duration: 1500 });
+        this.form.reset({ note: '' });
+      },
+      error: () => {
+        this.snack.open('Не удалось отправить описание', 'OK', { duration: 2000 });
       }
     });
   }

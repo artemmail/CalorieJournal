@@ -43,6 +43,18 @@ export class FoodbotApiService {
     );
   }
 
+  addMealText(text: string, generateImage = true): Observable<{ queued: boolean }> {
+    return this.http.post<{ queued: boolean }>(`${this.baseUrl}/api/meals/add-text`, { text, generateImage });
+  }
+
+  addMealVoice(file: File, generateImage = true, language = "ru"): Observable<{ queued: boolean }> {
+    const form = new FormData();
+    form.append("audio", file, file.name);
+    form.append("language", language);
+    form.append("generateImage", String(generateImage));
+    return this.http.post<{ queued: boolean }>(`${this.baseUrl}/api/meals/add-voice`, form);
+  }
+
   // Уточнения
   clarifyText(mealId: number, note?: string, time?: string): Observable<ClarifyResult | { queued: boolean }> {
     const body: any = {};
