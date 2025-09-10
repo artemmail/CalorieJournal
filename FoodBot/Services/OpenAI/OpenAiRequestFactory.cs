@@ -32,7 +32,7 @@ namespace FoodBot.Services.OpenAI
                         }
                     }
                 },
-                temperature = 0.2
+                temperature = 1
             };
         }
 

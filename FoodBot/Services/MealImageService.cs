@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -6,57 +6,169 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
-namespace FoodBot.Services;
-
-public class MealImageService
+namespace FoodBot.Services
 {
-    private readonly IHttpClientFactory _factory;
-    private readonly string _apiKey;
-    private readonly bool _enabled;
-
-    public MealImageService(IConfiguration cfg, IHttpClientFactory factory)
+    public class MealImageService
     {
-        _factory = factory;
-        _apiKey = cfg["OpenAI:ApiKey"] ?? string.Empty;
-        _enabled = bool.TryParse(cfg["OpenAI:GenerateImages"], out var e) && e;
-    }
+        private readonly IHttpClientFactory _factory;
+        private readonly ILogger<MealImageService> _log;
+        private readonly string _apiKey;
+        private readonly bool _enabled;
+        private readonly string _model;
+        private readonly string _size;
 
-    public async Task<(byte[] bytes, string mime)> GenerateAsync(string description, CancellationToken ct)
-    {
-        if (!_enabled)
-            return GeneratePlaceholder();
-        try
+        private const string ImagesGenerationsUrl = "https://api.openai.com/v1/images/generations";
+        private const string ImagesUnifiedUrl = "https://api.openai.com/v1/images";
+
+        public MealImageService(IConfiguration cfg, IHttpClientFactory factory, ILogger<MealImageService> log = null!)
         {
-            var http = _factory.CreateClient();
-            var body = JsonSerializer.Serialize(new
+            _factory = factory;
+            _log = log ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<MealImageService>.Instance;
+            _apiKey = cfg["OpenAI:ApiKey"] ?? string.Empty;
+            _enabled = bool.TryParse(cfg["OpenAI:GenerateImages"], out var e) ? e : false;
+
+            _model = cfg["OpenAI:ImageModel"] ?? "gpt-image-1";
+            _size = cfg["OpenAI:ImageSize"] ?? "1024x1024"; // 256x256 | 512x512 | 1024x1024
+        }
+
+        public async Task<(byte[] bytes, string mime)> GenerateAsync(string description, CancellationToken ct)
+        {
+            if (!_enabled || string.IsNullOrWhiteSpace(_apiKey) || string.IsNullOrWhiteSpace(description))
+                return GeneratePlaceholder();
+
+            try
             {
-                model = "gpt-image-1",
+                var http = _factory.CreateClient();
+                http.Timeout = TimeSpan.FromSeconds(60);
+
+                // 1) Основной путь: /v1/images/generations (ожидаем b64_json)
+                var (ok, bytes, mime, status, body) = await TryImagesGenerations(http, description, ct);
+                if (ok) return (bytes!, mime!);
+
+                _log.LogWarning("Images/generations failed. Status={Status}. Body={Body}", status, Trunc(body, 800));
+
+                // 2) Фолбэк: /v1/images (некоторым проектам включают этот эндпоинт)
+                var (ok2, bytes2, mime2, status2, body2) = await TryImagesUnified(http, description, ct);
+                if (ok2) return (bytes2!, mime2!);
+
+                _log.LogError("Images unified failed. Status={Status}. Body={Body}", status2, Trunc(body2, 800));
+                return GeneratePlaceholder();
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "Image generation crashed");
+                return GeneratePlaceholder();
+            }
+        }
+
+        private async Task<(bool ok, byte[] bytes, string mime, int status, string body)>
+            TryImagesGenerations(HttpClient http, string description, CancellationToken ct)
+        {
+            var payload = new
+            {
+                model = _model,
                 prompt = description,
-                size = "512x512"
-            });
-            using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/images");
+                size = _size
+                //response_format = "b64_json"
+            };
+            using var req = new HttpRequestMessage(HttpMethod.Post, ImagesGenerationsUrl);
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            req.Headers.Add("OpenAI-Beta", "image-v1");
-            req.Content = new StringContent(body, Encoding.UTF8, "application/json");
-            using var resp = await http.SendAsync(req, ct);
+            req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            using var resp = await http.SendAsync(req, ct).ConfigureAwait(false);
+            var status = (int)resp.StatusCode;
+            var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             if (!resp.IsSuccessStatusCode)
-                return GeneratePlaceholder();
-            using var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-            var b64 = doc.RootElement.GetProperty("data")[0].GetProperty("b64_json").GetString();
-            if (string.IsNullOrWhiteSpace(b64))
-                return GeneratePlaceholder();
+                return (false, null!, null!, status, body);
+
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("data", out var dataArr) || dataArr.GetArrayLength() == 0)
+                return (false, null!, null!, status, body);
+
+            var first = dataArr[0];
+            if (first.TryGetProperty("b64_json", out var b64Prop))
+            {
+                var b64 = b64Prop.GetString();
+                if (!string.IsNullOrWhiteSpace(b64))
+                    return (true, Convert.FromBase64String(b64!), "image/png", status, body);
+            }
+            if (first.TryGetProperty("url", out var urlProp))
+            {
+                var url = urlProp.GetString();
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    var imgResp = await http.GetAsync(url, ct).ConfigureAwait(false);
+                    if (!imgResp.IsSuccessStatusCode)
+                        return (false, null!, null!, (int)imgResp.StatusCode, await imgResp.Content.ReadAsStringAsync(ct));
+
+                    var imgBytes = await imgResp.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+                    var mime = imgResp.Content.Headers.ContentType?.MediaType ?? "image/png";
+                    return (true, imgBytes, mime, status, body);
+                }
+            }
+            return (false, null!, null!, status, body);
+        }
+
+        private async Task<(bool ok, byte[] bytes, string mime, int status, string body)>
+            TryImagesUnified(HttpClient http, string description, CancellationToken ct)
+        {
+            // Некоторые аккаунты используют новый /v1/images с тем же полем prompt.
+            var payload = new
+            {
+                model = _model,
+                prompt = description,
+                size = _size,
+                response_format = "b64_json"
+                // background = "transparent" // при необходимости
+            };
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, ImagesUnifiedUrl);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            using var resp = await http.SendAsync(req, ct).ConfigureAwait(false);
+            var status = (int)resp.StatusCode;
+            var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode)
+                return (false, null!, null!, status, body);
+
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("data", out var dataArr) || dataArr.GetArrayLength() == 0)
+                return (false, null!, null!, status, body);
+
+            var first = dataArr[0];
+            if (first.TryGetProperty("b64_json", out var b64Prop))
+            {
+                var b64 = b64Prop.GetString();
+                if (!string.IsNullOrWhiteSpace(b64))
+                    return (true, Convert.FromBase64String(b64!), "image/png", status, body);
+            }
+            if (first.TryGetProperty("url", out var urlProp))
+            {
+                var url = urlProp.GetString();
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    var imgResp = await http.GetAsync(url, ct).ConfigureAwait(false);
+                    if (!imgResp.IsSuccessStatusCode)
+                        return (false, null!, null!, (int)imgResp.StatusCode, await imgResp.Content.ReadAsStringAsync(ct));
+
+                    var imgBytes = await imgResp.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+                    var mime = imgResp.Content.Headers.ContentType?.MediaType ?? "image/png";
+                    return (true, imgBytes, mime, status, body);
+                }
+            }
+            return (false, null!, null!, status, body);
+        }
+
+        private static string Trunc(string s, int max) =>
+            string.IsNullOrEmpty(s) || s.Length <= max ? s : s.Substring(0, max) + "…";
+
+        public (byte[] bytes, string mime) GeneratePlaceholder()
+        {
+            const string b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAAC0lEQVR42mP8/x8AAwMCAOJqS58AAAAASUVORK5CYII=";
             return (Convert.FromBase64String(b64), "image/png");
         }
-        catch
-        {
-            return GeneratePlaceholder();
-        }
-    }
-
-    public (byte[] bytes, string mime) GeneratePlaceholder()
-    {
-        const string b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAAC0lEQVR42mP8/x8AAwMCAOJqS58AAAAASUVORK5CYII=";
-        return (Convert.FromBase64String(b64), "image/png");
     }
 }

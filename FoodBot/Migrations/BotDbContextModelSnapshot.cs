@@ -147,6 +147,9 @@ namespace FoodBot.Migrations
                     b.Property<long>("ChatId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("ClarifyNote")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<decimal?>("Confidence")
                         .HasColumnType("decimal(5,2)");
 
@@ -185,9 +188,6 @@ namespace FoodBot.Migrations
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("ReasoningPrompt")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ClarifyNote")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Step1Json")
@@ -261,8 +261,14 @@ namespace FoodBot.Migrations
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("FileMime")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("GenerateImage")
+                        .HasColumnType("bit");
 
                     b.Property<byte[]>("ImageBytes")
                         .IsRequired()
