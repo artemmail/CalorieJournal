@@ -76,9 +76,18 @@ public sealed class TextMealQueueWorker : BackgroundService
                     db.PendingMeals.Remove(next);
                     await db.SaveChangesAsync(stoppingToken);
                 }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    // Another worker could have processed this pending meal earlier.
+                    _log.LogWarning(ex, "Pending meal {Id} was already handled", next.Id);
+                }
                 catch (Exception ex)
                 {
                     _log.LogError(ex, "TextMealQueueWorker processing failed for {Id}", next.Id);
+                    // The entity might still be marked as deleted after a failed save.
+                    // Reset the state so we can update retry attempts.
+                    if (db.Entry(next).State == EntityState.Deleted)
+                        db.Entry(next).State = EntityState.Unchanged;
                     next.Attempts++;
                     if (next.Attempts >= 3)
                         db.PendingMeals.Remove(next);
