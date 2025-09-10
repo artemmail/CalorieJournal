@@ -47,9 +47,9 @@ public sealed class TextMealQueueWorker : BackgroundService
                 {
                     var conv = await nutrition.AnalyzeTextAsync(next.Description!, stoppingToken);
 
-                    
+
                     var (imgBytes, imgMime) = next.GenerateImage
-                        ? await images.GenerateAsync(conv?.Result?.dish??next.Description!, stoppingToken)
+                        ? await images.GenerateAsync(conv?.Result?.dish ?? next.Description!, stoppingToken)
                         : images.GeneratePlaceholder(conv?.Result?.dish ?? next.Description!);
                     var result = conv?.Result;
                     var entry = new MealEntry
@@ -63,7 +63,7 @@ public sealed class TextMealQueueWorker : BackgroundService
                         ImageBytes = imgBytes,
                         DishName = result?.dish ?? next.Description,
                         IngredientsJson = result != null ? System.Text.Json.JsonSerializer.Serialize(result.ingredients) : "[]",
-                        ProductsJson = "[]",
+                        ProductsJson = conv != null ? ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson) : "[]",
                         ProteinsG = result?.proteins_g ?? 0,
                         FatsG = result?.fats_g ?? 0,
                         CarbsG = result?.carbs_g ?? 0,
