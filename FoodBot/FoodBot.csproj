@@ -19,6 +19,8 @@
     </PackageReference>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="System.Net.Http.Json" Version="9.0.8" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.11" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
   </ItemGroup>
 
   <Target Name="BuildClientApp" BeforeTargets="Build">
