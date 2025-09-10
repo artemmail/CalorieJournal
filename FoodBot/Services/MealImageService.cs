@@ -176,31 +176,58 @@ namespace FoodBot.Services
             const int size = 512;
             using var image = new Image<Rgba32>(size, size, Color.White);
 
-            var fontSize = 64f;
+            float fontSize = 64f;
             var family = SystemFonts.Collection.Families.First();
             Font font = family.CreateFont(fontSize);
-            var options = new TextOptions(font)
+
+            // Отдельные options: для измерения (TextOptions) и для рисования (RichTextOptions)
+            var measureOpts = new TextOptions(font)
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                WrappingLength = size - 20
+            };
+
+            var drawOpts = new RichTextOptions(font)
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 WrappingLength = size - 20,
-                Origin = new PointF(size / 2f, size / 2f)
+                Origin = new PointF(size / 2f, size / 2f) // центр холста
             };
 
+            // Подбор размера шрифта под квадрат size x size
             while (fontSize > 10)
             {
-                var measured = TextMeasurer.Measure(text, options);
+                var measured = TextMeasurer.MeasureSize(text, measureOpts);
                 if (measured.Width <= size - 20 && measured.Height <= size - 20)
                     break;
-                fontSize -= 2;
+
+                fontSize -= 2f;
                 font = family.CreateFont(fontSize);
-                options.Font = font;
+
+                // обновляем оба options
+                measureOpts = new TextOptions(font)
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    WrappingLength = size - 20
+                };
+                drawOpts = new RichTextOptions(font)
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    WrappingLength = size - 20,
+                    Origin = new PointF(size / 2f, size / 2f)
+                };
             }
 
-            image.Mutate(ctx => ctx.DrawText(options, text, Color.Black));
+            image.Mutate(ctx => ctx.DrawText(drawOpts, text, Color.Black));
+
             using var ms = new System.IO.MemoryStream();
             image.SaveAsPng(ms);
             return (ms.ToArray(), "image/png");
         }
+
     }
 }
