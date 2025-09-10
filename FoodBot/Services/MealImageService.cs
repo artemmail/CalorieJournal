@@ -7,6 +7,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using System.Linq;
 
 namespace FoodBot.Services
 {
@@ -36,7 +42,7 @@ namespace FoodBot.Services
         public async Task<(byte[] bytes, string mime)> GenerateAsync(string description, CancellationToken ct)
         {
             if (!_enabled || string.IsNullOrWhiteSpace(_apiKey) || string.IsNullOrWhiteSpace(description))
-                return GeneratePlaceholder();
+                return GeneratePlaceholder(description ?? string.Empty);
 
             try
             {
@@ -54,12 +60,12 @@ namespace FoodBot.Services
                 if (ok2) return (bytes2!, mime2!);
 
                 _log.LogError("Images unified failed. Status={Status}. Body={Body}", status2, Trunc(body2, 800));
-                return GeneratePlaceholder();
+                return GeneratePlaceholder(description);
             }
             catch (Exception ex)
             {
                 _log.LogError(ex, "Image generation crashed");
-                return GeneratePlaceholder();
+                return GeneratePlaceholder(description);
             }
         }
 
@@ -165,10 +171,36 @@ namespace FoodBot.Services
         private static string Trunc(string s, int max) =>
             string.IsNullOrEmpty(s) || s.Length <= max ? s : s.Substring(0, max) + "…";
 
-        public (byte[] bytes, string mime) GeneratePlaceholder()
+        public (byte[] bytes, string mime) GeneratePlaceholder(string text)
         {
-            const string b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAAC0lEQVR42mP8/x8AAwMCAOJqS58AAAAASUVORK5CYII=";
-            return (Convert.FromBase64String(b64), "image/png");
+            const int size = 512;
+            using var image = new Image<Rgba32>(size, size, Color.White);
+
+            var fontSize = 64f;
+            var family = SystemFonts.Collection.Families.First();
+            Font font = family.CreateFont(fontSize);
+            var options = new TextOptions(font)
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                WrappingLength = size - 20,
+                Origin = new PointF(size / 2f, size / 2f)
+            };
+
+            while (fontSize > 10)
+            {
+                var measured = TextMeasurer.Measure(text, options);
+                if (measured.Width <= size - 20 && measured.Height <= size - 20)
+                    break;
+                fontSize -= 2;
+                font = family.CreateFont(fontSize);
+                options.Font = font;
+            }
+
+            image.Mutate(ctx => ctx.DrawText(options, text, Color.Black));
+            using var ms = new System.IO.MemoryStream();
+            image.SaveAsPng(ms);
+            return (ms.ToArray(), "image/png");
         }
     }
 }

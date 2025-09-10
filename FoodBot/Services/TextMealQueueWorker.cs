@@ -48,7 +48,7 @@ public sealed class TextMealQueueWorker : BackgroundService
                     var conv = await nutrition.AnalyzeTextAsync(next.Description!, stoppingToken);
                     var (imgBytes, imgMime) = next.GenerateImage
                         ? await images.GenerateAsync(next.Description!, stoppingToken)
-                        : images.GeneratePlaceholder();
+                        : images.GeneratePlaceholder(conv?.Result?.dish ?? next.Description!);
                     var result = conv?.Result;
                     var entry = new MealEntry
                     {
