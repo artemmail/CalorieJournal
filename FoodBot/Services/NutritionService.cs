@@ -82,12 +82,73 @@ namespace FoodBot.Services
             return await AnalyzeCore(dataUrl, userNote, progress, ct);
         }
 
-        public Task<NutritionConversation?> AnalyzeTextAsync(string description, CancellationToken ct = default)
+        public async Task<NutritionConversation?> AnalyzeTextAsync(string description, CancellationToken ct = default)
         {
-            var result = new NutritionResult(description, Array.Empty<string>(), 0, 0, 0, 0, 0, 0);
-            var step1 = new Step1Snapshot(description, Array.Empty<string>(), Array.Empty<decimal>(), 0, 0);
-            var conv = new NutritionConversation(Guid.NewGuid(), result, Array.Empty<MatchedFoodRow>(), step1, string.Empty, string.Empty);
-            return Task.FromResult<NutritionConversation?>(conv);
+            var step1 = await _ai.DetectFromTextAsync(description, _reasoningModel, ct);
+            if (step1 is null || step1.ingredients.Length == 0) return null;
+
+            var matches = _matcher.MatchFoodsDetailed(step1.ingredients);
+            var matchedRows = _matcher.CollapseMatchedRows(matches);
+            var foodsJson = _matcher.BuildFoodsJsonForPrompt(matchedRows);
+            var unmatched = _matcher.BuildUnmatchedCommaList(matches);
+
+            var targetWeight = step1.weight_g > 0 ? step1.weight_g : 100m;
+            var gramsTargets = NutritionPromptBuilder.ComputeGramsFromShares(step1.ingredients, step1.shares_percent, targetWeight);
+
+            var finalPrompt = NutritionPromptBuilder.BuildFinalPromptFromShares(
+                dish: step1.dish,
+                ingredients: step1.ingredients,
+                sharesPercent: step1.shares_percent,
+                gramsTargets: gramsTargets,
+                targetWeight: targetWeight,
+                foodsJson: foodsJson,
+                unmatchedList: unmatched,
+                userNote: "Initial compute from text description"
+            );
+
+            if (_debugLog)
+            {
+                Console.WriteLine($"[Text Final by AI] Prompt chars={finalPrompt.Length}, matched_rows={matchedRows.Length}");
+                Console.WriteLine($"[Text Final by AI] Prompt head:\n{SafeHead(finalPrompt)}");
+            }
+
+            var msgs = new List<object>
+            {
+                new { role = "system", content = "You are a meticulous nutrition analyst. Use FOODS_JSON as hints only. Produce final macros yourself. Reply JSON only." },
+                new { role = "assistant", content = JsonSerializer.Serialize(new { dish = step1.dish, ingredients = step1.ingredients, shares_percent = step1.shares_percent, weight_g = step1.weight_g, confidence = step1.confidence })},
+                new { role = "user", content = finalPrompt }
+            };
+
+            var finalAi = await _ai.ComputeFinalAsync(msgs, model: _reasoningModel, ct: ct);
+            if (finalAi is null)
+            {
+                if (_debugLog) Console.WriteLine("[Text Final by AI] ? Model returned null.");
+                return null;
+            }
+
+            msgs.Add(new { role = "assistant", content = JsonSerializer.Serialize(finalAi) });
+
+            var final = new NutritionResult(
+                dish: finalAi.dish ?? step1.dish,
+                ingredients: step1.ingredients,
+                proteins_g: Math.Round(finalAi.proteins_g, 1),
+                fats_g: Math.Round(finalAi.fats_g, 1),
+                carbs_g: Math.Round(finalAi.carbs_g, 1),
+                calories_kcal: Math.Round(finalAi.calories_kcal, 0),
+                weight_g: Math.Round(finalAi.weight_g > 0 ? finalAi.weight_g : targetWeight, 0),
+                confidence: Math.Clamp(finalAi.confidence, 0m, 1m)
+            );
+
+            var finalJson = JsonSerializer.Serialize(finalAi, new JsonSerializerOptions { PropertyNamingPolicy = null });
+
+            return new NutritionConversation(
+                Guid.NewGuid(),
+                final,
+                matchedRows,
+                step1,
+                finalPrompt,
+                finalJson
+            );
         }
 
         public async Task<NutritionConversation?> ClarifyAsync(Guid threadId, string userNote, CancellationToken ct)
