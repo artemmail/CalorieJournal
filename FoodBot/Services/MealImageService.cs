@@ -176,58 +176,120 @@ namespace FoodBot.Services
             const int size = 512;
             using var image = new Image<Rgba32>(size, size, Color.White);
 
-            float fontSize = 64f;
-            var family = SystemFonts.Collection.Families.First();
-            Font font = family.CreateFont(fontSize);
-
-            // Отдельные options: для измерения (TextOptions) и для рисования (RichTextOptions)
-            var measureOpts = new TextOptions(font)
+            // 1) Ищем системный шрифт с кириллицей (Windows: Segoe UI почти всегда есть)
+            FontFamily baseFamily;
+            if (!SystemFonts.TryGet("Segoe UI", out baseFamily) &&
+                !SystemFonts.TryGet("Arial", out baseFamily) &&
+                !SystemFonts.TryGet("Tahoma", out baseFamily))
             {
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                WrappingLength = size - 20
-            };
+                // 2) Если системных нет/мы в контейнере — подгружаем свои TTF
+                var col = new FontCollection();
+                // основной
+                var noto = col.Add(Path.Combine(AppContext.BaseDirectory, "fonts", "NotoSans-Regular.ttf"));
+                baseFamily = noto;
 
-            var drawOpts = new RichTextOptions(font)
+                // опциональный фолбэк (вдруг другой набор символов)
+                var fallbackPath = Path.Combine(AppContext.BaseDirectory, "fonts", "DejaVuSans.ttf");
+                FontFamily? fallbackFamily = File.Exists(fallbackPath) ? col.Add(fallbackPath) : (FontFamily?)null;
+
+                float fontSize = 64f;
+                var font = baseFamily.CreateFont(fontSize);
+
+                var measureOpts = new TextOptions(font)
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    WrappingLength = size - 20,
+                    // ВАЖНО: фолбэки для недостающих глифов
+                    FallbackFontFamilies = fallbackFamily is not null ? new[] { fallbackFamily.Value } : Array.Empty<FontFamily>()
+                };
+
+                var drawOpts = new RichTextOptions(font)
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    WrappingLength = size - 20,
+                    Origin = new PointF(size / 2f, size / 2f),
+                    FallbackFontFamilies = measureOpts.FallbackFontFamilies
+                };
+
+                // подбор размера
+                while (font.Size > 10)
+                {
+                    var measured = TextMeasurer.MeasureSize(text, measureOpts);
+                    if (measured.Width <= size - 20 && measured.Height <= size - 20) break;
+
+                    font = baseFamily.CreateFont(font.Size - 2f);
+                    measureOpts = new TextOptions(font)
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        WrappingLength = size - 20,
+                        FallbackFontFamilies = drawOpts.FallbackFontFamilies
+                    };
+                    drawOpts = new RichTextOptions(font)
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        WrappingLength = size - 20,
+                        Origin = new PointF(size / 2f, size / 2f),
+                        FallbackFontFamilies = measureOpts.FallbackFontFamilies
+                    };
+                }
+
+                image.Mutate(ctx => ctx.DrawText(drawOpts, text, Color.Black));
+                using var ms = new MemoryStream();
+                image.SaveAsPng(ms);
+                return (ms.ToArray(), "image/png");
+            }
+            else
             {
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                WrappingLength = size - 20,
-                Origin = new PointF(size / 2f, size / 2f) // центр холста
-            };
+                // Ветка, когда нашли системный шрифт (Segoe UI / Arial / Tahoma)
+                float fontSize = 64f;
+                var font = baseFamily.CreateFont(fontSize);
 
-            // Подбор размера шрифта под квадрат size x size
-            while (fontSize > 10)
-            {
-                var measured = TextMeasurer.MeasureSize(text, measureOpts);
-                if (measured.Width <= size - 20 && measured.Height <= size - 20)
-                    break;
-
-                fontSize -= 2f;
-                font = family.CreateFont(fontSize);
-
-                // обновляем оба options
-                measureOpts = new TextOptions(font)
+                var measureOpts = new TextOptions(font)
                 {
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     WrappingLength = size - 20
                 };
-                drawOpts = new RichTextOptions(font)
+                var drawOpts = new RichTextOptions(font)
                 {
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     WrappingLength = size - 20,
                     Origin = new PointF(size / 2f, size / 2f)
                 };
+
+                while (font.Size > 10)
+                {
+                    var measured = TextMeasurer.MeasureSize(text, measureOpts);
+                    if (measured.Width <= size - 20 && measured.Height <= size - 20) break;
+
+                    font = baseFamily.CreateFont(font.Size - 2f);
+                    measureOpts = new TextOptions(font)
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        WrappingLength = size - 20
+                    };
+                    drawOpts = new RichTextOptions(font)
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        WrappingLength = size - 20,
+                        Origin = new PointF(size / 2f, size / 2f)
+                    };
+                }
+
+                image.Mutate(ctx => ctx.DrawText(drawOpts, text, Color.Black));
+                using var ms = new MemoryStream();
+                image.SaveAsPng(ms);
+                return (ms.ToArray(), "image/png");
             }
-
-            image.Mutate(ctx => ctx.DrawText(drawOpts, text, Color.Black));
-
-            using var ms = new System.IO.MemoryStream();
-            image.SaveAsPng(ms);
-            return (ms.ToArray(), "image/png");
         }
+
 
     }
 }
