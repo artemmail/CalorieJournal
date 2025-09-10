@@ -20,14 +20,15 @@
 }
 
 /* Корневой контейнер диалога — больше не растягиваем на всю высоту */
-.container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;            /* было 1x — опечатка */
-  padding: 12px;
-  /* height: 100%;  ← удалено */
-  /* overflow: auto; ← удалено */
-}
+  .container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;            /* было 1x — опечатка */
+    padding: 12px;
+    color: rgba(0, 0, 0, 0.87); /* ensure readable text on light background */
+    /* height: 100%;  ← удалено */
+    /* overflow: auto; ← удалено */
+  }
 
 .photo {
   align-self: center;
