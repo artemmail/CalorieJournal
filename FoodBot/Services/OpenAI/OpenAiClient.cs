@@ -122,6 +122,79 @@ Return exactly this JSON:
             return step;
         }
 
+        public async Task<Step1Snapshot?> DetectFromTextAsync(string description, string model, CancellationToken ct)
+        {
+            var messages = new List<object>
+            {
+                new { role = "system", content = "You infer dish, English-only ingredients, composition shares and portion weight from a meal description. Reply JSON only." },
+                new { role = "user", content = $@"Description: {description}
+
+Return JSON exactly as:
+{{""dish"":""..."",""ingredients"":[],""shares_percent"":[],""weight_g"":0,""confidence"":0}}
+Rules:
+• If grams or weights are mentioned, use them to compute shares_percent and weight_g.
+• If not, assume realistic average grams yourself." }
+            };
+
+            var request = OpenAiRequestFactory.BuildVisionStep1Request(model, messages);
+            var bodyStep1 = JsonSerializer.Serialize(request);
+
+            using var resp = await SendWithRetryAsync(
+                createRequest: () =>
+                {
+                    var m = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
+                    m.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+                    m.Content = new StringContent(bodyStep1, Encoding.UTF8, "application/json");
+                    return m;
+                },
+                purpose: "text_step1",
+                ct: ct
+            );
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync(ct);
+                throw new InvalidOperationException($"OpenAI (text step) error {(int)resp.StatusCode}: {err}");
+            }
+
+            using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
+            if (string.IsNullOrWhiteSpace(content)) return null;
+
+            var step = JsonSerializer.Deserialize<Step1Snapshot>(content!,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (step is not null)
+            {
+                var ingredients = step.ingredients ?? Array.Empty<string>();
+                var shares = step.shares_percent ?? Array.Empty<decimal>();
+
+                if (shares.Length != ingredients.Length)
+                {
+                    var fixedShares = new decimal[ingredients.Length];
+                    var n = Math.Min(fixedShares.Length, shares.Length);
+                    Array.Copy(shares, fixedShares, n);
+                    shares = fixedShares;
+                }
+
+                var sum = shares.Sum();
+                if (sum > 0)
+                {
+                    var k = 100m / sum;
+                    var fixedArr = shares.Select(v => Math.Round(v * k, 1)).ToArray();
+                    var diff = 100m - fixedArr.Sum();
+                    if (fixedArr.Length > 0)
+                        fixedArr[^1] = Math.Round(fixedArr[^1] + diff, 1);
+                    shares = fixedArr;
+                }
+
+                step = step with { shares_percent = shares };
+            }
+
+            return step;
+        }
+
         public async Task<FinalPayload?> ComputeFinalAsync(IEnumerable<object> messagesHistoryWithUserPrompt, string model, CancellationToken ct)
         {
             var responseFormat = OpenAiRequestFactory.BuildFinalResponseFormatSchema();

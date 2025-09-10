@@ -8,6 +8,7 @@ namespace FoodBot.Services.OpenAI
     public interface IOpenAiClient
     {
         Task<Step1Snapshot?> DetectFromImageAsync(string dataUrl, string? userNote, string visionModel, CancellationToken ct);
+        Task<Step1Snapshot?> DetectFromTextAsync(string description, string model, CancellationToken ct);
         Task<FinalPayload?> ComputeFinalAsync(IEnumerable<object> messagesHistoryWithUserPrompt, string model, CancellationToken ct);
     }
 
