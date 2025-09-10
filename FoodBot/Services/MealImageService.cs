@@ -33,11 +33,11 @@ public class MealImageService
             {
                 model = "gpt-image-1",
                 prompt = description,
-                size = "512x512",
-                response_format = "b64_json"
+                size = "512x512"
             });
-            using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/images/generations");
+            using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/images");
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            req.Headers.Add("OpenAI-Beta", "image-v1");
             req.Content = new StringContent(body, Encoding.UTF8, "application/json");
             using var resp = await http.SendAsync(req, ct);
             if (!resp.IsSuccessStatusCode)
