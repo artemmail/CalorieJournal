@@ -178,7 +178,12 @@ public static class BotExtensions
             Update? update;
             try
             {
-                update = await JsonSerializer.DeserializeAsync<Update>(http.Request.Body, cancellationToken: ct);
+                var opts = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                    DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower
+                };
+                update = await JsonSerializer.DeserializeAsync<Update>(http.Request.Body, opts, ct);
             }
             catch (JsonException ex)
             {
