@@ -3,6 +3,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodBot.Data;
 
+public enum MealSourceType
+{
+    Photo = 0,
+    Description = 1
+}
+
 public class MealEntry
 {
     [Key] public int Id { get; set; }
@@ -14,6 +20,8 @@ public class MealEntry
 
     // When saved
     public DateTimeOffset CreatedAtUtc { get; set; }
+
+    public MealSourceType SourceType { get; set; }
 
     // Image
     public string FileId { get; set; } = null!;

@@ -175,6 +175,7 @@ $@"Вход через приложение:
                     UserId = userId,
                     Username = username,
                     CreatedAtUtc = DateTimeOffset.UtcNow,
+                    SourceType = MealSourceType.Photo,
 
                     FileId = ph.FileId,
                     FileMime = "image/jpeg",
@@ -403,13 +404,68 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
     // ======= Clarify helper (общий для текста и голоса) =======
     private async Task ApplyClarificationTextAsync(BotDbContext db, NutritionService nutrition, long chatId, string text, CancellationToken ct)
     {
-        var mode = GetClarifyMode();
-
-        // Берём последнюю запись с фото
+        // Берём последнюю запись
         var last = await db.Meals
-            .Where(m => m.ChatId == chatId && m.ImageBytes != null)
+            .Where(m => m.ChatId == chatId)
             .OrderByDescending(m => m.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
+        if (last is null)
+        {
+            await _bot.SendMessage(chatId, "Нет записей для уточнения.", cancellationToken: ct);
+            return;
+        }
+
+        if (last.SourceType == MealSourceType.Description)
+        {
+            var convText = await nutrition.AnalyzeTextAsync(text, ct);
+            if (convText is null)
+            {
+                await _bot.SendMessage(chatId, "Не удалось применить уточнение.", cancellationToken: ct);
+                return;
+            }
+
+            last.DishName = convText.Result.dish;
+            last.IngredientsJson = JsonSerializer.Serialize(convText.Result.ingredients);
+            var productsJsonText = ProductJsonHelper.BuildProductsJson(convText.CalcPlanJson);
+            last.ProductsJson = productsJsonText;
+            last.ProteinsG = convText.Result.proteins_g;
+            last.FatsG = convText.Result.fats_g;
+            last.CarbsG = convText.Result.carbs_g;
+            last.CaloriesKcal = convText.Result.calories_kcal;
+            last.Confidence = convText.Result.confidence;
+            last.WeightG = convText.Result.weight_g;
+            last.ReasoningPrompt = convText.ReasoningPrompt;
+            last.Step1Json = JsonSerializer.Serialize(convText.Step1);
+            last.ClarifyNote = text;
+            last.CreatedAtUtc = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+
+            var step1HtmlText = BuildStep1PreviewHtml(convText.Step1);
+            if (!string.IsNullOrWhiteSpace(step1HtmlText))
+                await SendHtmlSafe(_bot, chatId, step1HtmlText, ct);
+
+            if (!string.IsNullOrWhiteSpace(convText.ReasoningPrompt))
+            {
+                if (chatId == 1496378009)
+                {
+                    var promptBytes = Encoding.UTF8.GetBytes(convText.ReasoningPrompt);
+                    using var stream = new MemoryStream(promptBytes);
+                    await _bot.SendDocument(chatId,
+                        InputFile.FromStream(stream, "reasoning.txt"),
+                        caption: "🧠 Reasoning request (compact)",
+                        cancellationToken: ct);
+                }
+            }
+
+            var rText = convText.Result;
+            var compHtmlText = BuildProductsHtml(productsJsonText);
+            var htmlFinalText =
+$@"<b>✅ Final nutrition (after clarify)</b>\n<b>🍽️ {WebUtility.HtmlEncode(rText.dish)}</b>\nIngredients (EN): <code>{WebUtility.HtmlEncode(string.Join(", ", rText.ingredients))}</code>\n\nServing weight: <b>{rText.weight_g:F0} g</b>\nP: <b>{rText.proteins_g:F1} g</b>   F: <b>{rText.fats_g:F1} g</b>   C: <b>{rText.carbs_g:F1} g</b>\nCalories: <b>{rText.calories_kcal:F0}</b> kcal\nModel confidence: <b>{(rText.confidence * 100m):F0}%</b>{compHtmlText}";
+            await SendHtmlSafe(_bot, chatId, htmlFinalText, ct);
+            return;
+        }
+
+        var mode = GetClarifyMode();
 
         async Task<NutritionConversation?> AnalyzeWithProgress(byte[] img)
         {
@@ -517,6 +573,8 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             last.Confidence = conv2.Result.confidence;
             last.WeightG = conv2.Result.weight_g;
             last.ReasoningPrompt = conv2.ReasoningPrompt;
+            last.Step1Json = JsonSerializer.Serialize(conv2.Step1);
+            last.ClarifyNote = text;
             last.CreatedAtUtc = DateTimeOffset.UtcNow;
 
             await db.SaveChangesAsync(ct);
