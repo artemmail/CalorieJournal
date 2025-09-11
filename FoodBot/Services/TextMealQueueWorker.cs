@@ -32,16 +32,72 @@ public sealed class TextMealQueueWorker : BackgroundService
                 var nutrition = scope.ServiceProvider.GetRequiredService<NutritionService>();
                 var images = scope.ServiceProvider.GetRequiredService<MealImageService>();
 
-                var next = await db.PendingMeals
+                var nextText = await db.PendingMeals
                     .Where(x => x.Description != null)
                     .OrderBy(x => x.CreatedAtUtc)
                     .FirstOrDefaultAsync(stoppingToken);
+                var nextClar = await db.PendingClarifies
+                    .Join(db.Meals,
+                        c => new { c.ChatId, c.MealId },
+                        m => new { m.ChatId, MealId = m.Id },
+                        (c, m) => new { Clar = c, Meal = m })
+                    .Where(x => x.Meal.ImageBytes == null || x.Meal.ImageBytes.Length == 0)
+                    .OrderBy(x => x.Clar.CreatedAtUtc)
+                    .Select(x => x.Clar)
+                    .FirstOrDefaultAsync(stoppingToken);
 
-                if (next == null)
+                if (nextText == null && nextClar == null)
                 {
                     await Task.Delay(2000, stoppingToken);
                     continue;
                 }
+
+                if (nextClar != null && (nextText == null || nextClar.CreatedAtUtc <= nextText.CreatedAtUtc))
+                {
+                    try
+                    {
+                        var meal = await db.Meals
+                            .Where(m => m.ChatId == nextClar.ChatId && m.Id == nextClar.MealId)
+                            .FirstOrDefaultAsync(stoppingToken);
+                        if (meal == null)
+                        {
+                            db.PendingClarifies.Remove(nextClar);
+                            await db.SaveChangesAsync(stoppingToken);
+                            continue;
+                        }
+
+                        var conv = await nutrition.AnalyzeTextAsync(nextClar.Note, stoppingToken);
+                        var result = conv?.Result;
+                        meal.DishName = result?.dish ?? nextClar.Note;
+                        meal.IngredientsJson = result != null ? System.Text.Json.JsonSerializer.Serialize(result.ingredients) : "[]";
+                        meal.ProductsJson = conv != null ? ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson) : "[]";
+                        meal.ProteinsG = result?.proteins_g ?? 0;
+                        meal.FatsG = result?.fats_g ?? 0;
+                        meal.CarbsG = result?.carbs_g ?? 0;
+                        meal.CaloriesKcal = result?.calories_kcal ?? 0;
+                        meal.Confidence = result?.confidence ?? 0;
+                        meal.WeightG = result?.weight_g ?? 0;
+                        meal.Step1Json = conv != null ? System.Text.Json.JsonSerializer.Serialize(conv.Step1) : null;
+                        meal.ReasoningPrompt = conv?.ReasoningPrompt;
+                        if (nextClar.NewTime.HasValue)
+                            meal.CreatedAtUtc = nextClar.NewTime.Value.ToUniversalTime();
+                        meal.ClarifyNote = nextClar.Note;
+                        db.PendingClarifies.Remove(nextClar);
+                        await db.SaveChangesAsync(stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.LogError(ex, "TextMealQueueWorker clarification failed for {Id}", nextClar.Id);
+                        nextClar.Attempts++;
+                        if (nextClar.Attempts >= 3)
+                            db.PendingClarifies.Remove(nextClar);
+                        await db.SaveChangesAsync(stoppingToken);
+                        await Task.Delay(2000, stoppingToken);
+                    }
+                    continue;
+                }
+
+                var next = nextText!;
 
                 try
                 {
