@@ -183,6 +183,7 @@ public static class BotExtensions
             catch (JsonException ex)
             {
                 logger.LogError(ex, "Invalid update payload");
+
                 return Results.BadRequest("Invalid update payload");
             }
 
