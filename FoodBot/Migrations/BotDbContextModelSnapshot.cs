@@ -163,6 +163,9 @@ namespace FoodBot.Migrations
                     b.Property<decimal?>("FatsG")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<int>("SourceType")
+                        .HasColumnType("int");
+
                     b.Property<string>("FileId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

@@ -42,7 +42,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                         c => new { c.ChatId, c.MealId },
                         m => new { m.ChatId, MealId = m.Id },
                         (c, m) => new { Clar = c, Meal = m })
-                    .Where(x => x.Meal.ImageBytes != null && x.Meal.ImageBytes.Length > 0)
+                    .Where(x => x.Meal.SourceType == MealSourceType.Photo)
                     .OrderBy(x => x.Clar.CreatedAtUtc)
                     .Select(x => x.Clar)
                     .FirstOrDefaultAsync(stoppingToken);
@@ -136,6 +136,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                             UserId = 0,
                             Username = "app",
                             CreatedAtUtc = DateTimeOffset.UtcNow,
+                            SourceType = MealSourceType.Photo,
                             FileId = string.Empty,
                             FileMime = next.FileMime,
                             ImageBytes = next.ImageBytes,
