@@ -178,11 +178,12 @@ public static class BotExtensions
             Update? update;
             try
             {
-                update = await System.Text.Json.JsonSerializer.DeserializeAsync<Update>(http.Request.Body, cancellationToken: ct);
+                update = await JsonSerializer.DeserializeAsync<Update>(http.Request.Body, cancellationToken: ct);
             }
             catch (JsonException ex)
             {
-                logger.LogWarning(ex, "Invalid update payload");
+                logger.LogError(ex, "Invalid update payload");
+
                 return Results.BadRequest("Invalid update payload");
             }
 
@@ -200,6 +201,7 @@ public static class BotExtensions
                     }
                 });
             }
+
             return Results.Ok();
         });
 
