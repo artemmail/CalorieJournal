@@ -175,7 +175,17 @@ public static class BotExtensions
         var secret = app.Configuration["Telegram:WebhookSecretPath"] ?? "my-secret";
         app.MapPost($"/bot/{secret}", async (HttpContext http, UpdateHandler handler, ILogger<Program> logger, CancellationToken ct) =>
         {
-            var update = await System.Text.Json.JsonSerializer.DeserializeAsync<Update>(http.Request.Body, cancellationToken: ct);
+            Update? update;
+            try
+            {
+                update = await System.Text.Json.JsonSerializer.DeserializeAsync<Update>(http.Request.Body, cancellationToken: ct);
+            }
+            catch (JsonException ex)
+            {
+                logger.LogWarning(ex, "Invalid update payload");
+                return Results.BadRequest("Invalid update payload");
+            }
+
             if (update != null)
             {
                 _ = Task.Run(async () =>
