@@ -38,7 +38,13 @@ public sealed class PhotoQueueWorker : BackgroundService
                     .OrderBy(x => x.CreatedAtUtc)
                     .FirstOrDefaultAsync(stoppingToken);
                 var nextClar = await db.PendingClarifies
-                    .OrderBy(x => x.CreatedAtUtc)
+                    .Join(db.Meals,
+                        c => new { c.ChatId, c.MealId },
+                        m => new { m.ChatId, MealId = m.Id },
+                        (c, m) => new { Clar = c, Meal = m })
+                    .Where(x => x.Meal.ImageBytes != null && x.Meal.ImageBytes.Length > 0)
+                    .OrderBy(x => x.Clar.CreatedAtUtc)
+                    .Select(x => x.Clar)
                     .FirstOrDefaultAsync(stoppingToken);
 
                 if (nextPhoto == null && nextClar == null)
