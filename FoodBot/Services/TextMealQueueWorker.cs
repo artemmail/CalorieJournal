@@ -72,7 +72,8 @@ public sealed class TextMealQueueWorker : BackgroundService
                         WeightG = result?.weight_g ?? 0,
                         Model = "app",
                         Step1Json = conv != null ? System.Text.Json.JsonSerializer.Serialize(conv.Step1) : null,
-                        ReasoningPrompt = conv?.ReasoningPrompt
+                        ReasoningPrompt = conv?.ReasoningPrompt,
+                        ClarifyNote = next.Description
                     };
                     db.Meals.Add(entry);
                     db.PendingMeals.Remove(next);
