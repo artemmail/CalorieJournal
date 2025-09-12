@@ -14,17 +14,21 @@ public sealed class DietAnalysisService
 {
     private readonly BotDbContext _db;
     private readonly ReportDataLoader _loader;
-    private readonly AnalysisPromptBuilder _promptBuilder;
+    private readonly IDictionary<AnalysisPeriod, IReportStrategy> _strategies;
     private readonly AnalysisGenerator _generator;
 
     // Константа часового пояса: Москва (кросс-платформенно)
     private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
-    public DietAnalysisService(BotDbContext db, ReportDataLoader loader, AnalysisPromptBuilder promptBuilder, AnalysisGenerator generator)
+    public DietAnalysisService(
+        BotDbContext db,
+        ReportDataLoader loader,
+        IEnumerable<IReportStrategy> strategies,
+        AnalysisGenerator generator)
     {
         _db = db;
         _loader = loader;
-        _promptBuilder = promptBuilder;
+        _strategies = strategies.ToDictionary(s => s.Period);
         _generator = generator;
     }
 
@@ -304,7 +308,9 @@ public sealed class DietAnalysisService
     private async Task<string> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
         var reportData = await _loader.LoadAsync(chatId, period, ct);
-        var body = _promptBuilder.Build(reportData, period);
+        if (!_strategies.TryGetValue(period, out var strategy))
+            throw new InvalidOperationException($"Strategy for period {period} not registered");
+        var body = strategy.PromptBuilder.Build(reportData);
         return await _generator.GenerateAsync(body, ct);
     }
 
