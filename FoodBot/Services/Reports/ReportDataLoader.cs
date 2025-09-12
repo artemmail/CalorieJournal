@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using FoodBot.Data;
 using FoodBot.Models;
 using Microsoft.EntityFrameworkCore;
@@ -143,6 +144,7 @@ public sealed class ReportDataLoader : IReportDataLoader
         return new ReportData<ReportPayload>
         {
             Data = data,
+            Json = JsonSerializer.Serialize(data),
             PeriodHuman = periodHuman
         };
     }

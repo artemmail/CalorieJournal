@@ -1,4 +1,3 @@
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FoodBot.Models;
@@ -22,20 +21,12 @@ public sealed class ReportStrategy : IReportStrategy
 
     public AnalysisPeriod Period { get; }
 
-    public async Task<object> LoadDataAsync(long chatId, CancellationToken ct)
+    public async Task<ReportData<ReportPayload>> LoadDataAsync(long chatId, CancellationToken ct)
         => await _loader.LoadAsync(chatId, Period, ct);
 
-    public string BuildPrompt(object data)
-    {
-        if (data is not ReportData<ReportPayload> typed)
-            throw new ArgumentException("Invalid report data", nameof(data));
-        return _promptBuilder.Build(typed);
-    }
+    public string BuildPrompt(ReportData<ReportPayload> data)
+        => _promptBuilder.Build(data);
 
-    public Task<string> GenerateAsync(object data, CancellationToken ct)
-    {
-        if (data is not string prompt)
-            throw new ArgumentException("Prompt must be a string", nameof(data));
-        return _generator.GenerateAsync(prompt, ct);
-    }
+    public Task<string> GenerateAsync(string prompt, CancellationToken ct)
+        => _generator.GenerateAsync(prompt, ct);
 }

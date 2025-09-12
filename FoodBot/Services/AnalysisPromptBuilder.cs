@@ -28,11 +28,8 @@ public sealed class AnalysisPromptBuilder : IPromptBuilder
     public string? Model => "gpt-4o-mini";
 
     /// <inheritdoc />
-    public string Build(object data)
+    public string Build(ReportData<ReportPayload> report)
     {
-        if (data is not ReportData<ReportPayload> report)
-            throw new ArgumentException("Invalid report data", nameof(data));
-
         var instructionsRu = @$"Ты — внимательный клинический нутрициолог.
 Анализируй ТОЛЬКО фактически съеденное с начала периода до текущего момента.
 Весь анализ привязывай к локальному времени пользователя (Москва, UTC+3). Учитывай время каждого приёма.
@@ -68,7 +65,7 @@ public sealed class AnalysisPromptBuilder : IPromptBuilder
                     {
                         new { type = "input_text", text = instructionsRu },
                         new { type = "input_text", text = _periodPrompt },
-                        new { type = "input_text", text = JsonSerializer.Serialize(report.Data) }
+                        new { type = "input_text", text = report.Json }
                     }
                 }
             }
