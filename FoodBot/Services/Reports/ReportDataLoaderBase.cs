@@ -49,26 +49,26 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
         var meals = mealsRaw.Select(m =>
         {
             var local = TimeZoneInfo.ConvertTimeFromUtc(m.CreatedAtUtc.UtcDateTime, tz);
-            return new
+            return new MealEntry
             {
-                dish = m.DishName,
-                localDate = local.ToString("yyyy-MM-dd"),
-                localTime = local.ToString("HH:mm"),
-                localDateTimeIso = local.ToString("yyyy-MM-dd HH:mm"),
-                calories = m.CaloriesKcal ?? 0,
-                proteins = m.ProteinsG ?? 0,
-                fats = m.FatsG ?? 0,
-                carbs = m.CarbsG ?? 0
+                Dish = m.DishName ?? string.Empty,
+                LocalDate = local.ToString("yyyy-MM-dd"),
+                LocalTime = local.ToString("HH:mm"),
+                LocalDateTimeIso = local.ToString("yyyy-MM-dd HH:mm"),
+                Calories = m.CaloriesKcal ?? 0,
+                Proteins = m.ProteinsG ?? 0,
+                Fats = m.FatsG ?? 0,
+                Carbs = m.CarbsG ?? 0
             };
         }).ToList();
 
-        var totals = new
+        var totals = new Totals
         {
-            calories = meals.Sum(x => x.calories),
-            proteins = meals.Sum(x => x.proteins),
-            fats = meals.Sum(x => x.fats),
-            carbs = meals.Sum(x => x.carbs),
-            mealsCount = meals.Count()
+            Calories = meals.Sum(x => x.Calories),
+            Proteins = meals.Sum(x => x.Proteins),
+            Fats = meals.Sum(x => x.Fats),
+            Carbs = meals.Sum(x => x.Carbs),
+            MealsCount = meals.Count
         };
 
         List<string>? hourGrid = null;
@@ -84,7 +84,7 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
             if (meals.Any())
             {
                 var lastLocal = meals
-                    .Select(m => DateTime.ParseExact(m.localDateTimeIso, "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
+                    .Select(m => DateTime.ParseExact(m.LocalDateTimeIso, "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
                     .Max();
 
                 lastMealLocalTime = lastLocal.ToString("HH:mm");
@@ -93,23 +93,23 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
         }
 
         var byHour = meals
-            .GroupBy(m => int.Parse(m.localTime[..2], CultureInfo.InvariantCulture))
-            .Select(g => new { hour = g.Key, cnt = g.Count(), kcal = g.Sum(x => x.calories) })
-            .OrderBy(x => x.hour)
+            .GroupBy(m => int.Parse(m.LocalTime[..2], CultureInfo.InvariantCulture))
+            .Select(g => new GroupByHour { Hour = g.Key, Count = g.Count(), Kcal = g.Sum(x => x.Calories) })
+            .OrderBy(x => x.Hour)
             .ToList();
 
         var byDay = meals
-            .GroupBy(m => m.localDate)
-            .Select(g => new
+            .GroupBy(m => m.LocalDate)
+            .Select(g => new GroupByDay
             {
-                date = g.Key,
-                meals = g.Count(),
-                kcal = g.Sum(x => x.calories),
-                prot = g.Sum(x => x.proteins),
-                fat = g.Sum(x => x.fats),
-                carb = g.Sum(x => x.carbs)
+                Date = g.Key,
+                Meals = g.Count(),
+                Kcal = g.Sum(x => x.Calories),
+                Proteins = g.Sum(x => x.Proteins),
+                Fats = g.Sum(x => x.Fats),
+                Carbs = g.Sum(x => x.Carbs)
             })
-            .OrderBy(x => x.date)
+            .OrderBy(x => x.Date)
             .ToList();
 
         var utcOffset = tz.GetUtcOffset(nowLocal.DateTime);
@@ -123,24 +123,24 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
         var periodStartUtcStr = periodStartUtc.ToString("yyyy-MM-dd HH:mm:ss");
         var periodEndUtcStr = nowUtc.ToString("yyyy-MM-dd HH:mm:ss");
 
-        var data = new
+        var data = new ReportPayload
         {
-            timezone = new { id = tz.Id, label = "Europe/Moscow / Russian Standard Time", utcOffset = utcOffsetStr },
-            period = new
+            Timezone = new TimezoneInfoPayload { Id = tz.Id, Label = "Europe/Moscow / Russian Standard Time", UtcOffset = utcOffsetStr },
+            Period = new PeriodInfoPayload
             {
-                kind = periodKindStr,
-                label = periodHuman,
-                startLocal = periodStartLocalStr,
-                endLocal = periodEndLocalStr,
-                startUtc = periodStartUtcStr,
-                endUtc = periodEndUtcStr
+                Kind = periodKindStr,
+                Label = periodHuman,
+                StartLocal = periodStartLocalStr,
+                EndLocal = periodEndLocalStr,
+                StartUtc = periodStartUtcStr,
+                EndUtc = periodEndUtcStr
             },
-            now = new { local = nowLocalStr, localHour = nowLocalHourStr, localDate = nowLocalDateStr },
-            client = new { name = card?.Name, age, goals = card?.DietGoals, restrictions = card?.MedicalRestrictions },
-            meals,
-            totals,
-            grouping = new { byHour, byDay },
-            dailyPlanContext = new { isDaily = Period == AnalysisPeriod.Day, remainingHourGrid = hourGrid, lastMealLocalTime, hoursSinceLastMeal }
+            Now = new NowInfoPayload { Local = nowLocalStr, LocalHour = nowLocalHourStr, LocalDate = nowLocalDateStr },
+            Client = new ClientInfoPayload { Name = card?.Name, Age = age, Goals = card?.DietGoals, Restrictions = card?.MedicalRestrictions },
+            Meals = meals,
+            Totals = totals,
+            Grouping = new Grouping { ByHour = byHour, ByDay = byDay },
+            DailyPlanContext = new DailyPlanContext { IsDaily = Period == AnalysisPeriod.Day, RemainingHourGrid = hourGrid, LastMealLocalTime = lastMealLocalTime, HoursSinceLastMeal = hoursSinceLastMeal }
         };
 
         return new TData

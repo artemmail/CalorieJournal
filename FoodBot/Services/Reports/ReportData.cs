@@ -2,7 +2,10 @@ namespace FoodBot.Services.Reports;
 
 public class ReportData
 {
-    public object Data { get; init; } = default!;
+    /// <summary>Structured payload containing report information.</summary>
+    public ReportPayload Data { get; init; } = new();
+
+    /// <summary>Human readable description of the period covered by the report.</summary>
     public string PeriodHuman { get; init; } = string.Empty;
 }
 
