@@ -5,22 +5,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FoodBot.Services.Reports;
 
-public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
-    where TData : ReportData, new()
+public sealed class ReportDataLoader : IReportDataLoader
 {
     private readonly BotDbContext _db;
-    protected ReportDataLoaderBase(BotDbContext db) => _db = db;
-
-    protected abstract AnalysisPeriod Period { get; }
+    public ReportDataLoader(BotDbContext db) => _db = db;
 
     private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
-    public async Task<TData> LoadAsync(long chatId, CancellationToken ct)
+    public async Task<ReportData<ReportPayload>> LoadAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
         var tz = MoscowTz;
         var nowUtc = DateTimeOffset.UtcNow;
         var nowLocal = TimeZoneInfo.ConvertTime(nowUtc, tz);
-        var (periodStartUtc, periodHuman, _, periodStartLocal) = GetPeriodStart(nowLocal, Period, tz);
+        var (periodStartUtc, periodHuman, _, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
 
         var card = await _db.PersonalCards
             .AsNoTracking()
@@ -75,7 +72,7 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
         string? lastMealLocalTime = null;
         double? hoursSinceLastMeal = null;
 
-        if (Period == AnalysisPeriod.Day)
+        if (period == AnalysisPeriod.Day)
         {
             hourGrid = new List<string>();
             var startHour = (nowLocal.Minute == 0) ? nowLocal.Hour : nowLocal.Hour + 1;
@@ -117,7 +114,7 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
         var nowLocalStr = nowLocal.ToString("yyyy-MM-dd HH:mm");
         var nowLocalHourStr = nowLocal.ToString("HH");
         var nowLocalDateStr = nowLocal.ToString("yyyy-MM-dd");
-        var periodKindStr = Period.ToString();
+        var periodKindStr = period.ToString();
         var periodStartLocalStr = periodStartLocal.ToString("yyyy-MM-dd HH:mm");
         var periodEndLocalStr = nowLocalStr;
         var periodStartUtcStr = periodStartUtc.ToString("yyyy-MM-dd HH:mm:ss");
@@ -140,10 +137,10 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
             Meals = meals,
             Totals = totals,
             Grouping = new Grouping { ByHour = byHour, ByDay = byDay },
-            DailyPlanContext = new DailyPlanContext { IsDaily = Period == AnalysisPeriod.Day, RemainingHourGrid = hourGrid, LastMealLocalTime = lastMealLocalTime, HoursSinceLastMeal = hoursSinceLastMeal }
+            DailyPlanContext = new DailyPlanContext { IsDaily = period == AnalysisPeriod.Day, RemainingHourGrid = hourGrid, LastMealLocalTime = lastMealLocalTime, HoursSinceLastMeal = hoursSinceLastMeal }
         };
 
-        return new TData
+        return new ReportData<ReportPayload>
         {
             Data = data,
             PeriodHuman = periodHuman
@@ -207,4 +204,3 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
         return TimeZoneInfo.CreateCustomTimeZone("UTC+03", TimeSpan.FromHours(3), "UTC+03", "UTC+03");
     }
 }
-

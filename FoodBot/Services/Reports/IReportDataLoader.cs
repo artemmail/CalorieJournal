@@ -1,10 +1,11 @@
 using System.Threading;
 using System.Threading.Tasks;
+using FoodBot.Models;
 
 namespace FoodBot.Services.Reports;
 
-public interface IReportDataLoader<TData>
+public interface IReportDataLoader
 {
-    Task<TData> LoadAsync(long chatId, CancellationToken ct);
+    Task<ReportData<ReportPayload>> LoadAsync(long chatId, AnalysisPeriod period, CancellationToken ct);
 }
 

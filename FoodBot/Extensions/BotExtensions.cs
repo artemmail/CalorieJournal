@@ -63,19 +63,36 @@ public static class BotExtensions
         services.AddScoped<PdfReportService>();
         services.AddScoped<StatsService>();
         services.AddScoped<PersonalCardService>();
-        services.AddScoped<IReportDataLoader<DailyReportData>, DailyDataLoader>();
-        services.AddScoped<IReportDataLoader<WeeklyReportData>, WeeklyDataLoader>();
-        services.AddScoped<IReportDataLoader<MonthlyReportData>, MonthlyDataLoader>();
-        services.AddScoped<IReportDataLoader<QuarterlyReportData>, QuarterlyDataLoader>();
-        services.AddScoped<DailyPromptBuilder>();
-        services.AddScoped<WeeklyPromptBuilder>();
-        services.AddScoped<MonthlyPromptBuilder>();
-        services.AddScoped<QuarterlyPromptBuilder>();
+        services.AddScoped<IReportDataLoader, ReportDataLoader>();
 
-        services.AddScoped<IReportStrategy, DailyReportStrategy>();
-        services.AddScoped<IReportStrategy, WeeklyReportStrategy>();
-        services.AddScoped<IReportStrategy, MonthlyReportStrategy>();
-        services.AddScoped<IReportStrategy, QuarterlyReportStrategy>();
+        services.AddScoped<IReportStrategy>(sp =>
+            new ReportStrategy(
+                AnalysisPeriod.Day,
+                sp.GetRequiredService<IReportDataLoader>(),
+                new AnalysisPromptBuilder(AnalysisPeriod.Day),
+                sp.GetRequiredService<AnalysisGenerator>()));
+
+        services.AddScoped<IReportStrategy>(sp =>
+            new ReportStrategy(
+                AnalysisPeriod.Week,
+                sp.GetRequiredService<IReportDataLoader>(),
+                new AnalysisPromptBuilder(AnalysisPeriod.Week),
+                sp.GetRequiredService<AnalysisGenerator>()));
+
+        services.AddScoped<IReportStrategy>(sp =>
+            new ReportStrategy(
+                AnalysisPeriod.Month,
+                sp.GetRequiredService<IReportDataLoader>(),
+                new AnalysisPromptBuilder(AnalysisPeriod.Month),
+                sp.GetRequiredService<AnalysisGenerator>()));
+
+        services.AddScoped<IReportStrategy>(sp =>
+            new ReportStrategy(
+                AnalysisPeriod.Quarter,
+                sp.GetRequiredService<IReportDataLoader>(),
+                new AnalysisPromptBuilder(AnalysisPeriod.Quarter),
+                sp.GetRequiredService<AnalysisGenerator>()));
+
         services.AddScoped<IDictionary<AnalysisPeriod, IReportStrategy>>(sp =>
             sp.GetServices<IReportStrategy>().ToDictionary(s => s.Period));
 

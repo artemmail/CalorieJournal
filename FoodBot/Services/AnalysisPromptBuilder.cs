@@ -5,25 +5,35 @@ using FoodBot.Services.Reports;
 namespace FoodBot.Services;
 
 /// <summary>
-/// Base prompt builder that contains shared instructions for all analysis reports.
-/// Concrete report builders override <see cref="PeriodPrompt"/> to provide
-/// period-specific guidance and optionally <see cref="Model"/> for model name.
+/// Prompt builder that contains shared instructions for all analysis reports.
+/// Period-specific guidance is selected based on <see cref="AnalysisPeriod"/>.
 /// </summary>
-public abstract class AnalysisPromptBuilder : IPromptBuilder
+public sealed class AnalysisPromptBuilder : IPromptBuilder
 {
-    /// <summary>LLM model name or <c>null</c> to use default.</summary>
-    public virtual string? Model => "gpt-4o-mini";
+    private readonly string _periodPrompt;
 
-    /// <summary>Gets period specific prompt instructions.</summary>
-    protected abstract string PeriodPrompt { get; }
+    public AnalysisPromptBuilder(AnalysisPeriod period)
+    {
+        _periodPrompt = period switch
+        {
+            AnalysisPeriod.Day => "Сформируй почасовой план на остаток текущего дня, используя remainingHourGrid.",
+            AnalysisPeriod.Week => "Сформируй общие рекомендации на текущую неделю. План на конец дня не нужен.",
+            AnalysisPeriod.Month => "Сформируй общие рекомендации на текущий месяц. План на конец дня не нужен.",
+            AnalysisPeriod.Quarter => "Сформируй общие рекомендации на текущий квартал. План на конец дня не нужен.",
+            _ => string.Empty
+        };
+    }
+
+    /// <summary>LLM model name or <c>null</c> to use default.</summary>
+    public string? Model => "gpt-4o-mini";
 
     /// <inheritdoc />
     public string Build(object data)
     {
-        if (data is not ReportData report)
+        if (data is not ReportData<ReportPayload> report)
             throw new ArgumentException("Invalid report data", nameof(data));
 
-        var instructionsRu = $@"Ты — внимательный клинический нутрициолог.
+        var instructionsRu = @$"Ты — внимательный клинический нутрициолог.
 Анализируй ТОЛЬКО фактически съеденное с начала периода до текущего момента.
 Весь анализ привязывай к локальному времени пользователя (Москва, UTC+3). Учитывай время каждого приёма.
 
@@ -57,7 +67,7 @@ public abstract class AnalysisPromptBuilder : IPromptBuilder
                     content = new object[]
                     {
                         new { type = "input_text", text = instructionsRu },
-                        new { type = "input_text", text = PeriodPrompt },
+                        new { type = "input_text", text = _periodPrompt },
                         new { type = "input_text", text = JsonSerializer.Serialize(report.Data) }
                     }
                 }
