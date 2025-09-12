@@ -4,19 +4,19 @@ using FoodBot.Models;
 
 namespace FoodBot.Services.Reports;
 
-public interface IReportStrategy
+public interface IReportStrategy<TData>
 {
     AnalysisPeriod Period { get; }
 
     /// <summary>
     /// Load structured report data for the given chat and period.
     /// </summary>
-    Task<ReportData<ReportPayload>> LoadDataAsync(long chatId, CancellationToken ct);
+    Task<ReportData<TData>> LoadDataAsync(long chatId, CancellationToken ct);
 
     /// <summary>
     /// Build a prompt from the loaded report data.
     /// </summary>
-    string BuildPrompt(ReportData<ReportPayload> data);
+    string BuildPrompt(ReportData<TData> data);
 
     /// <summary>
     /// Generate report markdown from a finished prompt.

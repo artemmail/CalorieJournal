@@ -63,38 +63,38 @@ public static class BotExtensions
         services.AddScoped<PdfReportService>();
         services.AddScoped<StatsService>();
         services.AddScoped<PersonalCardService>();
-        services.AddScoped<IReportDataLoader, ReportDataLoader>();
+        services.AddScoped<IReportDataLoader<ReportPayload>, ReportDataLoader>();
 
-        services.AddScoped<IReportStrategy>(sp =>
-            new ReportStrategy(
+        services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
+            new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Day,
-                sp.GetRequiredService<IReportDataLoader>(),
-                new AnalysisPromptBuilder(AnalysisPeriod.Day),
+                sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
+                new AnalysisPromptBuilder<ReportPayload>(AnalysisPeriod.Day),
                 sp.GetRequiredService<AnalysisGenerator>()));
 
-        services.AddScoped<IReportStrategy>(sp =>
-            new ReportStrategy(
+        services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
+            new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Week,
-                sp.GetRequiredService<IReportDataLoader>(),
-                new AnalysisPromptBuilder(AnalysisPeriod.Week),
+                sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
+                new AnalysisPromptBuilder<ReportPayload>(AnalysisPeriod.Week),
                 sp.GetRequiredService<AnalysisGenerator>()));
 
-        services.AddScoped<IReportStrategy>(sp =>
-            new ReportStrategy(
+        services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
+            new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Month,
-                sp.GetRequiredService<IReportDataLoader>(),
-                new AnalysisPromptBuilder(AnalysisPeriod.Month),
+                sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
+                new AnalysisPromptBuilder<ReportPayload>(AnalysisPeriod.Month),
                 sp.GetRequiredService<AnalysisGenerator>()));
 
-        services.AddScoped<IReportStrategy>(sp =>
-            new ReportStrategy(
+        services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
+            new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Quarter,
-                sp.GetRequiredService<IReportDataLoader>(),
-                new AnalysisPromptBuilder(AnalysisPeriod.Quarter),
+                sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
+                new AnalysisPromptBuilder<ReportPayload>(AnalysisPeriod.Quarter),
                 sp.GetRequiredService<AnalysisGenerator>()));
 
-        services.AddScoped<IDictionary<AnalysisPeriod, IReportStrategy>>(sp =>
-            sp.GetServices<IReportStrategy>().ToDictionary(s => s.Period));
+        services.AddScoped<IDictionary<AnalysisPeriod, IReportStrategy<ReportPayload>>>(sp =>
+            sp.GetServices<IReportStrategy<ReportPayload>>().ToDictionary(s => s.Period));
 
         services.AddScoped<AnalysisGenerator>();
         services.AddScoped<DietAnalysisService>();

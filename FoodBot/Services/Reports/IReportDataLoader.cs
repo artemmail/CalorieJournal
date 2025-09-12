@@ -4,8 +4,7 @@ using FoodBot.Models;
 
 namespace FoodBot.Services.Reports;
 
-public interface IReportDataLoader
+public interface IReportDataLoader<TData>
 {
-    Task<ReportData<ReportPayload>> LoadAsync(long chatId, AnalysisPeriod period, CancellationToken ct);
+    Task<ReportData<TData>> LoadAsync(long chatId, AnalysisPeriod period, CancellationToken ct);
 }
-
