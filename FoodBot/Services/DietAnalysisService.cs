@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using FoodBot.Data;
 using FoodBot.Models;
+using FoodBot.Services.Reports;
 using System.Collections.Generic;
 
 
@@ -13,23 +14,17 @@ namespace FoodBot.Services;
 public sealed class DietAnalysisService
 {
     private readonly BotDbContext _db;
-    private readonly ReportDataLoader _loader;
     private readonly IDictionary<AnalysisPeriod, IReportStrategy> _strategies;
-    private readonly AnalysisGenerator _generator;
 
     // Константа часового пояса: Москва (кросс-платформенно)
     private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
     public DietAnalysisService(
         BotDbContext db,
-        ReportDataLoader loader,
-        IEnumerable<IReportStrategy> strategies,
-        AnalysisGenerator generator)
+        IDictionary<AnalysisPeriod, IReportStrategy> strategies)
     {
         _db = db;
-        _loader = loader;
-        _strategies = strategies.ToDictionary(s => s.Period);
-        _generator = generator;
+        _strategies = strategies;
     }
 
     // === NEW: публичные методы для истории/очереди ===
@@ -307,11 +302,11 @@ public sealed class DietAnalysisService
 
     private async Task<string> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
-        var reportData = await _loader.LoadAsync(chatId, period, ct);
         if (!_strategies.TryGetValue(period, out var strategy))
             throw new InvalidOperationException($"Strategy for period {period} not registered");
-        var body = strategy.PromptBuilder.Build(reportData);
-        return await _generator.GenerateAsync(body, ct);
+        var data = await strategy.LoadDataAsync(chatId, ct);
+        var prompt = strategy.BuildPrompt(data);
+        return await strategy.GenerateAsync(prompt, ct);
     }
 
     // === Утилиты ===
