@@ -1,6 +1,10 @@
 using FoodBot.Data;
+using FoodBot.Models;
 using FoodBot.Services;
 using FoodBot.Services.OpenAI;
+using FoodBot.Services.Reports;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
@@ -69,6 +73,8 @@ public static class BotExtensions
         services.AddScoped<IReportStrategy, WeeklyReportStrategy>();
         services.AddScoped<IReportStrategy, MonthlyReportStrategy>();
         services.AddScoped<IReportStrategy, QuarterlyReportStrategy>();
+        services.AddScoped<IDictionary<AnalysisPeriod, IReportStrategy>>(sp =>
+            sp.GetServices<IReportStrategy>().ToDictionary(s => s.Period));
 
         services.AddScoped<AnalysisGenerator>();
         services.AddScoped<DietAnalysisService>();
