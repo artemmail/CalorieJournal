@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FoodBot.Models;
+using FoodBot.Services.Reports;
 
 namespace FoodBot.Services;
 
@@ -19,7 +20,7 @@ public abstract class AnalysisPromptBuilder : IPromptBuilder
     /// <inheritdoc />
     public string Build(object data)
     {
-        if (data is not ReportDataLoader.ReportData report)
+        if (data is not ReportData report)
             throw new ArgumentException("Invalid report data", nameof(data));
 
         var instructionsRu = $@"Ты — внимательный клинический нутрициолог.

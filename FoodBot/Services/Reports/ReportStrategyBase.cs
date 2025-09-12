@@ -6,15 +6,15 @@ using FoodBot.Services;
 
 namespace FoodBot.Services.Reports;
 
-public abstract class ReportStrategyBase : IReportStrategy
+public abstract class ReportStrategyBase<TData> : IReportStrategy where TData : ReportData
 {
-    private readonly ReportDataLoader _loader;
+    private readonly IReportDataLoader<TData> _loader;
     private readonly IPromptBuilder _promptBuilder;
     private readonly AnalysisGenerator _generator;
 
     protected ReportStrategyBase(
         AnalysisPeriod period,
-        ReportDataLoader loader,
+        IReportDataLoader<TData> loader,
         IPromptBuilder promptBuilder,
         AnalysisGenerator generator)
     {
@@ -26,10 +26,15 @@ public abstract class ReportStrategyBase : IReportStrategy
 
     public AnalysisPeriod Period { get; }
 
-    public Task<object> LoadDataAsync(long chatId, CancellationToken ct)
-        => _loader.LoadAsync(chatId, Period, ct);
+    public async Task<object> LoadDataAsync(long chatId, CancellationToken ct)
+        => await _loader.LoadAsync(chatId, ct);
 
-    public string BuildPrompt(object data) => _promptBuilder.Build(data);
+    public string BuildPrompt(object data)
+    {
+        if (data is not TData typed)
+            throw new ArgumentException("Invalid report data", nameof(data));
+        return _promptBuilder.Build(typed);
+    }
 
     public Task<string> GenerateAsync(object data, CancellationToken ct)
     {
@@ -38,3 +43,4 @@ public abstract class ReportStrategyBase : IReportStrategy
         return _generator.GenerateAsync(prompt, ct);
     }
 }
+

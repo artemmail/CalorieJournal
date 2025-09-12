@@ -3,21 +3,24 @@ using FoodBot.Data;
 using FoodBot.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace FoodBot.Services;
+namespace FoodBot.Services.Reports;
 
-public sealed class ReportDataLoader
+public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
+    where TData : ReportData, new()
 {
     private readonly BotDbContext _db;
-    public ReportDataLoader(BotDbContext db) => _db = db;
+    protected ReportDataLoaderBase(BotDbContext db) => _db = db;
+
+    protected abstract AnalysisPeriod Period { get; }
 
     private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
-    public async Task<ReportData> LoadAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    public async Task<TData> LoadAsync(long chatId, CancellationToken ct)
     {
         var tz = MoscowTz;
         var nowUtc = DateTimeOffset.UtcNow;
         var nowLocal = TimeZoneInfo.ConvertTime(nowUtc, tz);
-        var (periodStartUtc, periodHuman, _, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
+        var (periodStartUtc, periodHuman, _, periodStartLocal) = GetPeriodStart(nowLocal, Period, tz);
 
         var card = await _db.PersonalCards
             .AsNoTracking()
@@ -72,7 +75,7 @@ public sealed class ReportDataLoader
         string? lastMealLocalTime = null;
         double? hoursSinceLastMeal = null;
 
-        if (period == AnalysisPeriod.Day)
+        if (Period == AnalysisPeriod.Day)
         {
             hourGrid = new List<string>();
             var startHour = (nowLocal.Minute == 0) ? nowLocal.Hour : nowLocal.Hour + 1;
@@ -114,7 +117,7 @@ public sealed class ReportDataLoader
         var nowLocalStr = nowLocal.ToString("yyyy-MM-dd HH:mm");
         var nowLocalHourStr = nowLocal.ToString("HH");
         var nowLocalDateStr = nowLocal.ToString("yyyy-MM-dd");
-        var periodKindStr = period.ToString();
+        var periodKindStr = Period.ToString();
         var periodStartLocalStr = periodStartLocal.ToString("yyyy-MM-dd HH:mm");
         var periodEndLocalStr = nowLocalStr;
         var periodStartUtcStr = periodStartUtc.ToString("yyyy-MM-dd HH:mm:ss");
@@ -137,20 +140,14 @@ public sealed class ReportDataLoader
             meals,
             totals,
             grouping = new { byHour, byDay },
-            dailyPlanContext = new { isDaily = period == AnalysisPeriod.Day, remainingHourGrid = hourGrid, lastMealLocalTime, hoursSinceLastMeal }
+            dailyPlanContext = new { isDaily = Period == AnalysisPeriod.Day, remainingHourGrid = hourGrid, lastMealLocalTime, hoursSinceLastMeal }
         };
 
-        return new ReportData
+        return new TData
         {
             Data = data,
             PeriodHuman = periodHuman
         };
-    }
-
-    public sealed class ReportData
-    {
-        public required object Data { get; init; }
-        public required string PeriodHuman { get; init; }
     }
 
     private static (DateTimeOffset startUtc, string periodHuman, string recScopeHint, DateTime periodStartLocal)
