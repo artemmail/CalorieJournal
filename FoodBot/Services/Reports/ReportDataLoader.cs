@@ -1,19 +1,18 @@
 using System.Globalization;
-using System.Text.Json;
 using FoodBot.Data;
 using FoodBot.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace FoodBot.Services.Reports;
 
-public sealed class ReportDataLoader : IReportDataLoader
+public sealed class ReportDataLoader : ReportDataLoaderBase<ReportPayload>
 {
     private readonly BotDbContext _db;
     public ReportDataLoader(BotDbContext db) => _db = db;
 
     private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
-    public async Task<ReportData<ReportPayload>> LoadAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    protected override async Task<(ReportPayload Data, string PeriodHuman)> LoadCoreAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
         var tz = MoscowTz;
         var nowUtc = DateTimeOffset.UtcNow;
@@ -141,12 +140,7 @@ public sealed class ReportDataLoader : IReportDataLoader
             DailyPlanContext = new DailyPlanContext { IsDaily = period == AnalysisPeriod.Day, RemainingHourGrid = hourGrid, LastMealLocalTime = lastMealLocalTime, HoursSinceLastMeal = hoursSinceLastMeal }
         };
 
-        return new ReportData<ReportPayload>
-        {
-            Data = data,
-            Json = JsonSerializer.Serialize(data),
-            PeriodHuman = periodHuman
-        };
+        return (data, periodHuman);
     }
 
     private static (DateTimeOffset startUtc, string periodHuman, string recScopeHint, DateTime periodStartLocal)

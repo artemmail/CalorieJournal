@@ -8,7 +8,7 @@ namespace FoodBot.Services;
 /// Prompt builder that contains shared instructions for all analysis reports.
 /// Period-specific guidance is selected based on <see cref="AnalysisPeriod"/>.
 /// </summary>
-public sealed class AnalysisPromptBuilder : IPromptBuilder
+public sealed class AnalysisPromptBuilder<TData> : IPromptBuilder<TData>
 {
     private readonly string _periodPrompt;
 
@@ -28,7 +28,7 @@ public sealed class AnalysisPromptBuilder : IPromptBuilder
     public string? Model => "gpt-4o-mini";
 
     /// <inheritdoc />
-    public string Build(ReportData<ReportPayload> report)
+    public string Build(ReportData<TData> report)
     {
         var instructionsRu = @$"Ты — внимательный клинический нутрициолог.
 Анализируй ТОЛЬКО фактически съеденное с начала периода до текущего момента.
@@ -65,7 +65,7 @@ public sealed class AnalysisPromptBuilder : IPromptBuilder
                     {
                         new { type = "input_text", text = instructionsRu },
                         new { type = "input_text", text = _periodPrompt },
-                        new { type = "input_text", text = report.Json }
+                        new { type = "input_text", text = JsonSerializer.Serialize(report.Data) }
                     }
                 }
             }

@@ -5,13 +5,13 @@ using FoodBot.Services;
 
 namespace FoodBot.Services.Reports;
 
-public sealed class ReportStrategy : IReportStrategy
+public sealed class ReportStrategy<TData> : IReportStrategy<TData>
 {
-    private readonly IReportDataLoader _loader;
-    private readonly IPromptBuilder _promptBuilder;
+    private readonly IReportDataLoader<TData> _loader;
+    private readonly IPromptBuilder<TData> _promptBuilder;
     private readonly AnalysisGenerator _generator;
 
-    public ReportStrategy(AnalysisPeriod period, IReportDataLoader loader, IPromptBuilder promptBuilder, AnalysisGenerator generator)
+    public ReportStrategy(AnalysisPeriod period, IReportDataLoader<TData> loader, IPromptBuilder<TData> promptBuilder, AnalysisGenerator generator)
     {
         Period = period;
         _loader = loader;
@@ -21,10 +21,10 @@ public sealed class ReportStrategy : IReportStrategy
 
     public AnalysisPeriod Period { get; }
 
-    public async Task<ReportData<ReportPayload>> LoadDataAsync(long chatId, CancellationToken ct)
+    public async Task<ReportData<TData>> LoadDataAsync(long chatId, CancellationToken ct)
         => await _loader.LoadAsync(chatId, Period, ct);
 
-    public string BuildPrompt(ReportData<ReportPayload> data)
+    public string BuildPrompt(ReportData<TData> data)
         => _promptBuilder.Build(data);
 
     public Task<string> GenerateAsync(string prompt, CancellationToken ct)

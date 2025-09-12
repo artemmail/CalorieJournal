@@ -14,14 +14,14 @@ namespace FoodBot.Services;
 public sealed class DietAnalysisService
 {
     private readonly BotDbContext _db;
-    private readonly IDictionary<AnalysisPeriod, IReportStrategy> _strategies;
+    private readonly IDictionary<AnalysisPeriod, IReportStrategy<ReportPayload>> _strategies;
 
     // Константа часового пояса: Москва (кросс-платформенно)
     private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
     public DietAnalysisService(
         BotDbContext db,
-        IDictionary<AnalysisPeriod, IReportStrategy> strategies)
+        IDictionary<AnalysisPeriod, IReportStrategy<ReportPayload>> strategies)
     {
         _db = db;
         _strategies = strategies;
