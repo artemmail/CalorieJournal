@@ -3,10 +3,10 @@ using FoodBot.Services;
 
 namespace FoodBot.Services.Reports;
 
-public sealed class MonthlyReportStrategy : ReportStrategyBase
+public sealed class MonthlyReportStrategy : ReportStrategyBase<MonthlyReportData>
 {
     public MonthlyReportStrategy(
-        ReportDataLoader loader,
+        IReportDataLoader<MonthlyReportData> loader,
         MonthlyPromptBuilder promptBuilder,
         AnalysisGenerator generator)
         : base(AnalysisPeriod.Month, loader, promptBuilder, generator)

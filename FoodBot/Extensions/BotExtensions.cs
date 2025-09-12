@@ -63,7 +63,10 @@ public static class BotExtensions
         services.AddScoped<PdfReportService>();
         services.AddScoped<StatsService>();
         services.AddScoped<PersonalCardService>();
-        services.AddScoped<ReportDataLoader>();
+        services.AddScoped<IReportDataLoader<DailyReportData>, DailyDataLoader>();
+        services.AddScoped<IReportDataLoader<WeeklyReportData>, WeeklyDataLoader>();
+        services.AddScoped<IReportDataLoader<MonthlyReportData>, MonthlyDataLoader>();
+        services.AddScoped<IReportDataLoader<QuarterlyReportData>, QuarterlyDataLoader>();
         services.AddScoped<DailyPromptBuilder>();
         services.AddScoped<WeeklyPromptBuilder>();
         services.AddScoped<MonthlyPromptBuilder>();
