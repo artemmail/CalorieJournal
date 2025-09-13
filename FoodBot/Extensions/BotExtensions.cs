@@ -69,28 +69,28 @@ public static class BotExtensions
             new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Day,
                 sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
-                new AnalysisPromptBuilder<ReportPayload>(AnalysisPeriod.Day),
+                new DayAnalysisPromptBuilder<ReportPayload>(),
                 sp.GetRequiredService<AnalysisGenerator>()));
 
         services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
             new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Week,
                 sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
-                new AnalysisPromptBuilder<ReportPayload>(AnalysisPeriod.Week),
+                new WeekAnalysisPromptBuilder<ReportPayload>(),
                 sp.GetRequiredService<AnalysisGenerator>()));
 
         services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
             new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Month,
                 sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
-                new AnalysisPromptBuilder<ReportPayload>(AnalysisPeriod.Month),
+                new MonthAnalysisPromptBuilder<ReportPayload>(),
                 sp.GetRequiredService<AnalysisGenerator>()));
 
         services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
             new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Quarter,
                 sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
-                new AnalysisPromptBuilder<ReportPayload>(AnalysisPeriod.Quarter),
+                new QuarterAnalysisPromptBuilder<ReportPayload>(),
                 sp.GetRequiredService<AnalysisGenerator>()));
 
         services.AddScoped<IDictionary<AnalysisPeriod, IReportStrategy<ReportPayload>>>(sp =>
