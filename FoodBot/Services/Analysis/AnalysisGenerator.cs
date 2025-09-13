@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Linq;
 
 namespace FoodBot.Services;
 
@@ -28,12 +29,27 @@ public sealed class AnalysisGenerator
         var respText = await resp.Content.ReadAsStringAsync(ct);
 
         using var doc = JsonDocument.Parse(respText);
-        var content = doc.RootElement.GetProperty("output")[0]
-            .GetProperty("content")[0]
-            .GetProperty("text")
-            .GetString();
+        if (!doc.RootElement.TryGetProperty("output", out var output))
+        {
+            return string.Empty;
+        }
 
-        return content ?? string.Empty;
+        var message = output.EnumerateArray()
+            .FirstOrDefault(e => e.TryGetProperty("type", out var t) && t.GetString() == "message");
+
+        if (message.ValueKind == JsonValueKind.Undefined)
+        {
+            return string.Empty;
+        }
+
+        if (!message.TryGetProperty("content", out var contentArr) || contentArr.ValueKind != JsonValueKind.Array || contentArr.GetArrayLength() == 0)
+        {
+            return string.Empty;
+        }
+
+        var text = contentArr[0].GetProperty("text").GetString();
+
+        return text ?? string.Empty;
     }
 }
 
