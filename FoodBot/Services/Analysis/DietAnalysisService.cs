@@ -130,7 +130,7 @@ public sealed class DietAnalysisService
             rec.CreatedAtUtc = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
         }
-        catch
+        catch (Exception ex)
         {
             // При ошибке — снимаем флаг и удаляем запись, чтобы не висела
             _db.AnalysisReports2.Remove(rec);

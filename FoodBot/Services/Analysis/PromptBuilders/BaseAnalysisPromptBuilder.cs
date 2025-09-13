@@ -10,7 +10,7 @@ namespace FoodBot.Services;
 public abstract class BaseAnalysisPromptBuilder<TData> : IPromptBuilder<TData>
 {
     /// <summary>LLM model name or <c>null</c> to use default.</summary>
-    public virtual string? Model => "gpt-4o-mini";
+    public virtual string? Model => "o4-mini";
 
     /// <summary>Period specific instructions in Russian.</summary>
     protected abstract string BuildInstructions(ReportData<TData> report);
@@ -38,7 +38,7 @@ public abstract class BaseAnalysisPromptBuilder<TData> : IPromptBuilder<TData>
 
         var reqObj = new
         {
-            model = Model ?? "gpt-4o-mini",
+            model = Model ?? "o4-mini",
             input = new object[]
             {
                 new { role = "system", content = "You are a helpful dietologist." },
