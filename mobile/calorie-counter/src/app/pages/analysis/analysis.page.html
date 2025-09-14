@@ -1,21 +1,27 @@
-<mat-card class="toolbar">
-  <button mat-raised-button color="primary" [disabled]="hasProcessing || loading" [matMenuTriggerFor]="menu">
-    <mat-icon>add</mat-icon>
-    Создать отчёт
-  </button>
-  <mat-menu #menu="matMenu">
-    <button mat-menu-item (click)="create('day')">День</button>
-    <button mat-menu-item (click)="create('week')">Неделя</button>
-    <button mat-menu-item (click)="create('month')">Месяц</button>
-    <button mat-menu-item (click)="create('quarter')">Квартал</button>
-  </mat-menu>
+<mat-card>
+  <mat-card-content class="toolbar">
+    <button
+      mat-button
+      class="toolbar-action"
+      color="primary"
+      [disabled]="hasProcessing || loading"
+      [matMenuTriggerFor]="menu"
+    >
+      <mat-icon>add</mat-icon>
+      <span>Создать отчёт</span>
+    </button>
+    <mat-menu #menu="matMenu">
+      <button mat-menu-item (click)="create('day')">День</button>
+      <button mat-menu-item (click)="create('week')">Неделя</button>
+      <button mat-menu-item (click)="create('month')">Месяц</button>
+      <button mat-menu-item (click)="create('quarter')">Квартал</button>
+    </mat-menu>
 
-  <span class="spacer"></span>
-
-  <button mat-stroked-button (click)="refresh()">
-    <mat-icon>refresh</mat-icon>
-    Обновить
-  </button>
+    <button mat-button class="toolbar-action" color="accent" (click)="refresh()">
+      <mat-icon>refresh</mat-icon>
+      <span>Обновить</span>
+    </button>
+  </mat-card-content>
 </mat-card>
 
 <div
