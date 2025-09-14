@@ -8,6 +8,11 @@
 table.history {
   width: 100%;
 }
+
+.history-card {
+  max-width: 640px;
+  margin: 0 auto;
+}
 .link { cursor: pointer; text-decoration: underline; }
 
 .empty {
