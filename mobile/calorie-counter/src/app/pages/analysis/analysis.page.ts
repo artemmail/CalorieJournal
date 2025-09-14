@@ -7,6 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { InfiniteScrollModule } from 'ngx-infinite-scroll';
 import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analysis.service';
 
 @Component({
@@ -21,14 +23,18 @@ import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analy
     MatIconModule,
     MatMenuModule,
     MatChipsModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatProgressSpinnerModule,
+    InfiniteScrollModule
   ],
   templateUrl: './analysis.page.html',
   styleUrls: ['./analysis.page.scss']
 })
 export class AnalysisPage implements OnInit, OnDestroy {
-  cols = ['date', 'name', 'period', 'status', 'actions'];
+  cols = ['date', 'name', 'period', 'status'];
   rows: ReportRow[] = [];
+  allRows: ReportRow[] = [];
+  pageSize = 10;
   loading = false;
   hasProcessing = false;
 
@@ -51,12 +57,21 @@ export class AnalysisPage implements OnInit, OnDestroy {
     try {
       if (showSpinner) this.loading = true;
       const list = await this.api.list();
-      this.rows = list;
+      this.allRows = list;
+      this.rows = [];
+      this.loadMore();
       this.hasProcessing = list.some(x => x.isProcessing);
     } finally {
       this.loading = false;
     }
   }
+
+  loadMore() {
+    const next = this.allRows.slice(this.rows.length, this.rows.length + this.pageSize);
+    if (next.length) this.rows = [...this.rows, ...next];
+  }
+
+  onScrollDown() { this.loadMore(); }
 
   async create(period: AnalysisPeriod) {
     try {
