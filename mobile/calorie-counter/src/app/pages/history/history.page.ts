@@ -10,6 +10,8 @@ import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { MealListItem } from "../../services/foodbot-api.types";
 import { FoodBotAuthLinkService } from "../../services/foodbot-auth-link.service";
 import { HistoryDetailDialogComponent } from "./history-detail.dialog";
+import { HistoryUpdatesService } from "../../services/history-updates.service";
+import { Subscription } from "rxjs";
 
 @Component({
   selector: "app-history",
@@ -41,8 +43,11 @@ export class HistoryPage implements OnInit, OnDestroy {
     private snack: MatSnackBar,
     private router: Router,
     private auth: FoodBotAuthLinkService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private updates: HistoryUpdatesService
   ) {}
+
+  private updatesSub?: Subscription;
 
   ngOnInit() {
     if (!this.auth.isAuthenticated()) {
@@ -50,11 +55,27 @@ export class HistoryPage implements OnInit, OnDestroy {
       return;
     }
     this.loadMore();
+
+    this.updatesSub = this.updates.updates().subscribe(item => {
+      const idx = this.items.findIndex(x => x.id === item.id);
+      if (idx >= 0) {
+        this.items[idx] = item;
+      } else {
+        this.items = [item, ...this.items];
+        this.total++;
+      }
+      this.items.sort((a, b) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime());
+      if (item.hasImage) {
+        this.api.getMealImageObjectUrl(item.id).subscribe(url => this.imageUrls.set(item.id, url));
+      }
+      this.recomputeDateTotals();
+    });
   }
 
   ngOnDestroy() {
     // чистим ObjectURL'ы
     for (const url of this.imageUrls.values()) URL.revokeObjectURL(url);
+    this.updatesSub?.unsubscribe();
   }
 
   loadMore() {

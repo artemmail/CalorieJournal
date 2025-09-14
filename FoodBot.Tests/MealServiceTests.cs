@@ -13,7 +13,8 @@ public class MealServiceTests
     private MealService CreateService(List<MealEntry> meals, List<PendingClarify>? clarifies = null)
     {
         var repo = new FakeRepo(meals, clarifies ?? new());
-        return new MealService(repo);
+        var notifier = new FakeNotifier();
+        return new MealService(repo, notifier);
     }
 
     private sealed class FakeRepo : IMealRepository
@@ -41,6 +42,11 @@ public class MealServiceTests
         public Task RemoveMealAsync(MealEntry meal, CancellationToken ct)
         { _ctx.Meals.Remove(meal); return _ctx.SaveChangesAsync(ct); }
         public Task SaveChangesAsync(CancellationToken ct) => _ctx.SaveChangesAsync(ct);
+    }
+
+    private sealed class FakeNotifier : IMealNotifier
+    {
+        public Task MealUpdated(long chatId, MealListItem item) => Task.CompletedTask;
     }
 
     [Fact]

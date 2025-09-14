@@ -39,7 +39,8 @@
     "ngx-infinite-scroll": "^20.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.15.0"
+    "zone.js": "~0.15.0",
+    "@microsoft/signalr": "^8.0.5"
   },
   "devDependencies": {
     "@angular/build": "^20.2.1",
