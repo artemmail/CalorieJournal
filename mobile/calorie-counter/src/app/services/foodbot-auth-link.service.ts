@@ -3,7 +3,7 @@
  */
 import { Injectable } from "@angular/core";
 import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
-import { Observable, interval, firstValueFrom, of } from "rxjs";
+import { Observable, interval, firstValueFrom, of, Subject } from "rxjs";
 import { catchError, map, switchMap, takeWhile, timeout } from "rxjs/operators";
 
 export interface RequestCodeResponse { code: string; expiresAtUtc: string; }
@@ -20,6 +20,9 @@ declare const environment: any;
 @Injectable({ providedIn: 'root' })
 export class FoodBotAuthLinkService {
   constructor(private http: HttpClient) {}
+
+  private tokenChangedSubj = new Subject<string | null>();
+  tokenChanges(): Observable<string | null> { return this.tokenChangedSubj.asObservable(); }
 
   private get apiBase(): string {
     return (window as any).environment?.apiBaseUrl ?? environment?.apiBaseUrl ?? '';
@@ -43,8 +46,13 @@ export class FoodBotAuthLinkService {
     const expMs = Date.now() + resp.expiresInSeconds * 1000;
     localStorage.setItem(JWT_KEY, resp.accessToken);
     localStorage.setItem(JWT_EXP, String(expMs));
+    this.tokenChangedSubj.next(resp.accessToken);
   }
-  logout() { localStorage.removeItem(JWT_KEY); localStorage.removeItem(JWT_EXP); }
+  logout() {
+    localStorage.removeItem(JWT_KEY);
+    localStorage.removeItem(JWT_EXP);
+    this.tokenChangedSubj.next(null);
+  }
 
   authHeaders(): HttpHeaders {
     const t = this.token; return new HttpHeaders(t ? { Authorization: `Bearer ${t}` } : {});
