@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,7 +31,8 @@ export class AnalysisReportPage implements OnInit, OnDestroy {
     private api: AnalysisService,
     private sb: MatSnackBar,
     private clipboard: Clipboard,
-    private location: Location
+    private location: Location,
+    private router: Router
   ) {}
 
   async ngOnInit() {
@@ -70,7 +71,11 @@ export class AnalysisReportPage implements OnInit, OnDestroy {
   }
 
   goBack() {
-    this.location.back();
+    if (history.length > 1) {
+      this.location.back();
+    } else {
+      this.router.navigateByUrl('/analysis');
+    }
   }
 
   ngOnDestroy() {
