@@ -3,6 +3,9 @@
     <mat-icon>arrow_back</mat-icon>
   </button>
   <span class="spacer"></span>
+  <button mat-icon-button (click)="copyMarkdown()" [disabled]="processing || loading || !markdown">
+    <mat-icon>content_copy</mat-icon>
+  </button>
   <button mat-icon-button (click)="downloadPdf()" [disabled]="processing || loading || !markdown">
     <mat-icon>picture_as_pdf</mat-icon>
   </button>
