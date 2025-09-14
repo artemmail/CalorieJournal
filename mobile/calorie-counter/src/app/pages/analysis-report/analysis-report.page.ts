@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,6 +8,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
 import { AnalysisService } from '../../services/analysis.service';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
+import { App } from '@capacitor/app';
+import { PluginListenerHandle } from '@capacitor/core';
 
 @Component({
   selector: 'app-analysis-report',
@@ -16,18 +18,26 @@ import { MarkdownPipe } from '../../pipes/markdown.pipe';
   templateUrl: './analysis-report.page.html',
   styleUrls: ['./analysis-report.page.scss']
 })
-export class AnalysisReportPage implements OnInit {
+export class AnalysisReportPage implements OnInit, OnDestroy {
   markdown: string | null = null;
   name = '';
   processing = false;
   loading = false;
   id = 0;
+  private backButtonListener?: PluginListenerHandle;
 
-  constructor(private route: ActivatedRoute, private api: AnalysisService, private sb: MatSnackBar, private clipboard: Clipboard) {}
+  constructor(
+    private route: ActivatedRoute,
+    private api: AnalysisService,
+    private sb: MatSnackBar,
+    private clipboard: Clipboard,
+    private location: Location
+  ) {}
 
   async ngOnInit() {
     this.id = Number(this.route.snapshot.paramMap.get('id'));
     this.loading = true;
+    this.backButtonListener = App.addListener('backButton', () => this.goBack());
     try {
       const res = await this.api.getById(this.id);
       if (res.status === 'processing') {
@@ -57,6 +67,14 @@ export class AnalysisReportPage implements OnInit {
     } else {
       this.sb.open('Не удалось скопировать Markdown.', 'Закрыть', { duration: 4000 });
     }
+  }
+
+  goBack() {
+    this.location.back();
+  }
+
+  ngOnDestroy() {
+    this.backButtonListener?.remove();
   }
 }
 
