@@ -9,10 +9,12 @@ namespace FoodBot.Services;
 public sealed class MealService : IMealService
 {
     private readonly IMealRepository _repo;
+    private readonly IMealNotifier _notifier;
 
-    public MealService(IMealRepository repo)
+    public MealService(IMealRepository repo, IMealNotifier notifier)
     {
         _repo = repo;
+        _notifier = notifier;
     }
 
     public async Task<MealListResult> ListAsync(long chatId, int limit, int offset, CancellationToken ct)
@@ -193,6 +195,22 @@ public sealed class MealService : IMealService
                 m.ReasoningPrompt,
                 m.ImageBytes != null && m.ImageBytes.Length > 0
             );
+
+            var item = new MealListItem(
+                m.Id,
+                m.CreatedAtUtc,
+                m.DishName,
+                m.WeightG,
+                m.CaloriesKcal,
+                m.ProteinsG,
+                m.FatsG,
+                m.CarbsG,
+                ingredients,
+                products,
+                m.ImageBytes != null && m.ImageBytes.Length > 0,
+                false
+            );
+            await _notifier.MealUpdated(chatId, item);
             return new ClarifyTextResult(false, details);
         }
 

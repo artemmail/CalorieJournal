@@ -99,15 +99,17 @@ public static class BotExtensions
         services.AddScoped<AnalysisGenerator>();
         services.AddScoped<DietAnalysisService>();
         services.AddScoped<AnalysisPdfService>();
-          services.AddScoped<IMealRepository, MealRepository>();
-          services.AddScoped<IMealService, MealService>();
-          services.AddScoped<IAppAuthService, AppAuthService>();
+        services.AddScoped<IMealRepository, MealRepository>();
+        services.AddScoped<IMealService, MealService>();
+        services.AddScoped<IAppAuthService, AppAuthService>();
         services.AddSingleton<MealImageService>();
-          services.AddHostedService<AnalysisQueueWorker>();
-          services.AddHostedService<PhotoQueueWorker>();
+        services.AddSingleton<IMealNotifier, MealNotifier>();
+        services.AddSignalR();
+        services.AddHostedService<AnalysisQueueWorker>();
+        services.AddHostedService<PhotoQueueWorker>();
         services.AddHostedService<TextMealQueueWorker>();
-          services.AddHostedService<PeriodPdfJobWorker>();
-          services.AddHostedService<AnalysisPdfJobWorker>();
+        services.AddHostedService<PeriodPdfJobWorker>();
+        services.AddHostedService<AnalysisPdfJobWorker>();
 
         services
             .AddControllers()
@@ -206,6 +208,7 @@ public static class BotExtensions
         });
 
         app.MapControllers();
+        app.MapHub<FoodBot.Hubs.MealsHub>("/hubs/meals");
 
         var secret = app.Configuration["Telegram:WebhookSecretPath"] ?? "my-secret";
         app.MapPost($"/bot/{secret}", async (HttpContext http, UpdateHandler handler, ILogger<Program> logger, CancellationToken ct) =>

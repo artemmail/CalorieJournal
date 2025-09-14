@@ -32,6 +32,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
                 var nutrition = scope.ServiceProvider.GetRequiredService<NutritionService>();
+                var notifier = scope.ServiceProvider.GetRequiredService<IMealNotifier>();
 
                 var nextPhoto = await db.PendingMeals
                     .Where(x => x.Description == null)
@@ -102,6 +103,8 @@ public sealed class PhotoQueueWorker : BackgroundService
 
                             db.PendingClarifies.Remove(nextClar);
                             await db.SaveChangesAsync(stoppingToken);
+
+                            await notifier.MealUpdated(meal.ChatId, ToListItem(meal));
                         }
                         else
                         {
@@ -156,6 +159,8 @@ public sealed class PhotoQueueWorker : BackgroundService
                         db.Meals.Add(entry);
                         db.PendingMeals.Remove(next);
                         await db.SaveChangesAsync(stoppingToken);
+
+                        await notifier.MealUpdated(entry.ChatId, ToListItem(entry));
                     }
                     else
                     {
@@ -182,5 +187,26 @@ public sealed class PhotoQueueWorker : BackgroundService
                 await Task.Delay(2000, stoppingToken);
             }
         }
+    }
+
+    private static MealListItem ToListItem(MealEntry meal)
+    {
+        var ingredients = string.IsNullOrWhiteSpace(meal.IngredientsJson)
+            ? Array.Empty<string>()
+            : (JsonSerializer.Deserialize<string[]>(meal.IngredientsJson!) ?? Array.Empty<string>());
+        return new MealListItem(
+            meal.Id,
+            meal.CreatedAtUtc,
+            meal.DishName,
+            meal.WeightG,
+            meal.CaloriesKcal,
+            meal.ProteinsG,
+            meal.FatsG,
+            meal.CarbsG,
+            ingredients,
+            ProductJsonHelper.DeserializeProducts(meal.ProductsJson),
+            meal.ImageBytes != null && meal.ImageBytes.Length > 0,
+            false
+        );
     }
 }
