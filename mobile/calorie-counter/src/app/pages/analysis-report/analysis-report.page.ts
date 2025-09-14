@@ -37,7 +37,7 @@ export class AnalysisReportPage implements OnInit, OnDestroy {
   async ngOnInit() {
     this.id = Number(this.route.snapshot.paramMap.get('id'));
     this.loading = true;
-    this.backButtonListener = App.addListener('backButton', () => this.goBack());
+    this.backButtonListener = await App.addListener('backButton', () => this.goBack());
     try {
       const res = await this.api.getById(this.id);
       if (res.status === 'processing') {
