@@ -10,6 +10,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { InfiniteScrollModule } from 'ngx-infinite-scroll';
 import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analysis.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-analysis',
@@ -40,7 +41,7 @@ export class AnalysisPage implements OnInit, OnDestroy {
 
   private timer?: any;
 
-  constructor(private api: AnalysisService, private sb: MatSnackBar) {}
+  constructor(private api: AnalysisService, private sb: MatSnackBar, private router: Router) {}
 
   ngOnInit(): void {
     this.refresh();
@@ -91,7 +92,7 @@ export class AnalysisPage implements OnInit, OnDestroy {
   }
 
   open(row: ReportRow) {
-    window.open(`/analysis/${row.id}`, '_blank');
+    this.router.navigate(['/analysis', row.id]);
   }
 
   periodLabel(p: AnalysisPeriod) {
