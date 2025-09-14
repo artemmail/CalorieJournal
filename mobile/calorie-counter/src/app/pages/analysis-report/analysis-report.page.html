@@ -1,13 +1,27 @@
 <mat-card class="toolbar">
-  <button mat-icon-button (click)="goBack()">
+  <button mat-button class="toolbar-action" color="primary" (click)="goBack()">
     <mat-icon>arrow_back</mat-icon>
+    <span>Назад</span>
   </button>
-  <span class="spacer"></span>
-  <button mat-icon-button (click)="copyMarkdown()" [disabled]="processing || loading || !markdown">
+  <button
+    mat-button
+    class="toolbar-action"
+    color="accent"
+    (click)="copyMarkdown()"
+    [disabled]="processing || loading || !markdown"
+  >
     <mat-icon>content_copy</mat-icon>
+    <span>Копировать</span>
   </button>
-  <button mat-icon-button (click)="downloadPdf()" [disabled]="processing || loading || !markdown">
+  <button
+    mat-button
+    class="toolbar-action"
+    color="warn"
+    (click)="downloadPdf()"
+    [disabled]="processing || loading || !markdown"
+  >
     <mat-icon>picture_as_pdf</mat-icon>
+    <span>PDF</span>
   </button>
 </mat-card>
 

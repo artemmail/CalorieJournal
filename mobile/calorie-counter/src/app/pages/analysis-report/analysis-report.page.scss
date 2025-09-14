@@ -1,7 +1,17 @@
 .toolbar {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  justify-content: space-around;
 }
 
-.spacer { flex: 1 1 auto; }
+.toolbar-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-action mat-icon {
+  font-size: 36px;
+  height: 36px;
+  width: 36px;
+}
