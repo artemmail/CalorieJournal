@@ -1,28 +1,30 @@
-<mat-card class="toolbar">
-  <button mat-button class="toolbar-action" color="primary" (click)="goBack()">
-    <mat-icon>arrow_back</mat-icon>
-    <span>Назад</span>
-  </button>
-  <button
-    mat-button
-    class="toolbar-action"
-    color="accent"
-    (click)="copyMarkdown()"
-    [disabled]="processing || loading || !markdown"
-  >
-    <mat-icon>content_copy</mat-icon>
-    <span>Копировать</span>
-  </button>
-  <button
-    mat-button
-    class="toolbar-action"
-    color="warn"
-    (click)="downloadPdf()"
-    [disabled]="processing || loading || !markdown"
-  >
-    <mat-icon>picture_as_pdf</mat-icon>
-    <span>PDF</span>
-  </button>
+<mat-card>
+  <mat-card-content class="toolbar">
+    <button mat-button class="toolbar-action" color="primary" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      <span>Назад</span>
+    </button>
+    <button
+      mat-button
+      class="toolbar-action"
+      color="accent"
+      (click)="copyMarkdown()"
+      [disabled]="processing || loading || !markdown"
+    >
+      <mat-icon>content_copy</mat-icon>
+      <span>Копировать</span>
+    </button>
+    <button
+      mat-button
+      class="toolbar-action"
+      color="warn"
+      (click)="downloadPdf()"
+      [disabled]="processing || loading || !markdown"
+    >
+      <mat-icon>picture_as_pdf</mat-icon>
+      <span>PDF</span>
+    </button>
+  </mat-card-content>
 </mat-card>
 
 <mat-card *ngIf="loading">Загрузка…</mat-card>
