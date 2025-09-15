@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Encodings.Web;
 using FoodBot.Services.Reports;
 
 namespace FoodBot.Services;
@@ -21,13 +22,18 @@ public abstract class BaseAnalysisPromptBuilder<TData> : IPromptBuilder<TData>
     /// </remarks>
     protected virtual IEnumerable<object>? ExtraInputs(ReportData<TData> report) => null;
 
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
     /// <inheritdoc />
     public string Build(ReportData<TData> report)
     {
         var content = new List<object>
         {
             new { type = "input_text", text = BuildInstructions(report) },
-            new { type = "input_text", text = JsonSerializer.Serialize(report.Data) }
+            new { type = "input_text", text = JsonSerializer.Serialize(report.Data, JsonOpts) }
         };
 
         var extras = ExtraInputs(report);
@@ -46,7 +52,7 @@ public abstract class BaseAnalysisPromptBuilder<TData> : IPromptBuilder<TData>
             }
         };
 
-        return JsonSerializer.Serialize(reqObj);
+        return JsonSerializer.Serialize(reqObj, JsonOpts);
     }
 }
 
