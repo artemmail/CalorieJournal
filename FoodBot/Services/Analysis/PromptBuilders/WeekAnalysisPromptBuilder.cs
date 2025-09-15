@@ -69,5 +69,20 @@ public sealed class WeekAnalysisPromptBuilder<TData> : BaseAnalysisPromptBuilder
 В конце — короткий «итог в одном абзаце» (3–4 предложения), без новых данных.";
 
 
-    protected override IEnumerable<object>? ExtraInputs(ReportData<TData> report) { if (report.Data is ReportPayload payload) { var table = payload.Grouping.ByDay.Select(d => new { date = d.Date, calories = d.Kcal, proteins = d.Proteins, fats = d.Fats, carbs = d.Carbs }); return new[] { new { type = "input_text", text = JsonSerializer.Serialize(new { dailyTotals = table }) } }; } return null; }
+    protected override IEnumerable<object>? ExtraInputs(ReportData<TData> report)
+    {
+        if (report.Data is ReportPayload payload)
+        {
+            var table = payload.Grouping.ByDay.Select(d => new
+            {
+                date = d.Date,
+                calories = d.Kcal,
+                proteins = d.Proteins,
+                fats = d.Fats,
+                carbs = d.Carbs
+            }); return new[] { new { type = "input_text",
+                    text = JsonSerializer.Serialize(new { dailyTotals = table }) } };
+        }
+        return null;
+    }
 }
