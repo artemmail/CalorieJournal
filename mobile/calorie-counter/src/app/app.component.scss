@@ -79,15 +79,14 @@
   border-radius: 8px;
   transition: background-color 0.2s ease, color 0.2s ease;
 
-  .mat-mdc-button__label {
+  .bottom-tab {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    font-weight: 400;
   }
 
-  mat-icon {
+  .bottom-tab mat-icon {
     color: #4877A6;
     font-size: 28px;
     line-height: 1;
@@ -96,7 +95,7 @@
     display: block;
   }
 
-  span {
+  .bottom-tab__label {
     color: inherit;
     font-size: 12px;
     font-weight: 400;

@@ -29,16 +29,22 @@
     <!-- Нижний тулбар (поднимаем на safeBottom) -->
     <mat-toolbar class="bottombar" [style.bottom.px]="safeBottom()">
       <a mat-button routerLink="/history" routerLinkActive="active">
-        <mat-icon fontSet="material-icons-outlined">history</mat-icon>
-        <span>История</span>
+        <span class="bottom-tab">
+          <mat-icon fontSet="material-icons-outlined">history</mat-icon>
+          <span class="bottom-tab__label">История</span>
+        </span>
       </a>
       <a mat-button routerLink="/add" routerLinkActive="active">
-        <mat-icon fontSet="material-icons-outlined">add_a_photo</mat-icon>
-        <span>Добавить</span>
+        <span class="bottom-tab">
+          <mat-icon fontSet="material-icons-outlined">add_a_photo</mat-icon>
+          <span class="bottom-tab__label">Добавить</span>
+        </span>
       </a>
       <a mat-button routerLink="/analysis" routerLinkActive="active">
-        <mat-icon fontSet="material-icons-outlined">analytics</mat-icon>
-        <span>Анализ</span>
+        <span class="bottom-tab">
+          <mat-icon fontSet="material-icons-outlined">analytics</mat-icon>
+          <span class="bottom-tab__label">Анализ</span>
+        </span>
       </a>
     </mat-toolbar>
     @if(safeBottom() > 0)
