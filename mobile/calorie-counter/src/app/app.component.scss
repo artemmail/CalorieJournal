@@ -62,16 +62,56 @@
   align-items: center;
   height: 56px;                 /* синхронизировано с TS */
   z-index: 1001;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+  padding: 0 8px;
 }
 
-.bottombar a {
+.bottombar a.mat-mdc-button-base {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: inherit;
+  justify-content: center;
+  color: #2B2B2B;
   text-decoration: none;
+  text-transform: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  .mat-mdc-button__label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  mat-icon {
+    color: #4877A6;
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  span {
+    color: inherit;
+    font-size: 16px;
+  }
 }
 
-.bottombar a.active {
-  background: rgba(255, 255, 255, 0.1);
+.bottombar a.mat-mdc-button-base:hover {
+  background: rgba(72, 119, 166, 0.08);
+}
+
+.bottombar a.mat-mdc-button-base.active {
+  background: rgba(72, 119, 166, 0.12);
+  color: #4877A6;
+
+  span {
+    color: #4877A6;
+    font-weight: 600;
+  }
+
+  mat-icon {
+    color: #4877A6;
+  }
 }

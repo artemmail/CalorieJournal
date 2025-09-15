@@ -27,17 +27,17 @@
     </div>
 
     <!-- Нижний тулбар (поднимаем на safeBottom) -->
-    <mat-toolbar color="primary" class="bottombar" [style.bottom.px]="safeBottom()">
+    <mat-toolbar class="bottombar" [style.bottom.px]="safeBottom()">
       <a mat-button routerLink="/history" routerLinkActive="active">
-        <mat-icon>history</mat-icon>
+        <mat-icon fontSet="material-icons-outlined">history</mat-icon>
         <span>История</span>
       </a>
       <a mat-button routerLink="/add" routerLinkActive="active">
-        <mat-icon>add_a_photo</mat-icon>
+        <mat-icon fontSet="material-icons-outlined">add_a_photo</mat-icon>
         <span>Добавить</span>
       </a>
       <a mat-button routerLink="/analysis" routerLinkActive="active">
-        <mat-icon>analytics</mat-icon>
+        <mat-icon fontSet="material-icons-outlined">analytics</mat-icon>
         <span>Анализ</span>
       </a>
     </mat-toolbar>
