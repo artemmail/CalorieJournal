@@ -19,6 +19,37 @@
     </mat-form-field>
 
     <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Пол</mat-label>
+      <mat-select formControlName="gender">
+        <mat-option [value]="null">—</mat-option>
+        <mat-option *ngFor="let g of genders" [value]="g.value">{{ g.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Рост (см)</mat-label>
+      <input matInput type="number" formControlName="heightCm" />
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Вес (кг)</mat-label>
+      <input matInput type="number" formControlName="weightKg" />
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Коэффициент активности</mat-label>
+      <mat-select formControlName="activityLevel">
+        <mat-option [value]="null">—</mat-option>
+        <mat-option *ngFor="let a of activities" [value]="a.value">{{ a.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Суточный расход калорий</mat-label>
+      <input matInput formControlName="dailyCalories" readonly />
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
       <mat-label>Цели диеты</mat-label>
       <textarea matInput formControlName="dietGoals"></textarea>
     </mat-form-field>

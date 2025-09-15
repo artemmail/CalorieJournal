@@ -85,10 +85,24 @@ export interface ExchangeResponse {
   chatId: number;
 }
 
+export type Gender = 'male' | 'female';
+
+export type ActivityLevel =
+  | 'minimal'
+  | 'light'
+  | 'moderate'
+  | 'high'
+  | 'veryHigh';
+
 export interface PersonalCard {
   email: string | null;
   name: string | null;
   birthYear: number | null;
+  gender: Gender | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  activityLevel: ActivityLevel | null;
+  dailyCalories: number | null;
   dietGoals: string | null;
   medicalRestrictions: string | null;
 }
