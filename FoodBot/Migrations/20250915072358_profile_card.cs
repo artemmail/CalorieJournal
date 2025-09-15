@@ -10,59 +10,52 @@ namespace FoodBot.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "ActivityLevel",
-                table: "PersonalCards",
-                type: "int",
-                nullable: true);
+            // Columns may already exist if the database was manually altered or
+            // a previous migration partially succeeded. Guard each addition with
+            // a check to avoid duplicate column errors.
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','ActivityLevel') IS NULL " +
+                "ALTER TABLE PersonalCards ADD ActivityLevel int NULL;");
 
-            migrationBuilder.AddColumn<int>(
-                name: "DailyCalories",
-                table: "PersonalCards",
-                type: "int",
-                nullable: true);
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','DailyCalories') IS NULL " +
+                "ALTER TABLE PersonalCards ADD DailyCalories int NULL;");
 
-            migrationBuilder.AddColumn<int>(
-                name: "Gender",
-                table: "PersonalCards",
-                type: "int",
-                nullable: true);
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','Gender') IS NULL " +
+                "ALTER TABLE PersonalCards ADD Gender int NULL;");
 
-            migrationBuilder.AddColumn<int>(
-                name: "HeightCm",
-                table: "PersonalCards",
-                type: "int",
-                nullable: true);
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','HeightCm') IS NULL " +
+                "ALTER TABLE PersonalCards ADD HeightCm int NULL;");
 
-            migrationBuilder.AddColumn<decimal>(
-                name: "WeightKg",
-                table: "PersonalCards",
-                type: "decimal(18,2)",
-                nullable: true);
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','WeightKg') IS NULL " +
+                "ALTER TABLE PersonalCards ADD WeightKg decimal(18,2) NULL;");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "ActivityLevel",
-                table: "PersonalCards");
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','ActivityLevel') IS NOT NULL " +
+                "ALTER TABLE PersonalCards DROP COLUMN ActivityLevel;");
 
-            migrationBuilder.DropColumn(
-                name: "DailyCalories",
-                table: "PersonalCards");
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','DailyCalories') IS NOT NULL " +
+                "ALTER TABLE PersonalCards DROP COLUMN DailyCalories;");
 
-            migrationBuilder.DropColumn(
-                name: "Gender",
-                table: "PersonalCards");
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','Gender') IS NOT NULL " +
+                "ALTER TABLE PersonalCards DROP COLUMN Gender;");
 
-            migrationBuilder.DropColumn(
-                name: "HeightCm",
-                table: "PersonalCards");
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','HeightCm') IS NOT NULL " +
+                "ALTER TABLE PersonalCards DROP COLUMN HeightCm;");
 
-            migrationBuilder.DropColumn(
-                name: "WeightKg",
-                table: "PersonalCards");
+            migrationBuilder.Sql(
+                "IF COL_LENGTH('PersonalCards','WeightKg') IS NOT NULL " +
+                "ALTER TABLE PersonalCards DROP COLUMN WeightKg;");
         }
     }
 }
