@@ -120,11 +120,12 @@ public sealed class DietAnalysisService
         // Генерация
         try
         {
-            var markdown = await GenerateReportAsync(rec.ChatId, rec.Period, ct);
+            var (markdown, requestJson) = await GenerateReportAsync(rec.ChatId, rec.Period, ct);
             // Обновить чек-сумму на момент завершения
             var checksum = await ComputeCaloriesChecksum(rec.ChatId, periodStartUtc.UtcDateTime, ct);
 
             rec.Markdown = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(rec.Period, nowLocal) : markdown;
+            rec.RequestJson = requestJson;
             rec.CaloriesChecksum = checksum;
             rec.IsProcessing = false;
             rec.CreatedAtUtc = DateTimeOffset.UtcNow;
@@ -212,10 +213,11 @@ public sealed class DietAnalysisService
 
         try
         {
-            var markdown = await GenerateReportAsync(chatId, AnalysisPeriod.Day, ct);
+            var (markdown, requestJson) = await GenerateReportAsync(chatId, AnalysisPeriod.Day, ct);
             var checksum = await ComputeCaloriesChecksum(chatId, dayStartUtc.UtcDateTime, ct);
 
             rec.Markdown = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(AnalysisPeriod.Day, nowLocal) : markdown;
+            rec.RequestJson = requestJson;
             rec.CaloriesChecksum = checksum;
             rec.IsProcessing = false;
             rec.CreatedAtUtc = DateTimeOffset.UtcNow;
@@ -279,11 +281,12 @@ public sealed class DietAnalysisService
 
         try
         {
-            var markdown = await GenerateReportAsync(chatId, period, ct);
+            var (markdown, requestJson) = await GenerateReportAsync(chatId, period, ct);
             var checksum = await ComputeCaloriesChecksum(chatId, periodStartUtc.UtcDateTime, ct);
 
             var final = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(period, nowLocal) : markdown;
             updatable.Markdown = final;
+            updatable.RequestJson = requestJson;
             updatable.CaloriesChecksum = checksum;
             updatable.IsProcessing = false;
             updatable.CreatedAtUtc = DateTimeOffset.UtcNow;
@@ -300,13 +303,14 @@ public sealed class DietAnalysisService
 
     // === Генерация отчёта (как у тебя), + фоллбэк если пусто ===
 
-    private async Task<string> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    private async Task<(string Markdown, string RequestJson)> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
     {
         if (!_strategies.TryGetValue(period, out var strategy))
             throw new InvalidOperationException($"Strategy for period {period} not registered");
         var data = await strategy.LoadDataAsync(chatId, ct);
         var prompt = strategy.BuildPrompt(data);
-        return await strategy.GenerateAsync(prompt, ct);
+        var markdown = await strategy.GenerateAsync(prompt, ct);
+        return (markdown, prompt);
     }
 
     // === Утилиты ===
