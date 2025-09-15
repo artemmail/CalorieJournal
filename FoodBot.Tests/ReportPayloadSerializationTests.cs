@@ -103,7 +103,17 @@ public class ReportPayloadSerializationTests
             Timezone = new TimezoneInfoPayload { Id = "tz", Label = "label", UtcOffset = "+03:00" },
             Period = new PeriodInfoPayload { Kind = "Day", Label = "Today", StartLocal = "sl", EndLocal = "el", StartUtc = "su", EndUtc = "eu" },
             Now = new NowInfoPayload { Local = "now", LocalHour = "12", LocalDate = "2024-01-01" },
-            Client = new ClientInfoPayload { Name = "A", Age = 30, Goals = "G", Restrictions = "R" },
+            Client = new ClientInfoPayload
+            {
+                Name = "A",
+                Age = 30,
+                HeightCm = 180,
+                WeightKg = 70,
+                Gender = "Male",
+                DailyCalories = 2500,
+                Goals = "G",
+                Restrictions = "R"
+            },
             Meals = new List<MealEntry>(),
             Totals = new Totals(),
             Grouping = new Grouping(),
@@ -122,6 +132,35 @@ public class ReportPayloadSerializationTests
         Assert.True(root.TryGetProperty("totals", out _));
         Assert.True(root.TryGetProperty("grouping", out _));
         Assert.True(root.TryGetProperty("dailyPlanContext", out _));
+    }
+
+    [Fact]
+    public void ClientInfoPayload_SerializesWithExpectedPropertyNames()
+    {
+        var client = new ClientInfoPayload
+        {
+            Name = "A",
+            Age = 30,
+            HeightCm = 180,
+            WeightKg = 70,
+            Gender = "Male",
+            DailyCalories = 2500,
+            Goals = "G",
+            Restrictions = "R"
+        };
+
+        var json = JsonSerializer.Serialize(client);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        Assert.Equal("A", root.GetProperty("name").GetString());
+        Assert.Equal(30, root.GetProperty("age").GetInt32());
+        Assert.Equal(180, root.GetProperty("heightCm").GetInt32());
+        Assert.Equal(70m, root.GetProperty("weightKg").GetDecimal());
+        Assert.Equal("Male", root.GetProperty("gender").GetString());
+        Assert.Equal(2500, root.GetProperty("dailyCalories").GetInt32());
+        Assert.Equal("G", root.GetProperty("goals").GetString());
+        Assert.Equal("R", root.GetProperty("restrictions").GetString());
     }
 }
 

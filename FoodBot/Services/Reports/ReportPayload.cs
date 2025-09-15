@@ -227,6 +227,22 @@ public sealed class ClientInfoPayload
     [JsonPropertyName("age")]
     public int? Age { get; init; }
 
+    /// <summary>Client's height in centimeters.</summary>
+    [JsonPropertyName("heightCm")]
+    public int? HeightCm { get; init; }
+
+    /// <summary>Client's weight in kilograms.</summary>
+    [JsonPropertyName("weightKg")]
+    public decimal? WeightKg { get; init; }
+
+    /// <summary>Client's gender.</summary>
+    [JsonPropertyName("gender")]
+    public string? Gender { get; init; }
+
+    /// <summary>Client's daily calorie expenditure or plan.</summary>
+    [JsonPropertyName("dailyCalories")]
+    public int? DailyCalories { get; init; }
+
     /// <summary>Diet goals provided by the client.</summary>
     [JsonPropertyName("goals")]
     public string? Goals { get; init; }

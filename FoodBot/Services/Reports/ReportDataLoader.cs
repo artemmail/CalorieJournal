@@ -133,7 +133,17 @@ public sealed class ReportDataLoader : ReportDataLoaderBase<ReportPayload>
                 EndUtc = periodEndUtcStr
             },
             Now = new NowInfoPayload { Local = nowLocalStr, LocalHour = nowLocalHourStr, LocalDate = nowLocalDateStr },
-            Client = new ClientInfoPayload { Name = card?.Name, Age = age, Goals = card?.DietGoals, Restrictions = card?.MedicalRestrictions },
+            Client = new ClientInfoPayload
+            {
+                Name = card?.Name,
+                Age = age,
+                HeightCm = card?.HeightCm,
+                WeightKg = card?.WeightKg,
+                Gender = card?.Gender?.ToString(),
+                DailyCalories = card?.DailyCalories,
+                Goals = card?.DietGoals,
+                Restrictions = card?.MedicalRestrictions
+            },
             Meals = meals,
             Totals = totals,
             Grouping = new Grouping { ByHour = byHour, ByDay = byDay },
