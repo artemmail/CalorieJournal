@@ -83,18 +83,23 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    font-weight: 400;
   }
 
   mat-icon {
     color: #4877A6;
-    font-size: 22px;
+    font-size: 28px;
     line-height: 1;
+    width: 28px;
+    height: 28px;
+    display: block;
   }
 
   span {
     color: inherit;
-    font-size: 16px;
+    font-size: 12px;
+    font-weight: 400;
   }
 }
 
@@ -104,14 +109,4 @@
 
 .bottombar a.mat-mdc-button-base.active {
   background: rgba(72, 119, 166, 0.12);
-  color: #4877A6;
-
-  span {
-    color: #4877A6;
-    font-weight: 600;
-  }
-
-  mat-icon {
-    color: #4877A6;
-  }
 }
