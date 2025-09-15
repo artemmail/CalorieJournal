@@ -20,3 +20,17 @@ span[matListItemTitle] {
 a.mat-list-item:hover {
   opacity: 0.8;
 }
+
+a.mat-list-item.active {
+  background-color: rgba(72, 119, 166, 0.12);
+  border-radius: 8px;
+}
+
+a.mat-list-item.active span[matListItemTitle] {
+  color: #4877A6;
+  font-weight: 600;
+}
+
+a.mat-list-item.active mat-icon[matListItemIcon] {
+  color: #4877A6;
+}
