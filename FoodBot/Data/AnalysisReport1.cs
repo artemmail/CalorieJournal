@@ -19,25 +19,28 @@ public sealed class AnalysisReport1
 
     public AnalysisPeriod Period { get; set; }
 
-    /// <summary>Локальная дата начала периода (для кэширования, сравнения и имени)</summary>
+    /// <summary>Raw OpenAI request payload in JSON.</summary>
+    public string? RequestJson { get; set; }
+
+    /// <summary>Г‹Г®ГЄГ Г«ГјГ­Г Гї Г¤Г ГІГ  Г­Г Г·Г Г«Г  ГЇГҐГ°ГЁГ®Г¤Г  (Г¤Г«Гї ГЄГЅГёГЁГ°Г®ГўГ Г­ГЁГї, Г±Г°Г ГўГ­ГҐГ­ГЁГї ГЁ ГЁГ¬ГҐГ­ГЁ)</summary>
     public DateOnly PeriodStartLocalDate { get; set; }
 
-    /// <summary>Человекочитаемое имя: "2025-08-29 · день"</summary>
+    /// <summary>Г—ГҐГ«Г®ГўГҐГЄГ®Г·ГЁГІГ ГҐГ¬Г®ГҐ ГЁГ¬Гї: "2025-08-29 В· Г¤ГҐГ­Гј"</summary>
     public string? Name { get; set; }
 
-    /// <summary>Сохранённый markdown отчёта</summary>
+    /// <summary>Г‘Г®ГµГ°Г Г­ВёГ­Г­Г»Г© markdown Г®ГІГ·ВёГІГ </summary>
     public string? Markdown { get; set; }
 
-    /// <summary>Сумма калорий на момент генерации (контрольная сумма)</summary>
+    /// <summary>Г‘ГіГ¬Г¬Г  ГЄГ Г«Г®Г°ГЁГ© Г­Г  Г¬Г®Г¬ГҐГ­ГІ ГЈГҐГ­ГҐГ°Г Г¶ГЁГЁ (ГЄГ®Г­ГІГ°Г®Г«ГјГ­Г Гї Г±ГіГ¬Г¬Г )</summary>
     public int CaloriesChecksum { get; set; }
 
-    /// <summary>Флаг, что отчёт ещё в обработке</summary>
+    /// <summary>Г”Г«Г ГЈ, Г·ГІГ® Г®ГІГ·ВёГІ ГҐГ№Вё Гў Г®ГЎГ°Г ГЎГ®ГІГЄГҐ</summary>
     public bool IsProcessing { get; set; }
 
-    /// <summary>Когда начата обработка (для таймаутов)</summary>
+    /// <summary>ГЉГ®ГЈГ¤Г  Г­Г Г·Г ГІГ  Г®ГЎГ°Г ГЎГ®ГІГЄГ  (Г¤Г«Гї ГІГ Г©Г¬Г ГіГІГ®Гў)</summary>
     public DateTimeOffset? ProcessingStartedAtUtc { get; set; }
 
-    /// <summary>Когда запись создана/обновлена</summary>
+    /// <summary>ГЉГ®ГЈГ¤Г  Г§Г ГЇГЁГ±Гј Г±Г®Г§Г¤Г Г­Г /Г®ГЎГ­Г®ГўГ«ГҐГ­Г </summary>
     public DateTimeOffset CreatedAtUtc { get; set; }
 }
 
