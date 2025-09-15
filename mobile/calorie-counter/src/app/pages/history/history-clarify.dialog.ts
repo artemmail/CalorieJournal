@@ -2,7 +2,7 @@ import { Component, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { FoodbotApiService } from '../../services/foodbot-api.service';
 import { ClarifyResult } from '../../services/foodbot-api.types';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/confirm-dialog/confirm-dialog.component';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -159,6 +160,7 @@ export class HistoryClarifyDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: { mealId: number; createdAtUtc: string; note?: string },
     private api: FoodbotApiService,
     private snack: MatSnackBar,
+    private dialog: MatDialog,
     public dialogRef: MatDialogRef<HistoryClarifyDialogComponent>
   ) {
     this.createdAt = new Date(data.createdAtUtc);
@@ -237,10 +239,21 @@ export class HistoryClarifyDialogComponent {
   }
 
   remove() {
-    if (!confirm('Удалить запись?')) return;
-    this.api.deleteMeal(this.data.mealId).subscribe({
-      next: () => this.dialogRef.close({ deleted: true }),
-      error: () => this.snack.open('Не удалось удалить', 'OK', { duration: 1500 })
+    const dialogRef = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: {
+        title: 'Удаление записи',
+        message: 'Удалить запись?',
+        confirmLabel: 'Удалить',
+        cancelLabel: 'Отмена'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.api.deleteMeal(this.data.mealId).subscribe({
+        next: () => this.dialogRef.close({ deleted: true }),
+        error: () => this.snack.open('Не удалось удалить', 'OK', { duration: 1500 })
+      });
     });
   }
 }
