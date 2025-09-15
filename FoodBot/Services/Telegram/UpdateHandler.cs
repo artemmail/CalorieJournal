@@ -198,6 +198,7 @@ $@"Вход через приложение:
                 };
                 db.Meals.Add(entry);
                 await db.SaveChangesAsync(ct);
+                await notifier.MealUpdated(chatId, entry.ToListItem());
 
                 if (conv is not null)
                 {
