@@ -79,7 +79,8 @@ export class ProfilePage implements OnInit {
   }
 
   private recalcCalories() {
-    const { gender, heightCm, weightKg, birthYear, activityLevel } = this.form.getRawValue();
+    const { gender, heightCm, weightKg, birthYear, activityLevel } =
+      this.form.getRawValue() as PersonalCard;
     if (gender && heightCm && weightKg && birthYear && activityLevel) {
       const age = new Date().getFullYear() - birthYear;
       const bmr = gender === 'male'
