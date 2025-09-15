@@ -105,6 +105,7 @@ public class UpdateHandler
         var report = scope.ServiceProvider.GetRequiredService<TelegramReportService>();
         var httpf = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
         var stt = scope.ServiceProvider.GetRequiredService<SpeechToTextService>();
+        var notifier = scope.ServiceProvider.GetRequiredService<IMealNotifier>();
 
         var chatId = msg.Chat.Id;
         var userId = msg.From?.Id ?? 0;
@@ -272,7 +273,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
 
                 await _bot.SendMessage(chatId, $"🎙️ Уточнение с голоса: {sttText}", cancellationToken: ct);
 
-                await ApplyClarificationTextAsync(db, nutrition, chatId, sttText, ct);
+                await ApplyClarificationTextAsync(db, nutrition, notifier, chatId, sttText, ct);
             }
             catch (Exception ex)
             {
@@ -306,7 +307,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
 
                 await _bot.SendMessage(chatId, $"🎙️ Уточнение с аудио: {sttText}", cancellationToken: ct);
 
-                await ApplyClarificationTextAsync(db, nutrition, chatId, sttText, ct);
+                await ApplyClarificationTextAsync(db, nutrition, notifier, chatId, sttText, ct);
             }
             catch (Exception ex)
             {
@@ -345,7 +346,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             try
             {
                 await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
-                await ApplyClarificationTextAsync(db, nutrition, chatId, trimmed, ct);
+                await ApplyClarificationTextAsync(db, nutrition, notifier, chatId, trimmed, ct);
             }
             catch (Exception ex)
             {
@@ -402,7 +403,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
     }
 
     // ======= Clarify helper (общий для текста и голоса) =======
-    private async Task ApplyClarificationTextAsync(BotDbContext db, NutritionService nutrition, long chatId, string text, CancellationToken ct)
+    private async Task ApplyClarificationTextAsync(BotDbContext db, NutritionService nutrition, IMealNotifier notifier, long chatId, string text, CancellationToken ct)
     {
         // Берём последнюю запись
         var last = await db.Meals
@@ -439,6 +440,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             last.ClarifyNote = text;
             last.CreatedAtUtc = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
+            await notifier.MealUpdated(chatId, last.ToListItem());
 
             var step1HtmlText = BuildStep1PreviewHtml(convText.Step1);
             if (!string.IsNullOrWhiteSpace(step1HtmlText))
@@ -579,6 +581,8 @@ $@"<b>✅ Final nutrition (after clarify)</b>\n<b>🍽️ {WebUtility.HtmlEncode
 
             await db.SaveChangesAsync(ct);
 
+            var item = last.ToListItem();
+
             // Вывод
             var step1Html = BuildStep1PreviewHtml(conv2.Step1);
             if (!string.IsNullOrWhiteSpace(step1Html))
@@ -610,6 +614,7 @@ P: <b>{r.proteins_g:F1} g</b>   F: <b>{r.fats_g:F1} g</b>   C: <b>{r.carbs_g:F1}
 Calories: <b>{r.calories_kcal:F0}</b> kcal
 Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             await SendHtmlSafe(_bot, chatId, htmlFinal, ct);
+            await notifier.MealUpdated(chatId, item);
         }
         else
         {

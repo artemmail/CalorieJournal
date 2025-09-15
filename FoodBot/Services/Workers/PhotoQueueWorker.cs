@@ -104,7 +104,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                             db.PendingClarifies.Remove(nextClar);
                             await db.SaveChangesAsync(stoppingToken);
 
-                            await notifier.MealUpdated(meal.ChatId, ToListItem(meal));
+                            await notifier.MealUpdated(meal.ChatId, meal.ToListItem());
                         }
                         else
                         {
@@ -160,7 +160,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                         db.PendingMeals.Remove(next);
                         await db.SaveChangesAsync(stoppingToken);
 
-                        await notifier.MealUpdated(entry.ChatId, ToListItem(entry));
+                        await notifier.MealUpdated(entry.ChatId, entry.ToListItem());
                     }
                     else
                     {
@@ -189,24 +189,4 @@ public sealed class PhotoQueueWorker : BackgroundService
         }
     }
 
-    private static MealListItem ToListItem(MealEntry meal)
-    {
-        var ingredients = string.IsNullOrWhiteSpace(meal.IngredientsJson)
-            ? Array.Empty<string>()
-            : (JsonSerializer.Deserialize<string[]>(meal.IngredientsJson!) ?? Array.Empty<string>());
-        return new MealListItem(
-            meal.Id,
-            meal.CreatedAtUtc,
-            meal.DishName,
-            meal.WeightG,
-            meal.CaloriesKcal,
-            meal.ProteinsG,
-            meal.FatsG,
-            meal.CarbsG,
-            ingredients,
-            ProductJsonHelper.DeserializeProducts(meal.ProductsJson),
-            meal.ImageBytes != null && meal.ImageBytes.Length > 0,
-            false
-        );
-    }
 }
