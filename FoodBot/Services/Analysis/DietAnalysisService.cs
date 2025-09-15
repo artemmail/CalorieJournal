@@ -366,14 +366,11 @@ _Автоматический фоллбэк: содержимое не пуст
                 }
             case AnalysisPeriod.Week:
                 {
-                    int dowRaw = (int)nowLocal.DayOfWeek; // Sunday=0
-                    int isoDow = (dowRaw == 0) ? 7 : dowRaw;
-                    int daysFromMonday = isoDow - 1;
-
-                    var mondayLocalDate = nowLocal.Date.AddDays(-daysFromMonday);
-                    var startLocal = new DateTime(mondayLocalDate.Year, mondayLocalDate.Month, mondayLocalDate.Day, 0, 0, 0);
+                    // Rolling window covering the last seven days including today
+                    var startLocalDate = nowLocal.Date.AddDays(-6);
+                    var startLocal = new DateTime(startLocalDate.Year, startLocalDate.Month, startLocalDate.Day, 0, 0, 0);
                     var startLocalOffset = new DateTimeOffset(startLocal, tz.GetUtcOffset(startLocal));
-                    return (startLocalOffset.ToUniversalTime(), "с начала недели", "неделю", startLocal);
+                    return (startLocalOffset.ToUniversalTime(), "за последние 7 дней", "7 дней", startLocal);
                 }
             case AnalysisPeriod.Month:
                 {
