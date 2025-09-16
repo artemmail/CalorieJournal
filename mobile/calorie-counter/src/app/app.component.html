@@ -27,26 +27,28 @@
     </div>
 
     <!-- Нижний тулбар (поднимаем на safeBottom) -->
-    <mat-toolbar class="bottombar" [style.bottom.px]="safeBottom()">
-      <a mat-button routerLink="/history" routerLinkActive="active">
-        <span class="bottom-tab">
-          <mat-icon fontSet="material-icons-outlined">history</mat-icon>
-          <span class="bottom-tab__label">История</span>
-        </span>
-      </a>
-      <a mat-button routerLink="/add" routerLinkActive="active">
-        <span class="bottom-tab">
-          <mat-icon fontSet="material-icons-outlined">add_a_photo</mat-icon>
-          <span class="bottom-tab__label">Добавить</span>
-        </span>
-      </a>
-      <a mat-button routerLink="/analysis" routerLinkActive="active">
-        <span class="bottom-tab">
-          <mat-icon fontSet="material-icons-outlined">analytics</mat-icon>
-          <span class="bottom-tab__label">Анализ</span>
-        </span>
-      </a>
-    </mat-toolbar>
+   <!-- Нижний тулбар -->
+<mat-toolbar class="bottombar" [style.bottom.px]="safeBottom()" role="tablist" aria-label="Bottom navigation">
+  <a mat-button class="bottom-link" routerLink="/history" routerLinkActive="active" [disableRipple]="true" role="tab" aria-label="История">
+    <span class="bottom-tab">
+      <mat-icon fontSet="material-icons-outlined">history</mat-icon>
+      <span class="bottom-tab__label">История</span>
+    </span>
+  </a>
+  <a mat-button class="bottom-link" routerLink="/add" routerLinkActive="active" [disableRipple]="true" role="tab" aria-label="Добавить">
+    <span class="bottom-tab">
+      <mat-icon fontSet="material-icons-outlined">add_a_photo</mat-icon>
+      <span class="bottom-tab__label">Добавить</span>
+    </span>
+  </a>
+  <a mat-button class="bottom-link" routerLink="/analysis" routerLinkActive="active" [disableRipple]="true" role="tab" aria-label="Анализ">
+    <span class="bottom-tab">
+      <mat-icon fontSet="material-icons-outlined">medical_services</mat-icon>
+      <span class="bottom-tab__label">Диетолог ИИ</span>
+    </span>
+  </a>
+</mat-toolbar>
+
     @if(safeBottom() > 0)
      {
     <div class="safe-bottom" [style.height.px]="safeBottom()"></div>

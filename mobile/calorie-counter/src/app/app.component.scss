@@ -84,14 +84,15 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    height: 50px;
   }
 
   .bottom-tab mat-icon {
     color: #4877A6;
-    font-size: 28px;
+    font-size: 22px;
     line-height: 1;
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     display: block;
   }
 
@@ -109,3 +110,79 @@
 .bottombar a.mat-mdc-button-base.active {
   background: rgba(72, 119, 166, 0.12);
 }
+
+
+:root {
+  --bottombar-height: 56px; // под ваш BOTTOMBAR_HEIGHT
+}
+
+/* Контейнер всего приложения */
+.app-shell {
+  height: 100vh;
+}
+
+/* Нижняя панель как фиксированный tab bar */
+.bottombar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: var(--bottombar-height);
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  z-index: 1000;
+  border-top: 1px solid rgba(0,0,0,.08);
+  /* фон берём из темы; при желании можно принудительно:
+  background: var(--mat-sys-surface, #fff);
+  */
+}
+
+/* Ссылки-кнопки -> ровные колонки, без "пилюль" */
+.bottombar .bottom-link.mat-mdc-button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border-radius: 0;
+  /* убираем минимальную ширину MDC */
+  .mdc-button__label { width: 100%; }
+  .mdc-button__ripple { display: none; } // чтобы не "моргало" по всей колоночке
+}
+
+/* Содержимое вкладки: иконка над подписью, центрирование */
+.bottom-tab {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1;
+  pointer-events: none; // весь клик по колонке
+}
+
+.bottom-tab mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.bottom-tab__label {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Активная вкладка — цвет темы */
+.bottombar .active .bottom-tab mat-icon,
+.bottombar .active .bottom-tab__label {
+  color: var(--mdc-theme-primary, #3f51b5);
+}
+
+/* Поддержка узких экранов: можно прятать подписи
+@media (max-width: 340px) {
+  .bottom-tab__label { display: none; }
+}
+*/
