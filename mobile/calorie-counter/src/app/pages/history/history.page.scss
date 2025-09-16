@@ -1,16 +1,155 @@
 ﻿:host { display: block; }
 
-.meal-card { margin-bottom: 12px; cursor: pointer; }
-.row { display: flex; gap: 12px; align-items: flex-start; }
-img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; }
-.info { flex: 1; }
-.time { font-size: 12px; opacity: .7; }
-.kcal { font-weight: 600; margin: 4px 0; }
-.dish { opacity: .8; margin-left: 6px; }
-.macros { font-size: 13px; }
-.queued { font-size: 12px; color: #ff9800; }
-.date { font-weight: 600; margin: 16px 0 8px; display: flex; align-items: baseline; gap: 6px; }
-.date-total { font-weight: 500; opacity: .8; }
+.container {
+  position: relative;
+  min-height: 100%;
+  padding: 8px 12px 12px;
+}
 
-/* длинные ингредиенты будут переноситься */
-.ing { overflow-wrap: anywhere; word-break: break-word; }
+/* Липкий заголовок даты */
+.date-header {
+  position: sticky;
+  top: 0; /* под верхним AppBar, если есть — добавьте отступ */
+  z-index: 2;
+  padding-top: 8px;
+
+  &__content {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    background: var(--mat-sys-surface, #fff);
+    padding: 6px 10px;
+    border-radius: 10px;
+    box-shadow: 0 1px 0 rgba(0,0,0,.06);
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  &__date { opacity: .9; }
+  &__total { opacity: .6; font-weight: 500; }
+}
+
+/* Карточка */
+.meal-card {
+  --radius: 14px;
+  border-radius: var(--radius);
+  padding: 10px;
+  margin: 8px 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  cursor: pointer;
+
+  &:active { transform: translateY(0); } /* без подскока */
+}
+
+.meal-card__grid {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.meal-card__thumb {
+  width: 72px; height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f3f3;
+
+  img {
+    display: block;
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+}
+
+.meal-card__content { min-width: 0; } /* для ellipsis */
+
+.meal-card__row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+
+  .time { font-size: 12px; opacity: .7; }
+  .queue { font-size: 12px; color: var(--mat-sys-primary, #3f51b5); }
+}
+
+.meal-card__row-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.2;
+  margin-bottom: 6px;
+
+  .kcal { font-weight: 700; font-size: 16px; }
+  .dot { opacity: .4; }
+  .dish {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: .9;
+  }
+}
+
+.meal-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  .chip {
+    font-size: 11px;
+    line-height: 18px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.05);
+    white-space: nowrap;
+  }
+}
+
+/* Ингредиенты (сворачиваемые) */
+.ingredients {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &__label {
+    font-size: 12px;
+    opacity: .7;
+  }
+
+  &__text {
+    font-size: 12px;
+    opacity: .85;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+    &.-open {
+      -webkit-line-clamp: unset;
+      max-height: none;
+      white-space: normal;
+    }
+  }
+}
+
+/* Лоадер и safe-area */
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 24px;
+}
+
+.safe-area-bottom {
+  height: env(safe-area-inset-bottom, 0px);
+  padding-bottom: 60px; /* под фиксированный нижний таб-бар */
+}

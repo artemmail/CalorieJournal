@@ -34,9 +34,11 @@ export class HistoryPage implements OnInit, OnDestroy {
   loading = false;
 
   imageUrls = new Map<number, string>();
-
-  /** сумма ккал по локальной дате (YYYY-MM-DD) для уже загруженных элементов */
   private dateTotals = new Map<string, number>();
+  private updatesSub?: Subscription;
+
+  /** локальное состояние раскрытых ингредиентов */
+  private ingOpen = new Set<number>();
 
   constructor(
     private api: FoodbotApiService,
@@ -46,8 +48,6 @@ export class HistoryPage implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private updates: HistoryUpdatesService
   ) {}
-
-  private updatesSub?: Subscription;
 
   ngOnInit() {
     if (!this.auth.isAuthenticated()) {
@@ -73,7 +73,6 @@ export class HistoryPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // чистим ObjectURL'ы
     for (const url of this.imageUrls.values()) URL.revokeObjectURL(url);
     this.updatesSub?.unsubscribe();
   }
@@ -89,13 +88,11 @@ export class HistoryPage implements OnInit, OnDestroy {
       next: (res) => {
         this.items = [...this.items, ...res.items];
         this.total = res.total;
-
         for (const m of res.items) {
           if (m.hasImage) {
             this.api.getMealImageObjectUrl(m.id).subscribe((url) => this.imageUrls.set(m.id, url));
           }
         }
-
         this.recomputeDateTotals();
         this.loading = false;
       },
@@ -118,7 +115,6 @@ export class HistoryPage implements OnInit, OnDestroy {
            da.getMonth() === db.getMonth() &&
            da.getDate() === db.getDate();
   }
-
   showDateSeparator(i: number) {
     if (i === 0) return true;
     return !this.sameDay(this.items[i - 1].createdAtUtc, this.items[i].createdAtUtc);
@@ -142,7 +138,6 @@ export class HistoryPage implements OnInit, OnDestroy {
     });
   }
 
-  /** ключ локальной даты YYYY-MM-DD */
   private dateKey(s: string): string {
     const d = new Date(s);
     const y = d.getFullYear();
@@ -151,7 +146,6 @@ export class HistoryPage implements OnInit, OnDestroy {
     return `${y}-${m}-${day}`;
   }
 
-  /** пересчёт сумм калорий для всех уже загруженных элементов */
   private recomputeDateTotals() {
     this.dateTotals.clear();
     for (const m of this.items) {
@@ -161,8 +155,16 @@ export class HistoryPage implements OnInit, OnDestroy {
     }
   }
 
-  /** получить сумму калорий для даты элемента */
   dateTotalFor(dateStr: string): number {
     return this.dateTotals.get(this.dateKey(dateStr)) ?? 0;
+  }
+
+  /* --- раскрытие ингредиентов --- */
+  toggleIng(m: MealListItem) {
+    if (this.ingOpen.has(m.id)) this.ingOpen.delete(m.id);
+    else this.ingOpen.add(m.id);
+  }
+  isIngOpen(m: MealListItem) {
+    return this.ingOpen.has(m.id);
   }
 }

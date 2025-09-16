@@ -1,37 +1,71 @@
-<div
-  infiniteScroll
-  [scrollWindow]="false"
-  [infiniteScrollContainer]="'.container'"
-  [fromRoot]="true"
-  [immediateCheck]="true"
-  [infiniteScrollDistance]="1"
-  [infiniteScrollThrottle]="200"
-  (scrolled)="onScrollDown()"
->
+<div class="container"
+     infiniteScroll
+     [scrollWindow]="false"
+     [infiniteScrollContainer]="'.container'"
+     [fromRoot]="true"
+     [immediateCheck]="true"
+     [infiniteScrollDistance]="1"
+     [infiniteScrollThrottle]="200"
+     (scrolled)="onScrollDown()">
+
   <ng-container *ngFor="let m of items; let i = index">
-    <div class="date" *ngIf="showDateSeparator(i)">
-      {{ date(m.createdAtUtc) }}
-      <span class="date-total">· {{ dateTotalFor(m.createdAtUtc) | number:'1.0-0' }} ккал</span>
+    <!-- Липкий заголовок даты -->
+    <div class="date-header" *ngIf="showDateSeparator(i)">
+      <div class="date-header__content">
+        <span class="date-header__date">{{ date(m.createdAtUtc) }}</span>
+        <span class="date-header__total">· {{ dateTotalFor(m.createdAtUtc) | number:'1.0-0' }} ккал</span>
+      </div>
     </div>
 
-    <mat-card class="meal-card" (click)="openDialog(m)">
-      <div class="row">
-        <img *ngIf="m.hasImage && imgUrl(m.id)" [src]="imgUrl(m.id)" alt="meal" />
-        <div class="info">
-          <div class="time">{{ time(m.createdAtUtc) }}</div>
-          <div class="kcal">
-            {{ m.caloriesKcal ?? "—" }} ккал
-            <span class="dish" *ngIf="m.dishName">· {{ m.dishName }}</span>
+    <!-- Карточка приёма -->
+    <mat-card class="meal-card" (click)="openDialog(m)" tabindex="0" aria-label="Открыть карточку приёма">
+      <div class="meal-card__grid">
+        <div class="meal-card__thumb" *ngIf="m.hasImage && imgUrl(m.id)">
+          <img [src]="imgUrl(m.id)"
+               alt="Фото блюда"
+               loading="lazy"
+               decoding="async">
+        </div>
+
+        <div class="meal-card__content">
+          <div class="meal-card__row-top">
+            <span class="time">{{ time(m.createdAtUtc) }}</span>
+            <span class="queue" *ngIf="m.updateQueued">Обновляется…</span>
           </div>
-          <div class="macros">
-            Б {{ m.proteinsG ?? "—" }} · Ж {{ m.fatsG ?? "—" }} · У {{ m.carbsG ?? "—" }} · {{ m.weightG ?? "—" }} г
+
+          <div class="meal-card__row-main">
+            <span class="kcal">{{ m.caloriesKcal ?? "—" }}&nbsp;ккал</span>
+            <span class="dot">·</span>
+            <span class="dish" [title]="m.dishName || ''">{{ m.dishName || 'Без названия' }}</span>
           </div>
-          <div class="queued" *ngIf="m.updateQueued">Обновляется…</div>
-          <div class="ing" *ngIf="m.ingredients?.length">Ингредиенты: {{ m.ingredients.join(", ") }}</div>
+
+          <div class="meal-card__chips">
+            <span class="chip">Б {{ m.proteinsG ?? "—" }}</span>
+            <span class="chip">Ж {{ m.fatsG ?? "—" }}</span>
+            <span class="chip">У {{ m.carbsG ?? "—" }}</span>
+            <span class="chip" *ngIf="m.weightG">⚖ {{ m.weightG }} г</span>
+          </div>
+
+          <button type="button"
+                  class="ingredients"
+                  *ngIf="m.ingredients?.length"
+                  (click)="$event.stopPropagation(); toggleIng(m)"
+                  [attr.aria-expanded]="isIngOpen(m) ? 'true' : 'false'">
+            <span class="ingredients__label">Ингредиенты:</span>
+            <span class="ingredients__text"
+                  [class.-open]="isIngOpen(m)">
+              {{ m.ingredients.join(", ") }}
+            </span>
+          </button>
         </div>
       </div>
     </mat-card>
   </ng-container>
 
-  <mat-spinner *ngIf="loading"></mat-spinner>
+  <div class="loading" *ngIf="loading">
+    <mat-spinner diameter="32"></mat-spinner>
+  </div>
+
+  <!-- safe-area для нижнего таб-бара -->
+  <div class="safe-area-bottom"></div>
 </div>
