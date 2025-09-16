@@ -4,7 +4,7 @@
 .container {
   position: relative;
   min-height: 100%;
-  padding: 8px 12px 12px;
+ 
   background: var(--mat-sys-surface, #ffffff);
 }
 
@@ -29,7 +29,7 @@
 
 /* Внутри карточки — тот же стиль, но без подложки/тени и с меньшими отступами */
 .header-row.-compact {
-  font-size: 15px;
+  font-size: 14px;
   padding: 4px 0 0 0;
   background: transparent;
   border-radius: 0;
@@ -46,7 +46,7 @@
 
 /* Карточка: без внутренних паддингов, чтобы фото вплотную к краям слева/сверху/снизу */
 .meal-card {
-  --thumb: 112px;            /* целевая ширина левой полосы под фото */
+  --thumb: 102px;            /* целевая ширина левой полосы под фото */
   border-radius: 14px;
   padding: 0;               /* <— важно */
   margin: 8px 0;
@@ -82,7 +82,7 @@
 /* Контент: даем внутренний отступ, раз фото без отступов */
 .meal-card__content {
   min-width: 0;
-  padding: 10px;
+  padding: 2px;
 }
 
 .meal-card__title {
@@ -101,7 +101,7 @@
   gap: 6px;
 
   .chip {
-    font-size: 14px;
+    font-size: 12px;
     line-height: 18px;
     padding: 0 8px;
     border-radius: 999px;
