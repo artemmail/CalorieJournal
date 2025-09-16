@@ -105,7 +105,7 @@ export class HistoryPage implements OnInit, OnDestroy {
 
   onScrollDown() { this.loadMore(); }
 
-  time(s: string) { return new Date(s).toLocaleString(); }
+  //time(s: string) { return new Date(s).toLocaleString(); }
   imgUrl(id: number) { return this.imageUrls.get(id) || ""; }
   date(s: string) { return new Date(s).toLocaleDateString(); }
 
@@ -167,4 +167,9 @@ export class HistoryPage implements OnInit, OnDestroy {
   isIngOpen(m: MealListItem) {
     return this.ingOpen.has(m.id);
   }
+
+  time(s: string) {
+  return new Date(s).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 }

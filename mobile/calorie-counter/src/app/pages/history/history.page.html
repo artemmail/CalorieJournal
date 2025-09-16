@@ -9,36 +9,38 @@
      (scrolled)="onScrollDown()">
 
   <ng-container *ngFor="let m of items; let i = index">
-    <!-- Липкий заголовок даты -->
+    <!-- Липкий заголовок ДНЯ: дата · суточные ккал -->
     <div class="date-header" *ngIf="showDateSeparator(i)">
-      <div class="date-header__content">
-        <span class="date-header__date">{{ date(m.createdAtUtc) }}</span>
-        <span class="date-header__total">· {{ dateTotalFor(m.createdAtUtc) | number:'1.0-0' }} ккал</span>
+      <div class="header-row">
+        <span class="header-left">{{ date(m.createdAtUtc) }}</span>
+        <span class="dot">·</span>
+        <span class="header-right">{{ dateTotalFor(m.createdAtUtc) | number:'1.0-0' }} ккал</span>
       </div>
     </div>
 
     <!-- Карточка приёма -->
     <mat-card class="meal-card" (click)="openDialog(m)" tabindex="0" aria-label="Открыть карточку приёма">
       <div class="meal-card__grid">
+        <!-- Фото без отступов: заполняет всю левую полосу карточки, квадрат по полной высоте -->
         <div class="meal-card__thumb" *ngIf="m.hasImage && imgUrl(m.id)">
-          <img [src]="imgUrl(m.id)"
-               alt="Фото блюда"
-               loading="lazy"
-               decoding="async">
+          <img [src]="imgUrl(m.id)" alt="Фото блюда" loading="lazy" decoding="async">
         </div>
 
+        <!-- Контент с внутренними отступами справа -->
         <div class="meal-card__content">
-          <div class="meal-card__row-top">
-            <span class="time">{{ time(m.createdAtUtc) }}</span>
-            <span class="queue" *ngIf="m.updateQueued">Обновляется…</span>
-          </div>
-
-          <div class="meal-card__row-main">
-            <span class="kcal">{{ m.caloriesKcal ?? "—" }}&nbsp;ккал</span>
+          <!-- Заголовок КАРТОЧКИ: время · ккал (единый стиль с днём) -->
+          <div class="header-row -compact">
+            <span class="header-left">{{ time(m.createdAtUtc) }}</span>
             <span class="dot">·</span>
-            <span class="dish" [title]="m.dishName || ''">{{ m.dishName || 'Без названия' }}</span>
+            <span class="header-right">{{ m.caloriesKcal ?? "—" }} ккал</span>
           </div>
 
+          <!-- Название блюда -->
+          <div class="meal-card__title" [title]="m.dishName || ''">
+            {{ m.dishName || 'Без названия' }}
+          </div>
+
+          <!-- Чипы БЖУ + вес -->
           <div class="meal-card__chips">
             <span class="chip">Б {{ m.proteinsG ?? "—" }}</span>
             <span class="chip">Ж {{ m.fatsG ?? "—" }}</span>
@@ -46,15 +48,16 @@
             <span class="chip" *ngIf="m.weightG">⚖ {{ m.weightG }} г</span>
           </div>
 
+          <!-- Состав (ингредиенты) — символ ⚗ -->
           <button type="button"
                   class="ingredients"
                   *ngIf="m.ingredients?.length"
                   (click)="$event.stopPropagation(); toggleIng(m)"
-                  [attr.aria-expanded]="isIngOpen(m) ? 'true' : 'false'">
-            <span class="ingredients__label">Ингредиенты:</span>
-            <span class="ingredients__text"
-                  [class.-open]="isIngOpen(m)">
-              {{ m.ingredients.join(", ") }}
+                  [attr.aria-expanded]="isIngOpen(m) ? 'true' : 'false'"
+                  aria-label="Показать состав блюда">
+            <span class="ingredients__icon" aria-hidden="true">⚗</span>
+            <span class="ingredients__text" [class.-open]="isIngOpen(m)">
+              {{ m.ingredients.join(', ') }}
             </span>
           </button>
         </div>
@@ -66,6 +69,5 @@
     <mat-spinner diameter="32"></mat-spinner>
   </div>
 
-  <!-- safe-area для нижнего таб-бара -->
   <div class="safe-area-bottom"></div>
 </div>

@@ -1,98 +1,99 @@
 ﻿:host { display: block; }
 
+/* Контейнер списка */
 .container {
   position: relative;
   min-height: 100%;
   padding: 8px 12px 12px;
+  background: var(--mat-sys-surface, #ffffff);
 }
 
-/* Липкий заголовок даты */
+/* ЕДИНЫЙ заголовок (день и карточка) — одна строка, без растягивания */
+.header-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--mat-sys-surface, #fff);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06);
+
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 600;
+
+  .header-left  { opacity: .9; }
+  .header-right { opacity: .85; font-weight: 700; }
+  .dot { opacity: .5; }
+}
+
+/* Внутри карточки — тот же стиль, но без подложки/тени и с меньшими отступами */
+.header-row.-compact {
+  padding: 4px 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Липкий блок даты */
 .date-header {
   position: sticky;
-  top: 0; /* под верхним AppBar, если есть — добавьте отступ */
+  top: 0;
   z-index: 2;
   padding-top: 8px;
-
-  &__content {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    background: var(--mat-sys-surface, #fff);
-    padding: 6px 10px;
-    border-radius: 10px;
-    box-shadow: 0 1px 0 rgba(0,0,0,.06);
-    font-weight: 600;
-    font-size: 13px;
-  }
-
-  &__date { opacity: .9; }
-  &__total { opacity: .6; font-weight: 500; }
 }
 
-/* Карточка */
+/* Карточка: без внутренних паддингов, чтобы фото вплотную к краям слева/сверху/снизу */
 .meal-card {
-  --radius: 14px;
-  border-radius: var(--radius);
-  padding: 10px;
+  --thumb: 115px;            /* целевая ширина левой полосы под фото */
+  border-radius: 14px;
+  padding: 0;               /* <— важно */
   margin: 8px 0;
+  overflow: hidden;         /* <— чтобы фото обрезалось по радиусу */
   box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
   cursor: pointer;
 
-  &:active { transform: translateY(0); } /* без подскока */
+  &:active { transform: none; }
 }
 
 .meal-card__grid {
   display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: var(--thumb) 1fr; /* фикс слева, контент справа */
+  align-items: stretch;                     /* <— тянем левую колонку по высоте */
+  gap: 10px;                                /* минимальный зазор между фото и контентом */
 }
 
+/* Фото: заполняет всю левую колонку, квадрат по полной высоте карточки */
 .meal-card__thumb {
-  width: 72px; height: 72px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f3f3f3;
+  width: 100%;
+  height: 100%;            /* растянуть на всю высоту карточки */
+  aspect-ratio: 1 / 1;     /* сохранить квадратность */
+  background: #f3f3f3;     /* подложка на случай отсутствия картинки */
 
   img {
     display: block;
-    width: 100%; height: 100%;
-    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;     /* обрезать по контейнеру без искажений */
   }
 }
 
-.meal-card__content { min-width: 0; } /* для ellipsis */
-
-.meal-card__row-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 2px;
-
-  .time { font-size: 12px; opacity: .7; }
-  .queue { font-size: 12px; color: var(--mat-sys-primary, #3f51b5); }
+/* Контент: даем внутренний отступ, раз фото без отступов */
+.meal-card__content {
+  min-width: 0;
+  padding: 10px;
 }
 
-.meal-card__row-main {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  line-height: 1.2;
-  margin-bottom: 6px;
-
-  .kcal { font-weight: 700; font-size: 16px; }
-  .dot { opacity: .4; }
-  .dish {
-    flex: 1 1 auto;
-    min-width: 0;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    opacity: .9;
-  }
+.meal-card__title {
+  font-weight: 600;
+  opacity: .92;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 6px 0;
 }
 
+/* Чипы БЖУ/вес */
 .meal-card__chips {
   display: flex;
   flex-wrap: wrap;
@@ -108,7 +109,7 @@
   }
 }
 
-/* Ингредиенты (сворачиваемые) */
+/* Ингредиенты (сворачиваемые) — символ ⚗ */
 .ingredients {
   margin-top: 6px;
   padding: 0;
@@ -121,17 +122,10 @@
   text-align: left;
   cursor: pointer;
 
-  &__label {
-    font-size: 12px;
-    opacity: .7;
-  }
-
+  &__icon { font-size: 14px; line-height: 1; opacity: .7; }
   &__text {
-    font-size: 12px;
-    opacity: .85;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
+    font-size: 12px; opacity: .85;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
     overflow: hidden;
 
     &.-open {
@@ -142,7 +136,7 @@
   }
 }
 
-/* Лоадер и safe-area */
+/* Лоадер и нижний отступ */
 .loading {
   display: flex;
   justify-content: center;
