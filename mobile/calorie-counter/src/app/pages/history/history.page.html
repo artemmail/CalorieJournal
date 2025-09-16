@@ -32,7 +32,7 @@
           <div class="header-row -compact">
             <span class="header-left">{{ time(m.createdAtUtc) }}</span>
             <span class="dot">·</span>
-            <span class="header-right">{{ m.caloriesKcal ?? "—" }} ккал</span>
+            <span class="header-right" >{{ m.caloriesKcal ?? "—" }} ккал</span>
           </div>
 
           <!-- Название блюда -->
@@ -55,7 +55,7 @@
                   (click)="$event.stopPropagation(); toggleIng(m)"
                   [attr.aria-expanded]="isIngOpen(m) ? 'true' : 'false'"
                   aria-label="Показать состав блюда">
-            <span class="ingredients__icon" aria-hidden="true">⚗</span>
+            <span class="ingredients__icon" aria-hidden="true">🍣</span>
             <span class="ingredients__text" [class.-open]="isIngOpen(m)">
               {{ m.ingredients.join(', ') }}
             </span>

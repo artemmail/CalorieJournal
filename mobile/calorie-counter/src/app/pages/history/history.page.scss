@@ -18,18 +18,19 @@
   background: var(--mat-sys-surface, #fff);
   box-shadow: 0 1px 0 rgba(0,0,0,.06);
 
-  font-size: 13px;
+  font-size: 17px;
   line-height: 1.25;
   font-weight: 600;
 
   .header-left  { opacity: .9; }
-  .header-right { opacity: .85; font-weight: 700; }
+  .header-right { opacity: .85; font-weight: 500; }
   .dot { opacity: .5; }
 }
 
 /* Внутри карточки — тот же стиль, но без подложки/тени и с меньшими отступами */
 .header-row.-compact {
-  padding: 4px 0;
+  font-size: 15px;
+  padding: 4px 0 0 0;
   background: transparent;
   border-radius: 0;
   box-shadow: none;
@@ -45,7 +46,7 @@
 
 /* Карточка: без внутренних паддингов, чтобы фото вплотную к краям слева/сверху/снизу */
 .meal-card {
-  --thumb: 115px;            /* целевая ширина левой полосы под фото */
+  --thumb: 112px;            /* целевая ширина левой полосы под фото */
   border-radius: 14px;
   padding: 0;               /* <— важно */
   margin: 8px 0;
@@ -100,7 +101,7 @@
   gap: 6px;
 
   .chip {
-    font-size: 11px;
+    font-size: 14px;
     line-height: 18px;
     padding: 0 8px;
     border-radius: 999px;
