@@ -1,49 +1,47 @@
-﻿<mat-card>
-  <div id="cameraPreview" class="preview-box" *ngIf="previewActive"></div>
+<div class="camera-container">
+  <div id="cameraPreview" class="preview-box"></div>
 
-  <div class="photo-controls">
-    <button mat-raised-button color="primary" (click)="takePhotoSystem()" [disabled]="previewActive">
-      <mat-icon>photo_camera</mat-icon> Системная камера
-    </button>
-    <button mat-stroked-button color="warn" (click)="stopPreview()" *ngIf="previewActive">
-      <mat-icon>stop</mat-icon> Выключить превью
-    </button>
-    <button mat-raised-button color="accent" (click)="captureFromPreview()" *ngIf="previewActive">
-      <mat-icon>camera</mat-icon> Сфотографировать
-    </button>
-  </div>
-
-  <mat-progress-bar *ngIf="uploadProgress !== null" [mode]="progressMode" [value]="uploadProgress"></mat-progress-bar>
-
-  <div class="last-shot" *ngIf="photoDataUrl">
-    <img [src]="photoDataUrl" alt="snapshot" />
-  </div>
-
-  <form [formGroup]="form" class="text-form">
-    <mat-form-field appearance="outline">
-      <mat-label>Описание</mat-label>
-      <textarea matInput formControlName="note"></textarea>
-      <button *ngIf="form.value.note" mat-icon-button matSuffix aria-label="Очистить" (click)="form.controls['note'].setValue('')">
-        <mat-icon>close</mat-icon>
-      </button>
-    </mat-form-field>
-
-    <div class="mic">
-      <button mat-icon-button color="primary"
-              matTooltip="Удерживайте для записи"
-              aria-label="Записать голос"
-              (mousedown)="startRecord($event)" (touchstart)="startRecord($event)"
-              (mouseup)="stopRecord()" (mouseleave)="stopRecord()" (touchend)="stopRecord()"
-              [class.recording]="!!recorder" [disabled]="transcribing">
-        <mat-icon>{{ recorder ? 'mic' : 'mic_none' }}</mat-icon>
-      </button>
-      <div class="hint" *ngIf="!recorder">Удерживайте для записи</div>
-      <div class="hint recording" *ngIf="recorder">Запись… отпустите, чтобы остановить</div>
+  <div class="preview-overlay" *ngIf="previewActive">
+    <div class="preview-hint">
+      <mat-icon>info</mat-icon>
+      <span>Наведите камеру на блюдо и нажмите на кнопку, чтобы сделать снимок.</span>
     </div>
+    <div class="preview-controls">
+      <button mat-mini-fab color="accent" (click)="openNoteDialog()" matTooltip="Добавить текст или голосовое описание" aria-label="Добавить описание">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-fab color="primary" (click)="captureFromPreview()" matTooltip="Сделать фото" aria-label="Сделать фото">
+        <mat-icon>camera</mat-icon>
+      </button>
+      <button mat-mini-fab color="primary" (click)="takePhotoSystem()" matTooltip="Открыть системную камеру" aria-label="Системная камера">
+        <mat-icon>photo_camera</mat-icon>
+      </button>
+    </div>
+  </div>
 
-    <mat-progress-bar *ngIf="transcribing" mode="indeterminate"></mat-progress-bar>
+  <div class="preview-overlay inactive" *ngIf="!previewActive">
+    <div class="preview-hint">
+      <mat-icon>warning</mat-icon>
+      <span>Предпросмотр недоступен. Попробуйте включить его снова или воспользуйтесь системной камерой.</span>
+    </div>
+    <div class="preview-controls">
+      <button mat-raised-button color="primary" (click)="retryPreview()">
+        <mat-icon>autorenew</mat-icon>
+        Повторить попытку
+      </button>
+      <button mat-stroked-button color="primary" (click)="takePhotoSystem()">
+        <mat-icon>photo_camera</mat-icon>
+        Системная камера
+      </button>
+      <button mat-mini-fab color="accent" (click)="openNoteDialog()" matTooltip="Добавить текст или голосовое описание" aria-label="Добавить описание">
+        <mat-icon>edit</mat-icon>
+      </button>
+    </div>
+  </div>
+</div>
 
-    <button mat-flat-button color="primary" (click)="sendText()" [disabled]="!form.value.note.trim()">Отправить</button>
-  </form>
+<mat-progress-bar *ngIf="uploadProgress !== null" [mode]="progressMode" [value]="uploadProgress"></mat-progress-bar>
 
-  </mat-card>
+<div class="last-shot" *ngIf="photoDataUrl">
+  <img [src]="photoDataUrl" alt="snapshot" />
+</div>
