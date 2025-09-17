@@ -74,6 +74,20 @@ export class AuthPage implements OnInit, OnDestroy {
     this.startAutoRefresh();
   }
 
+  async openBotWithFreshCode() {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      await this.startFlow();
+      this.openBot();
+    } catch (e) {
+      this.errorMsg = "Не удалось получить код. Проверьте доступность API/CORS.";
+      showErrorAlert(e, "Не удалось получить свежий код");
+    } finally {
+      this.busy = false;
+    }
+  }
+
   async refresh() {
     if (!this.flow) return;
     this.busy = true;
