@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { HttpEventType } from "@angular/common/http";
 import { MatButtonModule } from "@angular/material/button";
@@ -34,7 +34,7 @@ function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   templateUrl: "./add-meal.page.html",
   styleUrls: ["./add-meal.page.scss"]
 })
-export class AddMealPage implements OnInit, OnDestroy {
+export class AddMealPage implements AfterViewInit, OnDestroy {
   photoDataUrl?: string;    // превью для UI (через pipe convert)
   previewActive = false;
   uploadProgress: number | null = null;
@@ -42,9 +42,12 @@ export class AddMealPage implements OnInit, OnDestroy {
 
   private previewStarting = false;
 
+  @ViewChild("previewBox")
+  private previewBox?: ElementRef<HTMLDivElement>;
+
   constructor(private api: FoodbotApiService, private snack: MatSnackBar, private dialog: MatDialog) {}
 
-  async ngOnInit() {
+  async ngAfterViewInit() {
     await this.startPreviewWithFallback();
   }
 
@@ -87,14 +90,15 @@ export class AddMealPage implements OnInit, OnDestroy {
   private async startPreview() {
     if (this.previewActive || this.previewStarting) return;
     this.previewStarting = true;
+    const { width, height } = this.resolvePreviewSize();
     const opts: CameraPreviewOptions = {
       parent: "cameraPreview",
       className: "cameraPreview",
       position: "rear",
       disableAudio: true,
       toBack: false,
-      width: window.innerWidth,
-      height: window.innerHeight
+      width,
+      height
     };
     try {
       await CameraPreview.start(opts);
@@ -102,6 +106,22 @@ export class AddMealPage implements OnInit, OnDestroy {
     } finally {
       this.previewStarting = false;
     }
+  }
+
+  private resolvePreviewSize() {
+    const fallback = {
+      width: Math.max(1, Math.round(window.innerWidth || 0)),
+      height: Math.max(1, Math.round(window.innerHeight || 0))
+    };
+    const el = this.previewBox?.nativeElement;
+    if (!el) return fallback;
+    const rect = el.getBoundingClientRect();
+    const width = Math.round(rect.width);
+    const height = Math.round(rect.height);
+    return {
+      width: width > 0 ? width : fallback.width,
+      height: height > 0 ? height : fallback.height
+    };
   }
 
   private async startPreviewWithFallback() {

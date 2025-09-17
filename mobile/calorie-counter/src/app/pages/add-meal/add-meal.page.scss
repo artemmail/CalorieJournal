@@ -1,16 +1,21 @@
 :host {
-  display: block;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  height: 100%;
 }
 
 .camera-container {
   position: relative;
-  width: 100%;
-  height: calc(100vh - 64px);
-  max-height: 100vh;
+  width: min(100%, 520px);
+  margin: 0 auto;
   background: #000;
   border-radius: 16px;
   overflow: hidden;
+  aspect-ratio: 3 / 4;
+  max-height: calc(100dvh - 160px);
+  min-height: 280px;
 }
 
 .preview-box {
@@ -27,7 +32,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 16px;
+  padding: 12px;
   pointer-events: none;
 }
 
@@ -66,16 +71,18 @@
 }
 
 mat-progress-bar {
-  margin-top: 16px;
+  width: min(100%, 520px);
+  align-self: center;
 }
 
 .last-shot {
-  margin-top: 16px;
+  width: min(100%, 520px);
+  margin: 0 auto;
 }
 
 .last-shot img {
   width: 100%;
-  max-height: 320px;
+  max-height: 360px;
   object-fit: cover;
   border-radius: 12px;
 }
