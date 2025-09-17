@@ -4,7 +4,7 @@
       <h2>Вход через Telegram</h2>
       <p>Нажмите кнопку, чтобы открыть бота и подтвердить вход.</p>
       <div class="actions">
-        <button mat-raised-button color="primary" (click)="openBot()" [disabled]="!code">
+        <button mat-raised-button color="primary" (click)="openBotWithFreshCode()" [disabled]="busy || !code">
           <mat-icon>send</mat-icon> Открыть бота
         </button>
       </div>
