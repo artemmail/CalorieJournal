@@ -1,21 +1,18 @@
-﻿import { Component, OnDestroy } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { HttpEventType } from "@angular/common/http";
-import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from "@angular/forms";
-import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { firstValueFrom } from "rxjs";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from "@capacitor-community/camera-preview";
 
 import { FoodbotApiService } from "../../services/foodbot-api.service";
+import { AddMealNoteDialogComponent } from "./add-meal-note-dialog.component";
 
 function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   const byteString = atob(base64);
@@ -30,41 +27,66 @@ function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   selector: "app-add-meal",
   standalone: true,
   imports: [
-    CommonModule, ReactiveFormsModule,
-    MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule,
-    MatProgressBarModule, MatSnackBarModule, MatTooltipModule
+    CommonModule,
+    MatButtonModule, MatIconModule, MatProgressBarModule,
+    MatSnackBarModule, MatTooltipModule, MatDialogModule
   ],
   templateUrl: "./add-meal.page.html",
   styleUrls: ["./add-meal.page.scss"]
 })
-export class AddMealPage implements OnDestroy {
+export class AddMealPage implements OnInit, OnDestroy {
   photoDataUrl?: string;    // превью для UI (через pipe convert)
-  form!: FormGroup;
   previewActive = false;
-  transcribing = false;
-  recorder?: MediaRecorder;
-  private chunks: Blob[] = [];
-
   uploadProgress: number | null = null;
   progressMode: "determinate" | "indeterminate" = "determinate";
 
-  constructor(private fb: FormBuilder, private api: FoodbotApiService, private snack: MatSnackBar) {
-    this.form = this.fb.group({
-      note: [""]
-    });
+  private previewStarting = false;
+
+  constructor(private api: FoodbotApiService, private snack: MatSnackBar, private dialog: MatDialog) {}
+
+  async ngOnInit() {
+    await this.startPreviewWithFallback();
+  }
+
+  async ngOnDestroy() {
+    await this.stopPreview();
   }
 
   // системная камера
   async takePhotoSystem() {
-    const img = await Camera.getPhoto({ quality: 80, resultType: CameraResultType.Base64, source: CameraSource.Camera });
-    if (img.base64String) {
-      await this.uploadBase64(img.base64String);
+    try {
+      const img = await Camera.getPhoto({ quality: 80, resultType: CameraResultType.Base64, source: CameraSource.Camera });
+      if (img.base64String) {
+        await this.uploadBase64(img.base64String);
+      }
+    } catch (err) {
+      this.handleCameraError(err, "Не удалось сделать фото");
     }
   }
 
+  openNoteDialog() {
+    const dialogRef = this.dialog.open(AddMealNoteDialogComponent, {
+      width: "min(480px, 90vw)",
+      maxWidth: "90vw",
+      autoFocus: false,
+      restoreFocus: false
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      if (!this.previewActive) {
+        void this.startPreviewWithFallback();
+      }
+    });
+  }
+
+  retryPreview() {
+    void this.startPreviewWithFallback();
+  }
+
   // превью
-  async startPreview() {
-    if (this.previewActive) return;
+  private async startPreview() {
+    if (this.previewActive || this.previewStarting) return;
+    this.previewStarting = true;
     const opts: CameraPreviewOptions = {
       parent: "cameraPreview",
       className: "cameraPreview",
@@ -72,17 +94,52 @@ export class AddMealPage implements OnDestroy {
       disableAudio: true,
       toBack: false,
       width: window.innerWidth,
-      height: 360
+      height: window.innerHeight
     };
-    await CameraPreview.start(opts);
-    this.previewActive = true;
+    try {
+      await CameraPreview.start(opts);
+      this.previewActive = true;
+    } finally {
+      this.previewStarting = false;
+    }
   }
-  async stopPreview() { if (this.previewActive) { await CameraPreview.stop(); this.previewActive = false; } }
+
+  private async startPreviewWithFallback() {
+    try {
+      await this.startPreview();
+    } catch (err) {
+      this.previewActive = false;
+      if (this.isPermissionError(err)) {
+        this.snack.open("Доступ к камере не предоставлен. Откроется системная камера.", "OK", { duration: 2500 });
+      } else {
+        this.snack.open("Не удалось запустить превью камеры", "OK", { duration: 2000 });
+      }
+      await this.takePhotoSystem();
+    }
+  }
+
+  async stopPreview() {
+    if (!this.previewActive && !this.previewStarting) return;
+    try {
+      await CameraPreview.stop();
+    } catch (err) {
+      if (!this.isPermissionError(err)) {
+        this.snack.open("Не удалось остановить превью камеры", "OK", { duration: 2000 });
+      }
+    } finally {
+      this.previewActive = false;
+      this.previewStarting = false;
+    }
+  }
+
   async captureFromPreview() {
     const picOpts: CameraPreviewPictureOptions = { quality: 90 };
-    const r = await CameraPreview.capture(picOpts); // { value: base64 }
-    await this.stopPreview();
-    if (r?.value) await this.uploadBase64(r.value);
+    try {
+      const r = await CameraPreview.capture(picOpts); // { value: base64 }
+      if (r?.value) await this.uploadBase64(r.value);
+    } catch (err) {
+      this.handleCameraError(err, "Не удалось сделать фото");
+    }
   }
 
   async uploadBase64(b64: string) {
@@ -109,61 +166,17 @@ export class AddMealPage implements OnDestroy {
     });
   }
 
-  async startRecord(ev: Event) {
-    ev.preventDefault();
-    if (this.transcribing || this.recorder) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.chunks = [];
-      this.recorder = new MediaRecorder(stream);
-      this.recorder.addEventListener('dataavailable', e => {
-        if (e.data.size > 0) this.chunks.push(e.data);
-      });
-      this.recorder.addEventListener('stop', () =>
-        stream.getTracks().forEach(t => t.stop()), { once: true });
-      this.recorder.start();
-    } catch {
-      this.recorder = undefined;
-      this.snack.open('Не удалось получить доступ к микрофону', 'OK', { duration: 1500 });
+  private handleCameraError(err: unknown, fallbackMessage: string) {
+    if (this.isPermissionError(err)) {
+      this.snack.open("Доступ к камере не предоставлен", "OK", { duration: 2000 });
+    } else {
+      this.snack.open(fallbackMessage, "OK", { duration: 2000 });
     }
   }
 
-  async stopRecord() {
-    if (!this.recorder) return;
-    const recorder = this.recorder;
-    this.recorder = undefined;
-    const stopped = new Promise<void>(resolve =>
-      recorder.addEventListener('stop', () => resolve(), { once: true }));
-    recorder.stop();
-    await stopped;
-    const chunks = this.chunks.slice();
-    this.transcribing = true;
-    try {
-      const blob = new Blob(chunks, { type: 'audio/webm' });
-      const file = new File([blob], 'voice.webm', { type: blob.type });
-      const r = await firstValueFrom(this.api.transcribeVoice(file));
-      if (r.text) this.form.controls['note'].setValue(r.text);
-    } catch {
-      this.snack.open('Не удалось распознать речь', 'OK', { duration: 1500 });
-    } finally {
-      this.transcribing = false;
-    }
+  private isPermissionError(err: unknown): boolean {
+    if (!err) return false;
+    const maybeMessage = (err as { message?: string; errorMessage?: string }).message ?? (err as { message?: string; errorMessage?: string }).errorMessage;
+    return typeof maybeMessage === "string" && /denied|perm/i.test(maybeMessage);
   }
-
-  sendText() {
-    const note: string = this.form.value.note?.trim();
-    if (!note) return;
-    this.api.addMealText(note).subscribe({
-      next: () => {
-        this.snack.open('Описание отправлено. Обработка начнётся скоро.', 'OK', { duration: 1500 });
-        this.form.reset({ note: '' });
-      },
-      error: () => {
-        this.snack.open('Не удалось отправить описание', 'OK', { duration: 2000 });
-      }
-    });
-  }
-
-  async ngOnDestroy() { await this.stopPreview(); }
 }
-

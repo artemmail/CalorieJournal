@@ -1,0 +1,48 @@
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mic {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.mic .hint {
+  font-size: 12px;
+  opacity: 0.7;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.mic .hint.recording {
+  opacity: 0.9;
+}
+
+.mic button.recording {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(244, 67, 54, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+  }
+}
+
+[mat-dialog-actions] {
+  padding-top: 0;
+}
