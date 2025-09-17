@@ -4,6 +4,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTableModule } from "@angular/material/table";
+import { MatIconModule } from "@angular/material/icon";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { MealListItem, ClarifyResult } from "../../services/foodbot-api.types";
 import { HistoryClarifyDialogComponent } from "./history-clarify.dialog";
@@ -16,7 +17,8 @@ import { HistoryClarifyDialogComponent } from "./history-clarify.dialog";
     MatButtonModule,
     MatDialogModule,
     MatSnackBarModule,
-    MatTableModule
+    MatTableModule,
+    MatIconModule
   ],
   templateUrl: './history-detail.dialog.html',
   styleUrls: ['./history-detail.dialog.scss']
@@ -49,6 +51,10 @@ export class HistoryDetailDialogComponent implements OnInit {
 
     // небольшая «пинок»-подстройка сразу после первой отрисовки
     this.fitDialog();
+  }
+
+  time(s: string) {
+    return new Date(s).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
   /** Аккуратно подгоняет высоту диалога под контент */

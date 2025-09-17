@@ -30,23 +30,74 @@
     /* overflow: auto; ← удалено */
   }
 
+
+.header-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--mat-sys-surface, #fff);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06);
+
+  font-size: 17px;
+  line-height: 1.25;
+  font-weight: 600;
+
+  .header-left  { opacity: .9; }
+  .header-right { opacity: .85; font-weight: 500; }
+  .dot { opacity: .5; }
+}
+
+.title {
+  font-weight: 600;
+  opacity: .92;
+  margin: 6px 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  .chip {
+    font-size: 12px;
+    line-height: 18px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.05);
+    white-space: nowrap;
+  }
+}
+
+.queued { font-size: 12px; color: #ff9800; }
+
 .photo {
   align-self: center;
   width: auto;
   height: auto;
   max-width: 100%;
   max-height: 55vh;
-  border-radius: 6px;
+  border-radius: 12px;
   object-fit: contain;
 }
 
-.macros { font-size: 13px; line-height: 1.2; }
 /* длинные ингредиенты будут переноситься */
 .ingredients {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   font-size: 12.5px;
   line-height: 1.2;
   overflow-wrap: anywhere;
   word-break: break-word;
+
+  &__icon { opacity: .7; font-size: 14px; }
+  &__text { flex: 1; }
 }
 
 /* Таблица компактная, не на всю ширину */
@@ -80,4 +131,17 @@
   display: flex;
   justify-content: flex-end;
   gap: 6px;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
 }
