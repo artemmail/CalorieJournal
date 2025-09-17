@@ -32,31 +32,36 @@
 
 
 .header-row {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 6px 10px;
+  display: block;
+  padding: 8px 12px;
   border-radius: 10px;
   background: var(--mat-sys-surface, #fff);
   box-shadow: 0 1px 0 rgba(0,0,0,.06);
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 600;
+  opacity: .95;
+  word-break: break-word;
+}
 
-  font-size: 17px;
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 15px;
   line-height: 1.25;
-  font-weight: 600;
-
-  .header-left  { opacity: .9; }
-  .header-right { opacity: .85; font-weight: 500; }
-  .dot { opacity: .5; }
+  font-weight: 500;
 }
 
-.title {
-  font-weight: 600;
-  opacity: .92;
-  margin: 6px 0 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.meta-left { opacity: .9; }
+.meta-right { opacity: .85; font-weight: 500; }
+.meta-row .dot { opacity: .5; }
 
 .chips {
   display: flex;
