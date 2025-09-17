@@ -20,7 +20,7 @@ param(
     [string]$Configuration = "Release",
 
     [Parameter()]
-    [string]$PublishDirectory = "C:\\inetpub\\wwwroot\\FoodBot",
+    [string]$PublishDirectory = "C:\\FB",
 
     [Parameter()]
     [string]$Framework,
