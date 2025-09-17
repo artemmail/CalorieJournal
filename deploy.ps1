@@ -38,6 +38,86 @@ param(
     [switch]$SkipGitPull
 )
 
+function Get-AppPoolWorkerProcesses {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    try {
+        return Get-CimInstance -Namespace "root\\WebAdministration" -ClassName "WorkerProcess" -Filter "AppPoolName='$Name'" -ErrorAction Stop
+    } catch {
+        Write-Verbose "Unable to query worker processes for app pool '$Name': $_"
+        return @()
+    }
+}
+
+function Stop-AppPoolAndWait {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter()]
+        [int]$TimeoutSeconds = 30
+    )
+
+    $shouldRestart = $false
+
+    $appPoolState = (Get-WebAppPoolState -Name $Name -ErrorAction Stop).Value
+    if ($appPoolState -eq "Started") {
+        Write-Host "Stopping IIS application pool '$Name'..."
+        Stop-WebAppPool -Name $Name -ErrorAction Stop
+        $shouldRestart = $true
+
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $workerProcesses = @()
+        do {
+            Start-Sleep -Milliseconds 500
+            $workerProcesses = Get-AppPoolWorkerProcesses -Name $Name
+            if (-not $workerProcesses) { break }
+        } while ($stopwatch.Elapsed.TotalSeconds -lt $TimeoutSeconds)
+
+        if ($workerProcesses) {
+            Write-Warning "Application pool '$Name' still has running worker process(es) after waiting $TimeoutSeconds seconds. Forcing termination of the remaining process(es)."
+            foreach ($worker in $workerProcesses) {
+                try {
+                    Stop-Process -Id $worker.ProcessId -Force -ErrorAction Stop
+                } catch {
+                    Write-Warning "Failed to terminate worker process $($worker.ProcessId) for app pool '$Name': $_"
+                }
+            }
+
+            Start-Sleep -Seconds 1
+        }
+    } else {
+        Write-Host "Application pool '$Name' is already stopped (state: $appPoolState)."
+    }
+
+    return $shouldRestart
+}
+
+function Clear-Directory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | ForEach-Object {
+        $item = $_
+        try {
+            try {
+                [System.IO.File]::SetAttributes($item.FullName, [System.IO.FileAttributes]::Normal)
+            } catch {
+                Write-Verbose "Unable to reset attributes on '$($item.FullName)': $_"
+            }
+
+            Remove-Item -LiteralPath $item.FullName -Recurse -Force -ErrorAction Stop
+        } catch {
+            throw "Failed to remove '$($item.FullName)' while cleaning '$Path': $_"
+        }
+    }
+}
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -65,6 +145,7 @@ if ([System.IO.Path]::IsPathRooted($SolutionPath)) {
 
 $shouldStartWebsite = $false
 $shouldStartAppPool = $false
+$resolvedAppPoolName = $AppPoolName
 
 if ($WebsiteName -or $AppPoolName) {
     Write-Host "Importing WebAdministration module..."
@@ -73,6 +154,11 @@ if ($WebsiteName -or $AppPoolName) {
 
 if ($WebsiteName) {
     $website = Get-Website -Name $WebsiteName -ErrorAction Stop
+    if (-not $resolvedAppPoolName -and $website.applicationPool) {
+        $resolvedAppPoolName = $website.applicationPool
+        Write-Host "Resolved application pool '$resolvedAppPoolName' for website '$WebsiteName'."
+    }
+
     if ($website.State -eq "Started") {
         Write-Host "Stopping IIS website '$WebsiteName'..."
         Stop-Website -Name $WebsiteName -ErrorAction Stop
@@ -82,15 +168,8 @@ if ($WebsiteName) {
     }
 }
 
-if ($AppPoolName) {
-    $appPoolState = (Get-WebAppPoolState -Name $AppPoolName -ErrorAction Stop).Value
-    if ($appPoolState -eq "Started") {
-        Write-Host "Stopping IIS application pool '$AppPoolName'..."
-        Stop-WebAppPool -Name $AppPoolName -ErrorAction Stop
-        $shouldStartAppPool = $true
-    } else {
-        Write-Host "Application pool '$AppPoolName' is already stopped (state: $appPoolState)."
-    }
+if ($resolvedAppPoolName) {
+    $shouldStartAppPool = Stop-AppPoolAndWait -Name $resolvedAppPoolName
 }
 
 $publishTemp = $null
@@ -126,8 +205,7 @@ try {
             New-Item -ItemType Directory -Path $PublishDirectory -Force | Out-Null
         } else {
             Write-Host "Cleaning existing contents of '$PublishDirectory'..."
-            Get-ChildItem -LiteralPath $PublishDirectory -Force -ErrorAction SilentlyContinue |
-                Remove-Item -Recurse -Force -ErrorAction Stop
+            Clear-Directory -Path $PublishDirectory
         }
 
         Write-Host "Copying published output to '$PublishDirectory'..."
@@ -142,12 +220,12 @@ finally {
         Remove-Item -LiteralPath $publishTemp -Recurse -Force
     }
 
-    if ($AppPoolName -and $shouldStartAppPool) {
+    if ($resolvedAppPoolName -and $shouldStartAppPool) {
         try {
-            Write-Host "Starting IIS application pool '$AppPoolName'..."
-            Start-WebAppPool -Name $AppPoolName -ErrorAction Stop
+            Write-Host "Starting IIS application pool '$resolvedAppPoolName'..."
+            Start-WebAppPool -Name $resolvedAppPoolName -ErrorAction Stop
         } catch {
-            Write-Warning "Failed to start application pool '$AppPoolName': $_"
+            Write-Warning "Failed to start application pool '$resolvedAppPoolName': $_"
         }
     }
 
