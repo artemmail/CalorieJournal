@@ -1,20 +1,35 @@
 <div class="container">
+  <div class="header-row">
+    <span class="header-left">{{ time(data.item.createdAtUtc) }}</span>
+    <span class="dot">·</span>
+    <span class="header-right">{{ data.item.caloriesKcal ?? '—' }} ккал</span>
+  </div>
+
+  <div class="title" [title]="data.item.dishName || ''">
+    {{ data.item.dishName || 'Без названия' }}
+  </div>
+
+  <div class="chips">
+    <span class="chip">Б {{ data.item.proteinsG ?? '—' }}</span>
+    <span class="chip">Ж {{ data.item.fatsG ?? '—' }}</span>
+    <span class="chip">У {{ data.item.carbsG ?? '—' }}</span>
+    <span class="chip" *ngIf="data.item.weightG">⚖ {{ data.item.weightG }} г</span>
+  </div>
+
+  <div class="queued" *ngIf="data.item.updateQueued">Обновляется…</div>
+
   <img
     #photo
     *ngIf="data.item.hasImage && data.imageUrl"
     [src]="data.imageUrl"
-    alt="meal"
+    alt="Фото блюда"
     class="photo"
     (load)="fitDialog()"
   />
 
-  <div class="macros">
-    Б {{ data.item.proteinsG ?? '—' }} · Ж {{ data.item.fatsG ?? '—' }} · У {{ data.item.carbsG ?? '—' }} ·
-    {{ data.item.caloriesKcal ?? '—' }} ккал
-  </div>
-
   <div class="ingredients" *ngIf="data.item.ingredients?.length">
-    Ингредиенты: {{ data.item.ingredients.join(', ') }}
+    <span class="ingredients__icon" aria-hidden="true">🍣</span>
+    <span class="ingredients__text">{{ data.item.ingredients.join(', ') }}</span>
   </div>
 
   <!-- Компактная таблица состава -->
@@ -74,8 +89,17 @@
   </div>
 
   <div class="buttons">
-    <button mat-raised-button color="primary" (click)="openClarify()">Уточнить</button>
-    <button mat-button color="warn" (click)="remove()">Удалить</button>
-    <button mat-button (click)="dialogRef.close()">Закрыть</button>
+    <button mat-raised-button color="primary" (click)="openClarify()">
+      <mat-icon>edit</mat-icon>
+      <span>Уточнить</span>
+    </button>
+    <button mat-button color="warn" (click)="remove()">
+      <mat-icon>delete</mat-icon>
+      <span>Удалить</span>
+    </button>
+    <button mat-button (click)="dialogRef.close()">
+      <mat-icon>close</mat-icon>
+      <span>Закрыть</span>
+    </button>
   </div>
 </div>
