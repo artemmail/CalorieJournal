@@ -1,22 +1,7 @@
 <div class="container">
-  <div class="header-row">
-    <span class="header-left">{{ time(data.item.createdAtUtc) }}</span>
-    <span class="dot">·</span>
-    <span class="header-right">{{ data.item.caloriesKcal ?? '—' }} ккал</span>
-  </div>
-
-  <div class="title" [title]="data.item.dishName || ''">
+  <div class="header-row" [title]="data.item.dishName || ''">
     {{ data.item.dishName || 'Без названия' }}
   </div>
-
-  <div class="chips">
-    <span class="chip">Б {{ data.item.proteinsG ?? '—' }}</span>
-    <span class="chip">Ж {{ data.item.fatsG ?? '—' }}</span>
-    <span class="chip">У {{ data.item.carbsG ?? '—' }}</span>
-    <span class="chip" *ngIf="data.item.weightG">⚖ {{ data.item.weightG }} г</span>
-  </div>
-
-  <div class="queued" *ngIf="data.item.updateQueued">Обновляется…</div>
 
   <img
     #photo
@@ -26,6 +11,23 @@
     class="photo"
     (load)="fitDialog()"
   />
+
+  <div class="meta">
+    <div class="meta-row">
+      <span class="meta-left">{{ time(data.item.createdAtUtc) }}</span>
+      <span class="dot">·</span>
+      <span class="meta-right">{{ data.item.caloriesKcal ?? '—' }} ккал</span>
+    </div>
+
+    <div class="chips">
+      <span class="chip">Б {{ data.item.proteinsG ?? '—' }}</span>
+      <span class="chip">Ж {{ data.item.fatsG ?? '—' }}</span>
+      <span class="chip">У {{ data.item.carbsG ?? '—' }}</span>
+      <span class="chip" *ngIf="data.item.weightG">⚖ {{ data.item.weightG }} г</span>
+    </div>
+
+    <div class="queued" *ngIf="data.item.updateQueued">Обновляется…</div>
+  </div>
 
   <div class="ingredients" *ngIf="data.item.ingredients?.length">
     <span class="ingredients__icon" aria-hidden="true">🍣</span>
