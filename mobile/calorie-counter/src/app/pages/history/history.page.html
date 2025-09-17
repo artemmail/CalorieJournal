@@ -48,6 +48,7 @@
             <span class="chip" *ngIf="m.weightG">⚖ {{ m.weightG }} г</span>
           </div>
 
+          <div class="queued" *ngIf="m.updateQueued">Обновляется…</div>
           <!-- Состав (ингредиенты) — символ ⚗ -->
           <button type="button"
                   class="ingredients"
