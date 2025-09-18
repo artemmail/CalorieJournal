@@ -9,7 +9,7 @@ public interface IMealService
     Task<MealDetails?> GetDetailsAsync(long chatId, int id, CancellationToken ct);
     Task<(byte[] bytes, string mime)?> GetImageAsync(long chatId, int id, CancellationToken ct);
     Task QueueImageAsync(long chatId, byte[] bytes, string fileMime, CancellationToken ct);
-    Task QueueTextAsync(long chatId, string description, bool generateImage, CancellationToken ct);
+    Task QueueTextAsync(long chatId, string description, bool generateImage, DateTimeOffset? desiredTime, CancellationToken ct);
     Task<ClarifyTextResult?> ClarifyTextAsync(long chatId, int id, string? note, DateTimeOffset? time, CancellationToken ct);
     Task<bool> DeleteAsync(long chatId, int id, CancellationToken ct);
 }

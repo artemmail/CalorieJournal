@@ -133,12 +133,14 @@ public sealed class PhotoQueueWorker : BackgroundService
                     var conv = await nutrition.AnalyzeAsync(next.ImageBytes, ct: stoppingToken);
                     if (conv != null)
                     {
+                        var desiredTime = (next.DesiredMealTimeUtc ?? DateTimeOffset.UtcNow);
+
                         var entry = new MealEntry
                         {
                             ChatId = next.ChatId,
                             UserId = 0,
                             Username = "app",
-                            CreatedAtUtc = DateTimeOffset.UtcNow,
+                            CreatedAtUtc = desiredTime,
                             SourceType = MealSourceType.Photo,
                             FileId = string.Empty,
                             FileMime = next.FileMime,

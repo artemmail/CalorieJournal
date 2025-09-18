@@ -126,26 +126,31 @@ public sealed class MealService : IMealService
 
     public Task QueueImageAsync(long chatId, byte[] bytes, string fileMime, CancellationToken ct)
     {
+        var utcNow = DateTimeOffset.UtcNow;
         var pending = new PendingMeal
         {
             ChatId = chatId,
-            CreatedAtUtc = DateTimeOffset.UtcNow,
+            CreatedAtUtc = utcNow,
             FileMime = fileMime,
             ImageBytes = bytes,
-            Attempts = 0
+            Attempts = 0,
+            DesiredMealTimeUtc = utcNow
         };
         return _repo.QueuePendingMealAsync(pending, ct);
     }
 
-    public Task QueueTextAsync(long chatId, string description, bool generateImage, CancellationToken ct)
+    public Task QueueTextAsync(long chatId, string description, bool generateImage, DateTimeOffset? desiredTime, CancellationToken ct)
     {
+        var utcNow = DateTimeOffset.UtcNow;
+        var desired = (desiredTime ?? utcNow).ToUniversalTime();
         var pending = new PendingMeal
         {
             ChatId = chatId,
-            CreatedAtUtc = DateTimeOffset.UtcNow,
+            CreatedAtUtc = utcNow,
             Description = description,
             GenerateImage = generateImage,
-            Attempts = 0
+            Attempts = 0,
+            DesiredMealTimeUtc = desired
         };
         return _repo.QueuePendingMealAsync(pending, ct);
     }

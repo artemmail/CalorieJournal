@@ -37,9 +37,21 @@ export class AddMealNoteDialogComponent implements OnDestroy {
     private snack: MatSnackBar,
     private dialogRef: MatDialogRef<AddMealNoteDialogComponent>
   ) {
+    const now = new Date();
     this.form = this.fb.group({
-      note: [""]
+      note: [""],
+      dateTime: [this.formatDateTimeLocal(now)]
     });
+  }
+
+  private formatDateTimeLocal(date: Date): string {
+    const pad = (v: number) => v.toString().padStart(2, "0");
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
   get noteControl() {
@@ -57,6 +69,44 @@ export class AddMealNoteDialogComponent implements OnDestroy {
 
   clearNote() {
     this.noteControl?.setValue("");
+  }
+
+  private buildTimestamp(): string | undefined {
+    const control = this.form.get("dateTime");
+    const value = (control?.value as string | null)?.trim();
+    if (!value) return undefined;
+
+    const [datePart, timePart] = value.split("T");
+    if (!datePart || !timePart) return undefined;
+
+    const [yearStr, monthStr, dayStr] = datePart.split("-");
+    const timeSections = timePart.split(":");
+    if (timeSections.length < 2) return undefined;
+
+    const hours = Number.parseInt(timeSections[0] ?? "0", 10);
+    const minutes = Number.parseInt(timeSections[1] ?? "0", 10);
+    const secondsRaw = timeSections[2]?.split(".")[0] ?? "0";
+    const seconds = Number.parseInt(secondsRaw, 10) || 0;
+
+    const year = Number.parseInt(yearStr ?? "0", 10);
+    const month = Number.parseInt(monthStr ?? "0", 10);
+    const day = Number.parseInt(dayStr ?? "0", 10);
+
+    if (!year || !month || !day) return undefined;
+    if (Number.isNaN(hours) || Number.isNaN(minutes) || Number.isNaN(seconds)) return undefined;
+
+    const local = new Date(year, month - 1, day, hours, minutes, seconds);
+    if (Number.isNaN(local.getTime())) return undefined;
+
+    const offsetMinutes = -local.getTimezoneOffset();
+    const pad = (v: number) => v.toString().padStart(2, "0");
+    const sign = offsetMinutes >= 0 ? "+" : "-";
+    const absOffset = Math.abs(offsetMinutes);
+    const offsetHours = Math.floor(absOffset / 60);
+    const offsetMins = absOffset % 60;
+    const offsetStr = `${sign}${pad(offsetHours)}:${pad(offsetMins)}`;
+    const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    return `${datePart}T${timeStr}${offsetStr}`;
   }
 
   async startRecord(ev: Event) {
@@ -108,10 +158,11 @@ export class AddMealNoteDialogComponent implements OnDestroy {
   sendText() {
     if (!this.canSend) return;
     const note = (this.noteControl?.value as string).trim();
-    this.api.addMealText(note).subscribe({
+    const time = this.buildTimestamp();
+    this.api.addMealText(note, true, time).subscribe({
       next: () => {
         this.snack.open("Описание отправлено. Обработка начнётся скоро.", "OK", { duration: 1500 });
-        this.form.reset({ note: "" });
+        this.form.reset({ note: "", dateTime: this.formatDateTimeLocal(new Date()) });
         this.dialogRef.close(true);
       },
       error: () => {

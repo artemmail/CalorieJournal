@@ -43,8 +43,10 @@ export class FoodbotApiService {
     );
   }
 
-  addMealText(text: string, generateImage = true): Observable<{ queued: boolean }> {
-    return this.http.post<{ queued: boolean }>(`${this.baseUrl}/api/meals/add-text`, { text, generateImage });
+  addMealText(text: string, generateImage = true, time?: string): Observable<{ queued: boolean }> {
+    const body: Record<string, unknown> = { text, generateImage };
+    if (time) body["time"] = time;
+    return this.http.post<{ queued: boolean }>(`${this.baseUrl}/api/meals/add-text`, body);
   }
 
   addMealVoice(file: File, generateImage = true, language = "ru"): Observable<{ queued: boolean }> {
