@@ -4,10 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { StatsService } from '../../services/stats.service';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatInputModule } from '@angular/material/input';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { StatsService, ReportFormat } from '../../services/stats.service';
+import { ReportFormatDialogComponent } from './report-format-dialog.component';
 
 type ViewMode = 'chart' | 'table';
 type Period = 'week' | 'month' | 'quarter' | 'custom';
@@ -20,15 +24,29 @@ interface DayRow {
 @Component({
   selector: 'app-stats',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatCardModule, MatButtonToggleModule, MatFormFieldModule, MatSelectModule, MatButtonModule, MatSnackBarModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatCardModule,
+    MatButtonToggleModule,
+    MatButtonModule,
+    MatSnackBarModule,
+    MatFormFieldModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatInputModule,
+    MatDialogModule
+  ],
   templateUrl: './stats.page.html',
   styleUrls: ['./stats.page.scss']
 })
 export class StatsPage implements OnInit {
   view: ViewMode = 'chart';
-  selectedPeriod: Period = 'week';
-  customStart = '';
-  customEnd = '';
+  selectedPeriod: Period = 'quarter';
+  customStart: Date | null = null;
+  customEnd: Date | null = null;
+
+  reportFormat: ReportFormat = 'pdf';
 
   periodStart!: Date;
   periodEnd!: Date;
@@ -49,21 +67,44 @@ export class StatsPage implements OnInit {
     totalMacroKcal: 0
   };
 
-  constructor(private stats: StatsService, private sb: MatSnackBar) {}
+  constructor(
+    private readonly stats: StatsService,
+    private readonly sb: MatSnackBar,
+    private readonly dialog: MatDialog
+  ) {}
 
-  ngOnInit() { this.updatePeriod(); }
+  ngOnInit() {
+    this.updatePeriod();
+  }
 
-  updatePeriod() {
-    const end = new Date();
-    end.setHours(0, 0, 0, 0);
-    let start = new Date(end);
+  selectPreset(period: Period | null) {
+    if (!period) return;
+    if (this.selectedPeriod === period) return;
+    this.selectedPeriod = period;
+    this.updatePeriod();
+  }
 
-    if (this.selectedPeriod === 'week')      start.setDate(end.getDate() - 6);
-    else if (this.selectedPeriod === 'month')   start.setDate(end.getDate() - 29);
-    else if (this.selectedPeriod === 'quarter') start.setDate(end.getDate() - 89);
-    else {
-      if (this.customStart) start = new Date(this.customStart);
-      if (this.customEnd)   end.setTime(new Date(this.customEnd).getTime());
+  updatePeriod(preserveCustom = false) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let start = new Date(today);
+    let end = new Date(today);
+
+    if (this.selectedPeriod === 'custom') {
+      if (!this.customStart || !this.customEnd) {
+        return;
+      }
+      start = this.normalizeDate(this.customStart);
+      end = this.normalizeDate(this.customEnd);
+    } else {
+      if (this.selectedPeriod === 'week') start.setDate(end.getDate() - 6);
+      else if (this.selectedPeriod === 'month') start.setDate(end.getDate() - 29);
+      else start.setDate(end.getDate() - 89);
+
+      if (!preserveCustom) {
+        this.customStart = new Date(start);
+        this.customEnd = new Date(end);
+      }
     }
 
     this.periodStart = start;
@@ -81,6 +122,45 @@ export class StatsPage implements OnInit {
     });
   }
 
+  onRangeChange() {
+    if (!this.customStart || !this.customEnd) return;
+    const start = this.normalizeDate(this.customStart);
+    const end = this.normalizeDate(this.customEnd);
+    if (end < start) return;
+
+    this.customStart = start;
+    this.customEnd = end;
+    this.selectedPeriod = 'custom';
+    this.updatePeriod(true);
+  }
+
+  openExportDialog() {
+    if (!this.periodStart || !this.periodEnd) return;
+
+    const ref = this.dialog.open(ReportFormatDialogComponent, {
+      data: { format: this.reportFormat }
+    });
+
+    ref.afterClosed().subscribe(format => {
+      if (!format) return;
+      this.reportFormat = format;
+      this.requestReport(format);
+    });
+  }
+
+  private requestReport(format: ReportFormat) {
+    this.stats.requestReport(format, this.periodStart, this.periodEnd).subscribe({
+      next: () =>
+        this.sb.open(
+          `Отчёт (${format.toUpperCase()}) поставлен в очередь. Готовый файл придёт в Telegram.`,
+          'OK',
+          { duration: 3000 }
+        ),
+      error: () =>
+        this.sb.open('Не удалось поставить отчёт в очередь.', 'Закрыть', { duration: 4000 })
+    });
+  }
+
   /** Ширина каждого сегмента (в % от текущего бара) */
   macroShare(d: DayRow, kind: 'p' | 'f' | 'c'): number {
     const pK = (d.totals.proteins || 0) * 4;
@@ -94,9 +174,8 @@ export class StatsPage implements OnInit {
   }
 
   macroTooltip(d: DayRow, kind: 'p' | 'f' | 'c'): string {
-    const grams = kind === 'p' ? (d.totals.proteins || 0)
-                : kind === 'f' ? (d.totals.fats || 0)
-                : (d.totals.carbs || 0);
+    const grams =
+      kind === 'p' ? d.totals.proteins || 0 : kind === 'f' ? d.totals.fats || 0 : d.totals.carbs || 0;
     const kcal = kind === 'p' ? grams * 4 : kind === 'f' ? grams * 9 : grams * 4;
     const pct = this.macroShare(d, kind);
     const label = kind === 'p' ? 'Белки' : kind === 'f' ? 'Жиры' : 'Углеводы';
@@ -117,8 +196,8 @@ export class StatsPage implements OnInit {
 
     if (total > 0) {
       this.legend.proteinsPct = (pK / total) * 100;
-      this.legend.fatsPct     = (fK / total) * 100;
-      this.legend.carbsPct    = (cK / total) * 100;
+      this.legend.fatsPct = (fK / total) * 100;
+      this.legend.carbsPct = (cK / total) * 100;
     } else {
       this.legend.proteinsPct = this.legend.fatsPct = this.legend.carbsPct = 0;
     }
@@ -136,17 +215,15 @@ export class StatsPage implements OnInit {
   }
 
   private roundNice(x: number): number {
-    if (x < 10)   return Math.round(x);
-    if (x < 100)  return Math.round(x / 5) * 5;
+    if (x < 10) return Math.round(x);
+    if (x < 100) return Math.round(x / 5) * 5;
     if (x < 1000) return Math.round(x / 10) * 10;
     return Math.round(x / 20) * 20;
   }
 
-  downloadPdf() {
-    if (!this.periodStart || !this.periodEnd) return;
-    this.stats.downloadPdf(this.periodStart, this.periodEnd).subscribe({
-      next: () => this.sb.open('Отчёт поставлен в очередь. Готовый PDF придёт в Telegram.', 'OK', { duration: 3000 }),
-      error: () => this.sb.open('Не удалось поставить отчёт в очередь.', 'Закрыть', { duration: 4000 })
-    });
+  private normalizeDate(date: Date): Date {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
   }
 }

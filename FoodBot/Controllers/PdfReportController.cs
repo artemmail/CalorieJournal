@@ -18,17 +18,26 @@ public sealed class PdfReportController : ControllerBase
         _db = db;
     }
 
-    [HttpPost("pdf")]
+    [HttpPost("{format:regex(^pdf|docx$)}")]
     public async Task<IActionResult> Post(
+        [FromRoute] string format,
         [FromQuery] DateTime from,
         [FromQuery] DateTime to,
         CancellationToken ct = default)
     {
+        if (to < from)
+            return BadRequest("Parameter 'to' must be greater than or equal to 'from'.");
+
+        var reportFormat = string.Equals(format, "docx", StringComparison.OrdinalIgnoreCase)
+            ? PeriodReportFormat.Docx
+            : PeriodReportFormat.Pdf;
+
         var job = new PeriodPdfJob
         {
             ChatId = User.GetChatId(),
             From = from,
             To = to,
+            Format = reportFormat,
             Status = PeriodPdfJobStatus.Queued,
             CreatedAtUtc = DateTimeOffset.UtcNow
         };
@@ -37,6 +46,7 @@ public sealed class PdfReportController : ControllerBase
         return Accepted(new { id = job.Id });
     }
 
+    [HttpGet("jobs/{id:long}")]
     [HttpGet("pdf-jobs/{id:long}")]
     public async Task<IActionResult> GetJob([FromRoute] long id, CancellationToken ct = default)
     {
@@ -50,7 +60,10 @@ public sealed class PdfReportController : ControllerBase
         {
             var bytes = await System.IO.File.ReadAllBytesAsync(job.FilePath, ct);
             var fn = Path.GetFileName(job.FilePath);
-            return File(bytes, "application/pdf", fn);
+            var mime = job.Format == PeriodReportFormat.Docx
+                ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                : "application/pdf";
+            return File(bytes, mime, fn);
         }
 
         if (job.Status == PeriodPdfJobStatus.Error)
