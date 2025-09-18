@@ -5,5 +5,6 @@ public enum AnalysisPeriod
     Day = 0,
     Week = 1,
     Month = 2,
-    Quarter = 3
+    Quarter = 3,
+    DayRemainder = 4
 }

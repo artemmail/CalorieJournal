@@ -72,7 +72,9 @@ public sealed class ReportDataLoader : ReportDataLoaderBase<ReportPayload>
         string? lastMealLocalTime = null;
         double? hoursSinceLastMeal = null;
 
-        if (period == AnalysisPeriod.Day)
+        var isDailyPeriod = period is AnalysisPeriod.Day or AnalysisPeriod.DayRemainder;
+
+        if (isDailyPeriod)
         {
             hourGrid = new List<string>();
             var startHour = (nowLocal.Minute == 0) ? nowLocal.Hour : nowLocal.Hour + 1;
@@ -147,7 +149,7 @@ public sealed class ReportDataLoader : ReportDataLoaderBase<ReportPayload>
             Meals = meals,
             Totals = totals,
             Grouping = new Grouping { ByHour = byHour, ByDay = byDay },
-            DailyPlanContext = new DailyPlanContext { IsDaily = period == AnalysisPeriod.Day, RemainingHourGrid = hourGrid, LastMealLocalTime = lastMealLocalTime, HoursSinceLastMeal = hoursSinceLastMeal }
+            DailyPlanContext = new DailyPlanContext { IsDaily = isDailyPeriod, RemainingHourGrid = hourGrid, LastMealLocalTime = lastMealLocalTime, HoursSinceLastMeal = hoursSinceLastMeal }
         };
 
         return (data, periodHuman);
@@ -163,6 +165,12 @@ public sealed class ReportDataLoader : ReportDataLoaderBase<ReportPayload>
                     var startLocal = new DateTime(nowLocal.Year, nowLocal.Month, nowLocal.Day, 0, 0, 0);
                     var startLocalOffset = new DateTimeOffset(startLocal, tz.GetUtcOffset(startLocal));
                     return (startLocalOffset.ToUniversalTime(), "с начала дня", "остаток дня", startLocal);
+                }
+            case AnalysisPeriod.DayRemainder:
+                {
+                    var startLocal = new DateTime(nowLocal.Year, nowLocal.Month, nowLocal.Day, 0, 0, 0);
+                    var startLocalOffset = new DateTimeOffset(startLocal, tz.GetUtcOffset(startLocal));
+                    return (startLocalOffset.ToUniversalTime(), "с начала дня (до текущего момента)", "остаток дня", startLocal);
                 }
             case AnalysisPeriod.Week:
                 {
