@@ -98,7 +98,7 @@ namespace FoodBot.Controllers
         }
 
         // ---------- Добавление по тексту/голосу ----------
-        public sealed record AddTextReq(string text, bool generateImage);
+        public sealed record AddTextReq(string text, bool generateImage, DateTimeOffset? time);
 
         // POST /api/meals/add-text
         [HttpPost("add-text")]
@@ -106,7 +106,7 @@ namespace FoodBot.Controllers
         {
             if (string.IsNullOrWhiteSpace(req.text)) return BadRequest("text required");
             var chatId = User.GetChatId();
-            await _meals.QueueTextAsync(chatId, req.text, req.generateImage, ct);
+            await _meals.QueueTextAsync(chatId, req.text, req.generateImage, req.time, ct);
             return Ok(new { queued = true });
         }
 
@@ -122,7 +122,7 @@ namespace FoodBot.Controllers
             var bytes = ms.ToArray();
             var text = await _stt.TranscribeAsync(bytes, language ?? "ru", audio.FileName ?? "audio", audio.ContentType ?? "application/octet-stream", ct);
             if (string.IsNullOrWhiteSpace(text)) return BadRequest("stt_failed");
-            await _meals.QueueTextAsync(chatId, text, generateImage, ct);
+            await _meals.QueueTextAsync(chatId, text, generateImage, null, ct);
             return Ok(new { queued = true });
         }
 

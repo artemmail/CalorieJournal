@@ -111,12 +111,14 @@ public sealed class TextMealQueueWorker : BackgroundService
                         ? await images.GenerateAsync(conv?.Result?.dish ?? next.Description!, stoppingToken)
                         : images.GeneratePlaceholder(conv?.Result?.dish ?? next.Description!);
                     var result = conv?.Result;
+                    var desiredTime = (next.DesiredMealTimeUtc ?? DateTimeOffset.UtcNow);
+
                     var entry = new MealEntry
                     {
                         ChatId = next.ChatId,
                         UserId = 0,
                         Username = "app",
-                        CreatedAtUtc = DateTimeOffset.UtcNow,
+                        CreatedAtUtc = desiredTime,
                         SourceType = MealSourceType.Description,
                         FileId = string.Empty,
                         FileMime = imgMime,
