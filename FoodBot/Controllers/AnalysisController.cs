@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using System.IO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace FoodBot.Controllers;
 
@@ -33,7 +34,7 @@ public sealed class AnalysisController : ControllerBase
         return Ok(list.Select(x => new {
             id = x.Id,
             name = x.Name,
-            period = x.Period.ToString().ToLower(),
+            period = ToClientPeriod(x.Period),
             createdAtUtc = x.CreatedAtUtc,
             isProcessing = x.IsProcessing,
             checksum = x.CaloriesChecksum,
@@ -54,7 +55,7 @@ public sealed class AnalysisController : ControllerBase
             status,
             id = report.Id,
             name = report.Name,
-            period = report.Period.ToString().ToLower()
+            period = ToClientPeriod(report.Period)
         });
     }
 
@@ -75,7 +76,7 @@ public sealed class AnalysisController : ControllerBase
             createdAtUtc = r.CreatedAtUtc,
             checksum = r.CaloriesChecksum,
             name = r.Name,
-            period = r.Period.ToString().ToLower()
+            period = ToClientPeriod(r.Period)
         });
     }
 
@@ -146,6 +147,9 @@ public sealed class AnalysisController : ControllerBase
         }
 
         var markdown = await _service.GetPlanAsync(chatId, period, ct);
-        return Ok(new { status = "ok", markdown, period = period.ToString().ToLower() });
+        return Ok(new { status = "ok", markdown, period = ToClientPeriod(period) });
     }
+
+    private static string ToClientPeriod(AnalysisPeriod period)
+        => JsonNamingPolicy.CamelCase.ConvertName(period.ToString());
 }

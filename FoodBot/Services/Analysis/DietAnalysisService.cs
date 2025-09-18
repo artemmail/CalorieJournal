@@ -320,6 +320,7 @@ public sealed class DietAnalysisService
         var kind = period switch
         {
             AnalysisPeriod.Day => "день",
+            AnalysisPeriod.DayRemainder => "день · остаток",
             AnalysisPeriod.Week => "неделя",
             AnalysisPeriod.Month => "месяц",
             AnalysisPeriod.Quarter => "квартал",
@@ -333,6 +334,7 @@ public sealed class DietAnalysisService
         var kind = period switch
         {
             AnalysisPeriod.Day => "день",
+            AnalysisPeriod.DayRemainder => "день · остаток",
             AnalysisPeriod.Week => "неделя",
             AnalysisPeriod.Month => "месяц",
             AnalysisPeriod.Quarter => "квартал",
@@ -367,6 +369,12 @@ _Автоматический фоллбэк: содержимое не пуст
                     var startLocal = new DateTime(nowLocal.Year, nowLocal.Month, nowLocal.Day, 0, 0, 0);
                     var startLocalOffset = new DateTimeOffset(startLocal, tz.GetUtcOffset(startLocal));
                     return (startLocalOffset.ToUniversalTime(), "с начала дня", "остаток дня", startLocal);
+                }
+            case AnalysisPeriod.DayRemainder:
+                {
+                    var startLocal = new DateTime(nowLocal.Year, nowLocal.Month, nowLocal.Day, 0, 0, 0);
+                    var startLocalOffset = new DateTimeOffset(startLocal, tz.GetUtcOffset(startLocal));
+                    return (startLocalOffset.ToUniversalTime(), "с начала дня (до текущего момента)", "остаток дня", startLocal);
                 }
             case AnalysisPeriod.Week:
                 {

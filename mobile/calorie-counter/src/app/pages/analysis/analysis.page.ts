@@ -97,7 +97,8 @@ export class AnalysisPage implements OnInit, OnDestroy {
 
   periodLabel(p: AnalysisPeriod) {
     switch (p) {
-      case 'day': return 'День';
+      case 'day': return 'День · итог';
+      case 'dayRemainder': return 'День · остаток';
       case 'week': return 'Неделя';
       case 'month': return 'Месяц';
       case 'quarter': return 'Квартал';

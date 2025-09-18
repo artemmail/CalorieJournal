@@ -76,6 +76,13 @@ public static class BotExtensions
 
         services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
             new ReportStrategy<ReportPayload>(
+                AnalysisPeriod.DayRemainder,
+                sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
+                new DayRemainderPromptBuilder<ReportPayload>(),
+                sp.GetRequiredService<AnalysisGenerator>()));
+
+        services.AddScoped<IReportStrategy<ReportPayload>>(sp =>
+            new ReportStrategy<ReportPayload>(
                 AnalysisPeriod.Week,
                 sp.GetRequiredService<IReportDataLoader<ReportPayload>>(),
                 new WeekAnalysisPromptBuilder<ReportPayload>(),

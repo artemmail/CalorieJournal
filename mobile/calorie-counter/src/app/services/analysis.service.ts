@@ -4,7 +4,7 @@ import { firstValueFrom, Observable, EMPTY, timer } from 'rxjs';
 import { filter, switchMap, take } from 'rxjs/operators';
 import { FoodBotAuthLinkService } from './foodbot-auth-link.service';
 
-export type AnalysisPeriod = 'day' | 'week' | 'month' | 'quarter';
+export type AnalysisPeriod = 'day' | 'dayRemainder' | 'week' | 'month' | 'quarter';
 
 export interface ReportRow {
   id: number;
