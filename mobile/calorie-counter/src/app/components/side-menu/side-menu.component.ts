@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { RouterModule } from '@angular/router';
 
-import { AddMealNoteDialogComponent } from '../../pages/add-meal/add-meal-note-dialog.component';
+import { VoiceNoteDialogComponent } from '../voice-note-dialog/voice-note-dialog.component';
 
 @Component({
   selector: 'app-side-menu',
@@ -22,7 +22,7 @@ export class SideMenuComponent {
   openAddMealNoteDialog(event?: Event) {
     event?.preventDefault();
     const alreadyOpen = this.dialog.openDialogs.some(
-      d => d.componentInstance instanceof AddMealNoteDialogComponent
+      d => d.componentInstance instanceof VoiceNoteDialogComponent
     );
     if (alreadyOpen) {
       this.close.emit();
@@ -30,11 +30,15 @@ export class SideMenuComponent {
     }
 
     this.close.emit();
-    this.dialog.open(AddMealNoteDialogComponent, {
+    this.dialog.open(VoiceNoteDialogComponent, {
       width: 'min(480px, 90vw)',
       maxWidth: '90vw',
       autoFocus: false,
-      restoreFocus: false
+      restoreFocus: false,
+      data: {
+        title: 'Описание приёма пищи',
+        kind: 'addMeal'
+      }
     });
   }
 }

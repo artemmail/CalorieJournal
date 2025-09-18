@@ -12,7 +12,7 @@ import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from "@capacitor-community/camera-preview";
 
 import { FoodbotApiService } from "../../services/foodbot-api.service";
-import { AddMealNoteDialogComponent } from "./add-meal-note-dialog.component";
+import { VoiceNoteDialogComponent } from "../../components/voice-note-dialog/voice-note-dialog.component";
 
 function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   const byteString = atob(base64);
@@ -68,11 +68,15 @@ export class AddMealPage implements AfterViewInit, OnDestroy {
   }
 
   openNoteDialog() {
-    const dialogRef = this.dialog.open(AddMealNoteDialogComponent, {
+    const dialogRef = this.dialog.open(VoiceNoteDialogComponent, {
       width: "min(480px, 90vw)",
       maxWidth: "90vw",
       autoFocus: false,
-      restoreFocus: false
+      restoreFocus: false,
+      data: {
+        title: "Описание приёма пищи",
+        kind: "addMeal"
+      }
     });
 
     dialogRef.afterClosed().subscribe(() => {
