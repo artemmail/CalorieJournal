@@ -176,12 +176,30 @@ public sealed class PdfReportService
         var texPath = Path.Combine(tempDir, "report.tex");
         await File.WriteAllTextAsync(texPath, sb.ToString(), ct);
 
+        var texmfVarDir = Path.Combine(tempDir, "texmf-var");
+        var texmfConfigDir = Path.Combine(tempDir, "texmf-config");
+        var texmfHomeDir = Path.Combine(tempDir, "texmf-home");
+        Directory.CreateDirectory(texmfVarDir);
+        Directory.CreateDirectory(texmfConfigDir);
+        Directory.CreateDirectory(texmfHomeDir);
+
         var psi = new ProcessStartInfo(_latexPath, "-interaction=nonstopmode -halt-on-error report.tex")
         {
             WorkingDirectory = tempDir,
             RedirectStandardError = true,
             RedirectStandardOutput = true
         };
+
+#if NET6_0_OR_GREATER
+        var environment = psi.Environment;
+#else
+        var environment = psi.EnvironmentVariables;
+#endif
+        environment["TEXMFVAR"] = texmfVarDir;
+        environment["TEXMFCONFIG"] = texmfConfigDir;
+        environment["TEXMFHOME"] = texmfHomeDir;
+        environment["TEXMFOUTPUT"] = tempDir;
+        environment["HOME"] = tempDir;
 
         using (var proc = Process.Start(psi))
         {
