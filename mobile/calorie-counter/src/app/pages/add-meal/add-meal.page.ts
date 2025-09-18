@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { HttpEventType } from "@angular/common/http";
 import { MatButtonModule } from "@angular/material/button";
@@ -11,8 +11,12 @@ import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from "@capacitor-community/camera-preview";
 
+import { firstValueFrom, Subscription } from "rxjs";
+
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { VoiceNoteDialogComponent } from "../../components/voice-note-dialog/voice-note-dialog.component";
+import { ClarifyResult, MealDetails, MealListItem } from "../../services/foodbot-api.types";
+import { HistoryUpdatesService } from "../../services/history-updates.service";
 
 function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   const byteString = atob(base64);
@@ -34,24 +38,42 @@ function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   templateUrl: "./add-meal.page.html",
   styleUrls: ["./add-meal.page.scss"]
 })
-export class AddMealPage implements AfterViewInit, OnDestroy {
+export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   photoDataUrl?: string;    // превью для UI (через pipe convert)
   previewActive = false;
   uploadProgress: number | null = null;
   progressMode: "determinate" | "indeterminate" = "determinate";
+  clarifyLoading = false;
 
   private previewStarting = false;
+  private updatesSub?: Subscription;
+  private lastMeal?: MealListItem;
+  private lastMealDetails?: MealDetails;
+  private lastClarifyNote?: string;
+  private pendingUpload = false;
+  private previousMealId?: number;
 
   @ViewChild("previewBox")
   private previewBox?: ElementRef<HTMLDivElement>;
 
-  constructor(private api: FoodbotApiService, private snack: MatSnackBar, private dialog: MatDialog) {}
+  constructor(
+    private api: FoodbotApiService,
+    private snack: MatSnackBar,
+    private dialog: MatDialog,
+    private updates: HistoryUpdatesService
+  ) {}
+
+  ngOnInit() {
+    void this.refreshLatestMeal();
+    this.updatesSub = this.updates.updates().subscribe(item => this.applyUpdate(item));
+  }
 
   async ngAfterViewInit() {
     await this.startPreviewWithFallback();
   }
 
   async ngOnDestroy() {
+    this.updatesSub?.unsubscribe();
     await this.stopPreview();
   }
 
@@ -67,23 +89,155 @@ export class AddMealPage implements AfterViewInit, OnDestroy {
     }
   }
 
-  openNoteDialog() {
-    const dialogRef = this.dialog.open(VoiceNoteDialogComponent, {
-      width: "min(480px, 90vw)",
-      maxWidth: "90vw",
-      autoFocus: false,
-      restoreFocus: false,
-      data: {
-        title: "Описание приёма пищи",
-        kind: "addMeal"
+  async openClarifyDialog() {
+    if (this.clarifyLoading) return;
+    this.clarifyLoading = true;
+    try {
+      const item = await this.ensureLatestMealForClarify();
+      if (!item) {
+        const message = this.pendingUpload
+          ? "Фото ещё обрабатывается. Попробуйте чуть позже."
+          : "Нет записей для уточнения.";
+        this.snack.open(message, "OK", { duration: 2000 });
+        return;
       }
-    });
 
-    dialogRef.afterClosed().subscribe(() => {
-      if (!this.previewActive) {
-        void this.startPreviewWithFallback();
+      const details = this.lastMealDetails && this.lastMealDetails.id === item.id
+        ? this.lastMealDetails
+        : await firstValueFrom(this.api.getMeal(item.id));
+      this.lastMealDetails = details;
+      this.lastClarifyNote = details.clarifyNote ?? undefined;
+
+      const dialogRef = this.dialog.open(VoiceNoteDialogComponent, {
+        width: "min(480px, 90vw)",
+        maxWidth: "90vw",
+        autoFocus: false,
+        restoreFocus: false,
+        data: {
+          title: "Уточнение",
+          kind: "historyClarify",
+          mealId: details.id,
+          createdAtUtc: details.createdAtUtc,
+          note: details.clarifyNote ?? undefined
+        }
+      });
+
+      dialogRef.afterClosed().subscribe(result => {
+        this.handleClarifyDialogClose(result, details.id);
+        if (!this.previewActive) {
+          void this.startPreviewWithFallback();
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      this.snack.open("Не удалось открыть уточнение", "OK", { duration: 2000 });
+    } finally {
+      this.clarifyLoading = false;
+    }
+  }
+
+  private handleClarifyDialogClose(
+    result: (ClarifyResult & { note?: string; createdAtUtc: string }) | { deleted: true } | { queued: true; note?: string } | undefined,
+    mealId: number
+  ) {
+    if (!result) return;
+
+    if ("deleted" in result && result.deleted) {
+      if (this.lastMeal?.id === mealId) {
+        this.lastMeal = undefined;
+        this.lastMealDetails = undefined;
+        this.lastClarifyNote = undefined;
+        this.previousMealId = undefined;
       }
-    });
+      this.pendingUpload = false;
+      this.snack.open("Запись удалена", "OK", { duration: 1500 });
+      void this.refreshLatestMeal();
+      return;
+    }
+
+    if ("queued" in result && result.queued) {
+      if (this.lastMeal?.id === mealId) {
+        this.lastMeal = { ...this.lastMeal, updateQueued: true };
+      }
+      this.lastClarifyNote = result.note ?? this.lastClarifyNote;
+      if (this.lastMealDetails?.id === mealId) {
+        this.lastMealDetails = { ...this.lastMealDetails, clarifyNote: result.note ?? this.lastMealDetails.clarifyNote };
+      }
+      this.snack.open("Уточнение отправлено", "OK", { duration: 1500 });
+      return;
+    }
+
+    const res = result as ClarifyResult & { note?: string; createdAtUtc: string };
+    const item: MealListItem = {
+      id: res.id,
+      createdAtUtc: res.createdAtUtc,
+      dishName: res.result.dish,
+      weightG: res.result.weight_g,
+      caloriesKcal: res.result.calories_kcal,
+      proteinsG: res.result.proteins_g,
+      fatsG: res.result.fats_g,
+      carbsG: res.result.carbs_g,
+      ingredients: res.result.ingredients,
+      products: res.products,
+      hasImage: this.lastMeal?.hasImage ?? this.lastMealDetails?.hasImage ?? true,
+      updateQueued: false
+    };
+    this.updateLastMeal(item, res.note ?? this.lastClarifyNote);
+    this.snack.open("Уточнение применено", "OK", { duration: 1500 });
+  }
+
+  private async ensureLatestMealForClarify(): Promise<MealListItem | undefined> {
+    if (this.lastMeal) return this.lastMeal;
+    await this.refreshLatestMeal();
+    return this.lastMeal;
+  }
+
+  private async refreshLatestMeal() {
+    try {
+      const res = await firstValueFrom(this.api.getMeals(1, 0));
+      const item = res.items?.[0];
+      if (!item) {
+        if (!this.pendingUpload) {
+          this.lastMeal = undefined;
+          this.previousMealId = undefined;
+        }
+        return;
+      }
+      if (this.pendingUpload && this.previousMealId && item.id === this.previousMealId) {
+        return;
+      }
+      this.updateLastMeal(item);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  private applyUpdate(item: MealListItem) {
+    if (this.pendingUpload) {
+      if (!this.previousMealId || item.id !== this.previousMealId) {
+        this.updateLastMeal(item);
+      }
+      return;
+    }
+
+    if (!this.lastMeal || this.lastMeal.id === item.id) {
+      this.updateLastMeal(item);
+      return;
+    }
+
+    const lastTime = Date.parse(this.lastMeal.createdAtUtc);
+    const newTime = Date.parse(item.createdAtUtc);
+    if (Number.isNaN(lastTime) || Number.isNaN(newTime) || newTime >= lastTime) {
+      this.updateLastMeal(item);
+    }
+  }
+
+  private updateLastMeal(item: MealListItem, clarifyNote?: string) {
+    this.lastMeal = item;
+    this.previousMealId = item.id;
+    this.pendingUpload = false;
+    this.lastMealDetails = undefined;
+    this.lastClarifyNote = clarifyNote;
   }
 
   retryPreview() {
@@ -169,6 +323,13 @@ export class AddMealPage implements AfterViewInit, OnDestroy {
   async uploadBase64(b64: string) {
     // превью
     this.photoDataUrl = "data:image/jpeg;base64," + b64;
+    this.pendingUpload = true;
+    if (this.lastMeal) {
+      this.previousMealId = this.lastMeal.id;
+    }
+    this.lastMeal = undefined;
+    this.lastMealDetails = undefined;
+    this.lastClarifyNote = undefined;
     // upload
     const file = b64toFile(b64, `meal_${Date.now()}.jpg`);
     this.uploadProgress = 0;
@@ -185,6 +346,8 @@ export class AddMealPage implements AfterViewInit, OnDestroy {
       },
       error: () => {
         this.uploadProgress = null;
+        this.pendingUpload = false;
+        void this.refreshLatestMeal();
         this.snack.open("Не удалось отправить фото", "OK", { duration: 2000 });
       }
     });
