@@ -21,9 +21,11 @@ export interface DayStats {
   totals: MacroTotals;
 }
 
-export interface PdfJobResponse {
+export interface ReportJobResponse {
   jobId: string;
 }
+
+export type ReportFormat = 'pdf' | 'docx';
 
 @Injectable({ providedIn: 'root' })
 export class StatsService {
@@ -42,11 +44,11 @@ export class StatsService {
     return this.http.get<DayStats[]>(`${this.baseUrl}/api/stats/daily`, { params });
   }
 
-  downloadPdf(from: Date, to: Date): Observable<PdfJobResponse> {
+  requestReport(format: ReportFormat, from: Date, to: Date): Observable<ReportJobResponse> {
     const params = new HttpParams()
       .set('from', this.formatDate(from))
       .set('to', this.formatDate(to));
-    return this.http.post<PdfJobResponse>(`${this.baseUrl}/api/report/pdf`, {}, { params });
+    return this.http.post<ReportJobResponse>(`${this.baseUrl}/api/report/${format}`, {}, { params });
   }
 
   private formatDate(d: Date): string {

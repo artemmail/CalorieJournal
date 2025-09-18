@@ -28,6 +28,7 @@ public sealed class PeriodPdfJobWorker : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
                 var pdf = scope.ServiceProvider.GetRequiredService<PdfReportService>();
+                var docx = scope.ServiceProvider.GetRequiredService<DocxReportService>();
 
                 var job = await db.PeriodPdfJobs
                     .Where(j => j.Status == PeriodPdfJobStatus.Queued)
@@ -44,10 +45,16 @@ public sealed class PeriodPdfJobWorker : BackgroundService
 
                 try
                 {
-                    var (stream, fileName) = await pdf.BuildAsync(job.ChatId, job.From, job.To, stoppingToken);
+                    (MemoryStream stream, string fileName) result = job.Format switch
+                    {
+                        PeriodReportFormat.Docx => await docx.BuildAsync(job.ChatId, job.From, job.To, stoppingToken),
+                        _ => await pdf.BuildAsync(job.ChatId, job.From, job.To, stoppingToken)
+                    };
+                    var stream = result.stream;
+                    var fileName = result.fileName;
                     stream.Position = 0;
 
-                    var baseDir = Path.Combine(AppContext.BaseDirectory, "pdf-jobs");
+                    var baseDir = Path.Combine(AppContext.BaseDirectory, "report-jobs");
                     Directory.CreateDirectory(baseDir);
                     var filePath = Path.Combine(baseDir, $"{job.Id}_{fileName}");
                     await using (var fs = File.Create(filePath))
@@ -68,12 +75,12 @@ public sealed class PeriodPdfJobWorker : BackgroundService
                         }
                         catch (Exception ex)
                         {
-                            _log.LogError(ex, "Failed to send period PDF job {Id}", job.Id);
+                            _log.LogError(ex, "Failed to send period report job {Id}", job.Id);
                         }
                     }
                     else
                     {
-                        _log.LogWarning("ITelegramBotClient not available for period PDF job {Id}", job.Id);
+                        _log.LogWarning("ITelegramBotClient not available for period report job {Id}", job.Id);
                     }
 
                     job.Status = PeriodPdfJobStatus.Done;
@@ -82,7 +89,7 @@ public sealed class PeriodPdfJobWorker : BackgroundService
                 }
                 catch (Exception ex)
                 {
-                    _log.LogError(ex, "PeriodPdfJob {Id} failed", job.Id);
+                    _log.LogError(ex, "Period report job {Id} failed", job.Id);
                     job.Status = PeriodPdfJobStatus.Error;
                     job.FinishedAtUtc = DateTimeOffset.UtcNow;
                     await db.SaveChangesAsync(stoppingToken);

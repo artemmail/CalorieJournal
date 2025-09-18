@@ -20,7 +20,17 @@
   flex-wrap: wrap;
 }
 
-.dates { display: flex; gap: 8px; }
+.preset-toggle {
+  display: inline-flex;
+}
+
+.range-field {
+  min-width: 250px;
+}
+
+.controls button {
+  white-space: nowrap;
+}
 
 .legend {
   display: flex;

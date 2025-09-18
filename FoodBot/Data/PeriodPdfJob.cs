@@ -10,6 +10,12 @@ public enum PeriodPdfJobStatus
     Error
 }
 
+public enum PeriodReportFormat
+{
+    Pdf = 0,
+    Docx = 1
+}
+
 public class PeriodPdfJob
 {
     [Key]
@@ -17,6 +23,7 @@ public class PeriodPdfJob
     public long ChatId { get; set; }
     public DateTime From { get; set; }
     public DateTime To { get; set; }
+    public PeriodReportFormat Format { get; set; } = PeriodReportFormat.Pdf;
     public PeriodPdfJobStatus Status { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset? FinishedAtUtc { get; set; }

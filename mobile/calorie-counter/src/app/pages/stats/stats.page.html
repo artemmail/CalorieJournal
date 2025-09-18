@@ -2,27 +2,32 @@
   <h3>Статистика по дням</h3>
 
   <div class="controls">
-    <mat-form-field appearance="fill">
-      <mat-label>Период</mat-label>
-      <mat-select [(ngModel)]="selectedPeriod" (selectionChange)="updatePeriod()">
-        <mat-option value="week">Неделя</mat-option>
-        <mat-option value="month">Месяц</mat-option>
-        <mat-option value="quarter">Квартал</mat-option>
-        <mat-option value="custom">Пользовательский</mat-option>
-      </mat-select>
-    </mat-form-field>
+    <mat-button-toggle-group
+      [value]="selectedPeriod === 'custom' ? null : selectedPeriod"
+      (change)="selectPreset($event.value)"
+      class="preset-toggle"
+    >
+      <mat-button-toggle value="week">Неделя</mat-button-toggle>
+      <mat-button-toggle value="month">Месяц</mat-button-toggle>
+      <mat-button-toggle value="quarter">Квартал</mat-button-toggle>
+    </mat-button-toggle-group>
 
-    <div class="dates" *ngIf="selectedPeriod==='custom'">
-      <input type="date" [(ngModel)]="customStart" (change)="updatePeriod()">
-      <input type="date" [(ngModel)]="customEnd" (change)="updatePeriod()">
-    </div>
+    <mat-form-field appearance="fill" class="range-field">
+      <mat-label>Период</mat-label>
+      <mat-date-range-input [rangePicker]="picker" (dateChange)="onRangeChange()">
+        <input matStartDate name="customStart" placeholder="Начало" [(ngModel)]="customStart" />
+        <input matEndDate name="customEnd" placeholder="Конец" [(ngModel)]="customEnd" />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-date-range-picker #picker></mat-date-range-picker>
+    </mat-form-field>
 
     <mat-button-toggle-group [(ngModel)]="view">
       <mat-button-toggle value="chart">График</mat-button-toggle>
       <mat-button-toggle value="table">Таблица</mat-button-toggle>
     </mat-button-toggle-group>
 
-    <button mat-raised-button (click)="downloadPdf()">PDF отчёт</button>
+    <button mat-raised-button color="primary" (click)="openExportDialog()">Экспорт</button>
   </div>
 
   <!-- Легенда по периоду -->

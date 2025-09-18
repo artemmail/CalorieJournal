@@ -46,6 +46,9 @@ public class BotDbContext : DbContext
 
         modelBuilder.Entity<PeriodPdfJob>()
             .HasIndex(x => new { x.ChatId, x.CreatedAtUtc });
+        modelBuilder.Entity<PeriodPdfJob>()
+            .Property(x => x.Format)
+            .HasDefaultValue(PeriodReportFormat.Pdf);
 
         modelBuilder.Entity<AnalysisPdfJob>()
             .HasIndex(x => new { x.ChatId, x.CreatedAtUtc });
