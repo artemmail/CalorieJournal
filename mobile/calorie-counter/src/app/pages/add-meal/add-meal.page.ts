@@ -27,6 +27,13 @@ function b64toFile(base64: string, name: string, type = "image/jpeg"): File {
   return new File([blob], name, { type });
 }
 
+type ClarifyPreviewInfo = {
+  mealId: number;
+  note?: string;
+  timeUtc: string;
+  queued: boolean;
+};
+
 @Component({
   selector: "app-add-meal",
   standalone: true,
@@ -52,6 +59,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private lastClarifyNote?: string;
   private pendingUpload = false;
   private previousMealId?: number;
+  clarifyPreview?: ClarifyPreviewInfo;
 
   @ViewChild("previewBox")
   private previewBox?: ElementRef<HTMLDivElement>;
@@ -107,6 +115,9 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         : await firstValueFrom(this.api.getMeal(item.id));
       this.lastMealDetails = details;
       this.lastClarifyNote = details.clarifyNote ?? undefined;
+      if (this.clarifyPreview?.mealId !== details.id) {
+        this.clarifyPreview = undefined;
+      }
 
       const dialogRef = this.dialog.open(VoiceNoteDialogComponent, {
         width: "min(480px, 90vw)",
@@ -137,7 +148,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private handleClarifyDialogClose(
-    result: (ClarifyResult & { note?: string; createdAtUtc: string }) | { deleted: true } | { queued: true; note?: string } | undefined,
+    result: (ClarifyResult & { note?: string; createdAtUtc: string }) | { deleted: true } | { queued: true; note?: string; time?: string } | undefined,
     mealId: number
   ) {
     if (!result) return;
@@ -150,24 +161,48 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         this.previousMealId = undefined;
       }
       this.pendingUpload = false;
+      if (this.clarifyPreview?.mealId === mealId) {
+        this.clarifyPreview = undefined;
+      }
       this.snack.open("Запись удалена", "OK", { duration: 1500 });
       void this.refreshLatestMeal();
       return;
     }
 
     if ("queued" in result && result.queued) {
+      const queueResult = result as { queued: true; note?: string; time?: string };
       if (this.lastMeal?.id === mealId) {
         this.lastMeal = { ...this.lastMeal, updateQueued: true };
       }
-      this.lastClarifyNote = result.note ?? this.lastClarifyNote;
+      const trimmedNoteRaw = queueResult.note?.trim();
+      this.lastClarifyNote = trimmedNoteRaw ? trimmedNoteRaw : undefined;
       if (this.lastMealDetails?.id === mealId) {
-        this.lastMealDetails = { ...this.lastMealDetails, clarifyNote: result.note ?? this.lastMealDetails.clarifyNote };
+        const clarifyNoteValue = trimmedNoteRaw !== undefined
+          ? (trimmedNoteRaw ? trimmedNoteRaw : null)
+          : this.lastMealDetails.clarifyNote;
+        const createdAtUtc = queueResult.time ?? this.lastMealDetails.createdAtUtc;
+        this.lastMealDetails = {
+          ...this.lastMealDetails,
+          clarifyNote: clarifyNoteValue,
+          createdAtUtc
+        };
       }
+      this.setClarifyPreview(this.lastClarifyNote, mealId, queueResult.time, true);
       this.snack.open("Уточнение отправлено", "OK", { duration: 1500 });
       return;
     }
 
     const res = result as ClarifyResult & { note?: string; createdAtUtc: string };
+    const resultNote = res.note?.trim();
+    const noteToStore = resultNote ?? this.lastClarifyNote;
+    this.lastClarifyNote = noteToStore ? noteToStore : undefined;
+    if (this.lastMealDetails?.id === mealId) {
+      this.lastMealDetails = {
+        ...this.lastMealDetails,
+        clarifyNote: this.lastClarifyNote ?? null,
+        createdAtUtc: res.createdAtUtc
+      };
+    }
     const item: MealListItem = {
       id: res.id,
       createdAtUtc: res.createdAtUtc,
@@ -182,7 +217,8 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       hasImage: this.lastMeal?.hasImage ?? this.lastMealDetails?.hasImage ?? true,
       updateQueued: false
     };
-    this.updateLastMeal(item, res.note ?? this.lastClarifyNote);
+    this.setClarifyPreview(this.lastClarifyNote, mealId, res.createdAtUtc, false);
+    this.updateLastMeal(item);
     this.snack.open("Уточнение применено", "OK", { duration: 1500 });
   }
 
@@ -200,6 +236,9 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         if (!this.pendingUpload) {
           this.lastMeal = undefined;
           this.previousMealId = undefined;
+          this.lastClarifyNote = undefined;
+          this.lastMealDetails = undefined;
+          this.clarifyPreview = undefined;
         }
         return;
       }
@@ -232,12 +271,45 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private updateLastMeal(item: MealListItem, clarifyNote?: string) {
+  private updateLastMeal(item: MealListItem) {
     this.lastMeal = item;
     this.previousMealId = item.id;
     this.pendingUpload = false;
     this.lastMealDetails = undefined;
-    this.lastClarifyNote = clarifyNote;
+    if (this.clarifyPreview?.mealId !== item.id) {
+      this.clarifyPreview = undefined;
+      this.lastClarifyNote = undefined;
+    } else {
+      this.clarifyPreview = {
+        ...this.clarifyPreview,
+        timeUtc: item.createdAtUtc,
+        queued: item.updateQueued
+      };
+    }
+  }
+
+  private setClarifyPreview(note: string | undefined, mealId: number, timeUtc?: string, queued = false) {
+    const trimmed = note?.trim();
+    const baseTime = timeUtc ?? this.lastMealDetails?.createdAtUtc ?? this.lastMeal?.createdAtUtc ?? this.clarifyPreview?.timeUtc;
+    if (!baseTime) {
+      if (this.clarifyPreview?.mealId === mealId) {
+        const preview: ClarifyPreviewInfo = {
+          mealId,
+          timeUtc: this.clarifyPreview.timeUtc,
+          queued
+        };
+        if (trimmed) preview.note = trimmed;
+        this.clarifyPreview = preview;
+      }
+      return;
+    }
+    const preview: ClarifyPreviewInfo = {
+      mealId,
+      timeUtc: baseTime,
+      queued
+    };
+    if (trimmed) preview.note = trimmed;
+    this.clarifyPreview = preview;
   }
 
   retryPreview() {
@@ -330,6 +402,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     this.lastMeal = undefined;
     this.lastMealDetails = undefined;
     this.lastClarifyNote = undefined;
+    this.clarifyPreview = undefined;
     // upload
     const file = b64toFile(b64, `meal_${Date.now()}.jpg`);
     this.uploadProgress = 0;

@@ -93,6 +93,30 @@ export class VoiceNoteDialogComponent implements OnDestroy {
     return note.length > 0;
   }
 
+  get previewNote(): string {
+    return ((this.noteControl?.value as string | null) ?? "").trim();
+  }
+
+  get previewTime(): Date | null {
+    if (this.isHistoryClarify) {
+      if (!this.createdAt) return null;
+      const base = new Date(this.createdAt);
+      const currentTime = (this.timestampControl?.value as string | null)?.trim();
+      if (!currentTime) return base;
+      const [hoursStr, minutesStr] = currentTime.split(":");
+      const hours = Number.parseInt(hoursStr ?? "", 10);
+      const minutes = Number.parseInt(minutesStr ?? "", 10);
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) return base;
+      const dt = new Date(base);
+      dt.setHours(hours, minutes, 0, 0);
+      return dt;
+    }
+    const value = (this.timestampControl?.value as string | null)?.trim();
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
   clearNote() {
     this.noteControl?.setValue("");
   }
@@ -196,7 +220,8 @@ export class VoiceNoteDialogComponent implements OnDestroy {
     this.api.clarifyText(data.mealId, note || undefined, iso).subscribe({
       next: (r: ClarifyResult | { queued: boolean }) => {
         if ((r as any).queued) {
-          this.dialogRef.close({ queued: true, note });
+          const queuedTime = iso ?? data.createdAtUtc;
+          this.dialogRef.close({ queued: true, note, time: queuedTime });
           return;
         }
         const res = r as ClarifyResult;

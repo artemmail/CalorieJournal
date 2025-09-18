@@ -47,3 +47,23 @@
 <div class="last-shot" *ngIf="photoDataUrl">
   <img [src]="photoDataUrl" alt="snapshot" />
 </div>
+
+<div class="clarify-preview" *ngIf="clarifyPreview as preview">
+  <div class="clarify-preview__header">
+    <mat-icon>edit_note</mat-icon>
+    <span>Уточнение к фото</span>
+  </div>
+  <div class="clarify-preview__body">
+    <div class="clarify-preview__row" *ngIf="preview.note">
+      <span class="clarify-preview__label">Текст:</span>
+      <span class="clarify-preview__value">{{ preview.note }}</span>
+    </div>
+    <div class="clarify-preview__row">
+      <span class="clarify-preview__label">Время:</span>
+      <span class="clarify-preview__value">{{ preview.timeUtc | date: 'HH:mm, d MMMM' }}</span>
+    </div>
+    <div class="clarify-preview__queued" *ngIf="preview.queued">
+      Отправлено на уточнение, ожидает обработки
+    </div>
+  </div>
+</div>
