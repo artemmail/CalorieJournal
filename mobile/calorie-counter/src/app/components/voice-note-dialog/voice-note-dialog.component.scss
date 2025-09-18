@@ -82,6 +82,38 @@
   flex: 1;
 }
 
+.preview {
+  border-radius: 12px;
+  background: #f5f7fb;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #1f2937;
+}
+
+.preview__title {
+  font-weight: 600;
+}
+
+.preview__row {
+  display: flex;
+  gap: 8px;
+}
+
+.preview__label {
+  font-weight: 600;
+  color: #111827;
+}
+
+.preview__value {
+  flex: 1;
+  color: #374151;
+  word-break: break-word;
+}
+
 @media (min-width: 560px) {
   .dialog-content {
     display: grid;
@@ -100,5 +132,9 @@
 
   .mic.inline {
     justify-items: start;
+  }
+
+  .preview {
+    grid-column: 1 / -1;
   }
 }
