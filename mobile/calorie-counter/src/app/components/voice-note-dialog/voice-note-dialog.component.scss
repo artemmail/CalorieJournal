@@ -1,0 +1,104 @@
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.note-field textarea {
+  min-height: 116px;
+}
+
+.time-field {
+  width: 100%;
+}
+
+.mic {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.mic.inline {
+  justify-items: center;
+}
+
+.mic .hint {
+  font-size: 12px;
+  opacity: 0.7;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.mic .hint.recording {
+  opacity: 0.9;
+}
+
+.mic button.recording {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(244, 67, 54, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+  }
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 0;
+}
+
+.actions .spacer {
+  display: none;
+}
+
+.actions.actions--history .spacer {
+  display: block;
+  flex: 1;
+}
+
+@media (min-width: 560px) {
+  .dialog-content {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .note-field {
+    grid-column: 1 / -1;
+  }
+
+  .time-field {
+    width: 200px;
+  }
+
+  .mic.inline {
+    justify-items: start;
+  }
+}

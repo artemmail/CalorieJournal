@@ -7,7 +7,7 @@ import { MatTableModule } from "@angular/material/table";
 import { MatIconModule } from "@angular/material/icon";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { MealListItem, ClarifyResult } from "../../services/foodbot-api.types";
-import { HistoryClarifyDialogComponent } from "./history-clarify.dialog";
+import { VoiceNoteDialogComponent } from "../../components/voice-note-dialog/voice-note-dialog.component";
 
 @Component({
   selector: 'app-history-detail-dialog',
@@ -80,8 +80,14 @@ export class HistoryDetailDialogComponent implements OnInit {
   }
 
   openClarify() {
-    const ref = this.dialog.open(HistoryClarifyDialogComponent, {
-      data: { mealId: this.data.item.id, createdAtUtc: this.data.item.createdAtUtc, note: this.clarifyNote }
+    const ref = this.dialog.open(VoiceNoteDialogComponent, {
+      data: {
+        title: 'Уточнение',
+        kind: 'historyClarify',
+        mealId: this.data.item.id,
+        createdAtUtc: this.data.item.createdAtUtc,
+        note: this.clarifyNote
+      }
     });
     ref.afterClosed().subscribe((r: (ClarifyResult & { note?: string }) | { deleted: true } | { queued: true; note?: string } | undefined) => {
       if (!r) return;
