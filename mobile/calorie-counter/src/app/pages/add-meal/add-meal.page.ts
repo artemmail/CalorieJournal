@@ -322,7 +322,8 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       toBack: false,
       width: cssWidth,
       height: cssHeight,
-      disableExifHeaderStripping: false
+      disableExifHeaderStripping: false,
+      enableHighResolution: true
     };
     try {
       await CameraPreview.start(opts);
@@ -350,28 +351,41 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
   private resolvePreviewSize() {
     const el = this.previewBox?.nativeElement;
-    const cssWidth = Math.max(1, Math.round(el?.clientWidth || window.innerWidth));
-    const cssHeight = Math.max(1, Math.round(el?.clientHeight || window.innerHeight));
+    const container = el?.parentElement as HTMLElement | undefined;
+    const cssWidth = Math.max(1, Math.round(container?.clientWidth || window.innerWidth));
 
-    const ratio = 3 / 4; // width/height в портрете
-    let widthCss = cssWidth;
-    let heightCss = Math.round(widthCss / ratio);
+    const ratio = this.resolveDeviceAspectRatio();
+    this.updatePreviewAspect(container, ratio);
 
-    if (heightCss > cssHeight) {
-      heightCss = cssHeight;
-      widthCss = Math.round(heightCss * ratio);
-    }
+    const heightCss = Math.max(1, Math.round(cssWidth / ratio));
 
     const scale = window.devicePixelRatio || 1;
-    const captureWidth = Math.max(1, Math.round(widthCss * scale));
+    const captureWidth = Math.max(1, Math.round(cssWidth * scale));
     const captureHeight = Math.max(1, Math.round(heightCss * scale));
 
     return {
-      cssWidth: widthCss,
+      cssWidth,
       cssHeight: heightCss,
       captureWidth,
       captureHeight
     };
+  }
+
+  private resolveDeviceAspectRatio() {
+    const screen = window.screen;
+    if (screen?.width && screen?.height) {
+      const min = Math.min(screen.width, screen.height);
+      const max = Math.max(screen.width, screen.height);
+      const ratio = min / max;
+      if (ratio > 0.4 && ratio < 1.1) {
+        return ratio;
+      }
+    }
+    return 3 / 4;
+  }
+
+  private updatePreviewAspect(container: HTMLElement | undefined, ratio: number) {
+    container?.style.setProperty("--camera-aspect", ratio.toString());
   }
 
 
@@ -404,11 +418,9 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async captureFromPreview() {
-    const { captureWidth, captureHeight } = this.resolvePreviewSize();
+    this.resolvePreviewSize();
     const picOpts: CameraPreviewPictureOptions = {
-      quality: 90,
-      width: captureWidth,
-      height: captureHeight
+      quality: 90
     };
     try {
       const r = await CameraPreview.capture(picOpts); // { value: base64 }
