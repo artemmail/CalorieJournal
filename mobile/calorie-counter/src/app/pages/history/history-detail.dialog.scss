@@ -52,16 +52,20 @@
 
 .meta-row {
   display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: flex-start;
+  column-gap: 6px;
+  row-gap: 2px;
+  flex-wrap: wrap;
   font-size: 15px;
   line-height: 1.25;
   font-weight: 500;
 }
 
 .meta-left { opacity: .9; }
-.meta-right { opacity: .85; font-weight: 500; }
-.meta-row .dot { opacity: .5; }
+.meta-right {
+  opacity: .85;
+  font-weight: 500;
+}
 
 .chips {
   display: flex;

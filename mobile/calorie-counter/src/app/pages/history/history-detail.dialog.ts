@@ -53,8 +53,20 @@ export class HistoryDetailDialogComponent implements OnInit {
     this.fitDialog();
   }
 
-  time(s: string) {
-    return new Date(s).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  formatDateTime(value: string) {
+    if (!value) {
+      return '—';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+
+    return date.toLocaleString([], {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
   }
 
   /** Аккуратно подгоняет высоту диалога под контент */
