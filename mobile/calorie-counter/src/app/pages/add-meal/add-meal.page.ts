@@ -313,15 +313,15 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private async startPreview() {
     if (this.previewActive || this.previewStarting) return;
     this.previewStarting = true;
-    const { width, height } = this.resolvePreviewSize();
+    const { cssWidth, cssHeight } = this.resolvePreviewSize();
     const opts: CameraPreviewOptions = {
       parent: "cameraPreview",
       className: "cameraPreview",
       position: "rear",
       disableAudio: true,
       toBack: false,
-      width,
-      height,
+      width: cssWidth,
+      height: cssHeight,
       disableExifHeaderStripping: false
     };
     try {
@@ -363,11 +363,16 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const scale = window.devicePixelRatio || 1;
-    const width = Math.max(1, Math.round(widthCss * scale));
-    const height = Math.max(1, Math.round(heightCss * scale));
+    const captureWidth = Math.max(1, Math.round(widthCss * scale));
+    const captureHeight = Math.max(1, Math.round(heightCss * scale));
 
-    return { width, height };
-}
+    return {
+      cssWidth: widthCss,
+      cssHeight: heightCss,
+      captureWidth,
+      captureHeight
+    };
+  }
 
 
   private async startPreviewWithFallback() {
@@ -399,8 +404,12 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async captureFromPreview() {
-    const { width, height } = this.resolvePreviewSize();
-    const picOpts: CameraPreviewPictureOptions = { quality: 90, width, height };
+    const { captureWidth, captureHeight } = this.resolvePreviewSize();
+    const picOpts: CameraPreviewPictureOptions = {
+      quality: 90,
+      width: captureWidth,
+      height: captureHeight
+    };
     try {
       const r = await CameraPreview.capture(picOpts); // { value: base64 }
       if (r?.value) {
