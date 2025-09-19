@@ -11,16 +11,6 @@
     [formControl]="control">
   </textarea>
 
-  <!-- Кнопка очистки -->
-  <button *ngIf="hasValue"
-          class="chatgpt-input__clear"
-          mat-icon-button
-          type="button"
-          aria-label="Очистить"
-          (click)="onClear($event)">
-    <mat-icon>close</mat-icon>
-  </button>
-
   <!-- Микрофон — фиксирован в правом нижнем углу контейнера -->
   <button type="button"
           class="chatgpt-input__mic"

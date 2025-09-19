@@ -42,19 +42,6 @@
   color: #9ca3af; /* gray-400 */
 }
 
-/* Кнопка очистки — в правом верхнем углу коробки */
-.chatgpt-input__clear {
-  position: absolute;
-  right: 56px;
-  top: 10px;
-  width: 28px;
-  height: 28px;
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* Микрофон — круглая кнопка в правом нижнем углу */
 .chatgpt-input__mic {
   position: absolute;
