@@ -12,16 +12,23 @@ export class VoiceService {
     } catch { return false; }
   }
 
-  async ensurePermission() {
-    const status: any = await SpeechRecognition.checkPermissions();
-    const granted = status?.speechRecognition === 'granted' || status?.permission === 'granted';
-    if (!granted) {
-      await SpeechRecognition.requestPermissions();
+  async ensurePermission(): Promise<boolean> {
+    try {
+      const status: any = await SpeechRecognition.checkPermissions();
+      let granted = status?.speechRecognition === 'granted' || status?.permission === 'granted';
+      if (!granted) {
+        const requested: any = await SpeechRecognition.requestPermissions();
+        granted = requested?.speechRecognition === 'granted' || requested?.permission === 'granted';
+      }
+      return !!granted;
+    } catch {
+      return false;
     }
   }
 
   async listenOnce(lang: string = 'ru-RU'): Promise<string> {
-    await this.ensurePermission();
+    const granted = await this.ensurePermission();
+    if (!granted) return '';
     if (this.listening) await SpeechRecognition.stop();
     this.listening = true;
 

@@ -11,6 +11,7 @@ import { MatSnackBar } from "@angular/material/snack-bar";
 import { firstValueFrom } from "rxjs";
 
 import { FoodbotApiService } from "../../services/foodbot-api.service";
+import { VoiceService } from "../../services/voice.service";
 
 @Component({
   selector: "app-voice-input-panel",
@@ -48,7 +49,11 @@ export class VoiceInputPanelComponent implements OnDestroy {
   private recorder?: MediaRecorder;
   private chunks: Blob[] = [];
 
-  constructor(private api: FoodbotApiService, private snack: MatSnackBar) {}
+  constructor(
+    private api: FoodbotApiService,
+    private snack: MatSnackBar,
+    private voice: VoiceService
+  ) {}
 
   onPress(event: Event) {
     event.preventDefault();
@@ -80,6 +85,13 @@ export class VoiceInputPanelComponent implements OnDestroy {
   private async startRecording() {
     if (this.isMicDisabled || this.recorder) return;
     try {
+      const granted = await this.voice.ensurePermission();
+      if (!granted) {
+        this.snack.open("Разрешите доступ к микрофону, чтобы записывать голос", "OK", {
+          duration: 2000
+        });
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.chunks = [];
       const recorder = new MediaRecorder(stream);
@@ -103,7 +115,7 @@ export class VoiceInputPanelComponent implements OnDestroy {
     } catch {
       this.recorder = undefined;
       this.isRecording = false;
-      this.snack.open("Не удалось получить доступ к микрофону", "OK", { duration: 1500 });
+      this.snack.open("Не удалось начать запись с микрофона", "OK", { duration: 1500 });
     }
   }
 
