@@ -1,30 +1,33 @@
-<div class="voice-input-panel">
-  <mat-form-field appearance="outline" class="voice-input-panel__field">
-    <mat-label>{{ label }}</mat-label>
-    <textarea matInput
-              cdkTextareaAutosize
-              [cdkAutosizeMinRows]="minRows"
-              [cdkAutosizeMaxRows]="maxRows"
-              [placeholder]="placeholder"
-              [formControl]="control"></textarea>
-    <button *ngIf="hasValue"
-            mat-icon-button
-            matSuffix
-            type="button"
-            aria-label="Очистить"
-            (click)="onClear($event)">
-      <mat-icon>close</mat-icon>
-    </button>
-  </mat-form-field>
+<div class="chatgpt-input"
+     [class.chatgpt-input--recording]="isRecording"
+     [class.chatgpt-input--disabled]="disabled">
 
+  <textarea
+    class="chatgpt-input__textarea"
+    cdkTextareaAutosize
+    [cdkAutosizeMinRows]="minRows"
+    [cdkAutosizeMaxRows]="maxRows"
+    [placeholder]="placeholder"
+    [formControl]="control">
+  </textarea>
+
+  <!-- Кнопка очистки -->
+  <button *ngIf="hasValue"
+          class="chatgpt-input__clear"
+          mat-icon-button
+          type="button"
+          aria-label="Очистить"
+          (click)="onClear($event)">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <!-- Микрофон — фиксирован в правом нижнем углу контейнера -->
   <button type="button"
-          mat-mini-fab
-          color="primary"
-          class="voice-input-panel__mic"
-          [class.voice-input-panel__mic--recording]="isRecording"
+          class="chatgpt-input__mic"
+          mat-icon-button
           [disabled]="disabled"
-          aria-label="Записать голос"
           [matTooltip]="idleHint"
+          aria-label="Записать голос"
           (mousedown)="onPress($event)"
           (touchstart)="onPress($event)"
           (mouseup)="onRelease()"
@@ -33,9 +36,12 @@
           (touchcancel)="onRelease()">
     <mat-icon>{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
   </button>
+</div>
 
-  <div *ngIf="showHints" class="voice-input-panel__hints">
-    <div class="voice-input-panel__hint" *ngIf="!isRecording">{{ idleHint }}</div>
-    <div class="voice-input-panel__hint voice-input-panel__hint--recording" *ngIf="isRecording">{{ recordingHint }}</div>
+<!-- Подсказки под панелью -->
+<div *ngIf="showHints" class="chatgpt-input__hints">
+  <div class="chatgpt-input__hint" *ngIf="!isRecording">{{ idleHint }}</div>
+  <div class="chatgpt-input__hint chatgpt-input__hint--recording" *ngIf="isRecording">
+    {{ recordingHint }}
   </div>
 </div>

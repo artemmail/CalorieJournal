@@ -1,58 +1,110 @@
-.voice-input-panel {
+:host {
+  display: block;
+}
+
+/* Коробка ввода в стиле ChatGPT */
+.chatgpt-input {
   position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: stretch;
+  background: #fff;
+  border: 1px solid #e5e7eb;        /* slate-200 */
+  border-radius: 28px;               /* «пилюля» */
+  padding: 12px 56px 64px 16px;      /* extra снизу под плавающий микрофон */
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.04),
+    0 2px 6px rgba(0,0,0,.02);
+  transition: border-color .2s, box-shadow .2s, background-color .2s;
 }
 
-.voice-input-panel__field {
+.chatgpt-input:focus-within {
+  border-color: #cbd5e1;             /* slate-300 */
+  box-shadow:
+    0 0 0 3px rgba(59,130,246,.08),  /* фокус-ореол */
+    0 1px 2px rgba(0,0,0,.04),
+    0 2px 6px rgba(0,0,0,.02);
+}
+
+.chatgpt-input--disabled { opacity: .6; }
+
+/* Текстовая область без рамок */
+.chatgpt-input__textarea {
   width: 100%;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font: inherit;
+  line-height: 1.4;
 }
 
-.voice-input-panel__field textarea {
-  min-height: 116px;
-  padding-right: 56px;
+.chatgpt-input__textarea::placeholder {
+  color: #9ca3af; /* gray-400 */
 }
 
-.voice-input-panel__mic {
+/* Кнопка очистки — в правом верхнем углу коробки */
+.chatgpt-input__clear {
   position: absolute;
-  right: 16px;
-  bottom: 24px;
-  z-index: 2;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  right: 56px;
+  top: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.voice-input-panel__mic--recording {
-  animation: pulse 1s ease-in-out infinite;
+/* Микрофон — круглая кнопка в правом нижнем углу */
+.chatgpt-input__mic {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: #f1f5f9; /* slate-100 */
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s, transform .1s ease, box-shadow .2s, border-color .2s;
 }
 
-.voice-input-panel__hints {
+.chatgpt-input__mic:hover:not([disabled]) {
+  transform: scale(1.05);
+  box-shadow: 0 2px 6px rgba(0,0,0,.08);
+}
+
+/* Состояние записи — заливка и «пульс» */
+.chatgpt-input--recording .chatgpt-input__mic {
+  background: var(--mat-primary, #2563eb);
+  color: #fff;
+  border-color: transparent;
+  animation: mic-pulse 1.6s ease-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(37,99,235,.35); }
+  70%  { box-shadow: 0 0 0 14px rgba(37,99,235,0); }
+  100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+}
+
+/* Подсказки под полем */
+.chatgpt-input__hints {
+  margin-top: 6px;
   font-size: 12px;
-  opacity: 0.7;
-  line-height: 1.2;
+  color: #64748b; /* slate-500 */
+  display: flex;
+  gap: 12px;
 }
 
-.voice-input-panel__hint--recording {
-  opacity: 0.9;
+.chatgpt-input__hint--recording {
+  color: #1d4ed8; /* blue-700 */
+  font-weight: 500;
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.45);
-    transform: scale(1);
-  }
-  70% {
-    box-shadow: 0 0 0 12px rgba(244, 67, 54, 0);
-    transform: scale(1.05);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
-    transform: scale(1);
-  }
-}
-
-@media (min-width: 560px) {
-  .voice-input-panel__mic {
-    bottom: 32px;
-  }
+/* Уменьшаем анимации при необходимости */
+@media (prefers-reduced-motion: reduce) {
+  .chatgpt-input--recording .chatgpt-input__mic { animation: none; }
 }
