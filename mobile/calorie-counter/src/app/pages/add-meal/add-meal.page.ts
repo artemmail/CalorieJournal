@@ -8,7 +8,7 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Camera, CameraResultType, CameraSource, type CameraPermissionState, type CameraPermissionType } from "@capacitor/camera";
 import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from "@capacitor-community/camera-preview";
 
 import { firstValueFrom, Subscription } from "rxjs";
@@ -390,6 +390,14 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
 
   private async startPreviewWithFallback() {
+    const hasPermission = await this.ensureCameraPermission();
+    if (!hasPermission) {
+      this.previewActive = false;
+      this.snack.open("Доступ к камере не предоставлен. Откроется системная камера.", "OK", { duration: 2500 });
+      await this.takePhotoSystem();
+      return;
+    }
+
     try {
       await this.startPreview();
     } catch (err) {
@@ -524,5 +532,23 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     if (!err) return false;
     const maybeMessage = (err as { message?: string; errorMessage?: string }).message ?? (err as { message?: string; errorMessage?: string }).errorMessage;
     return typeof maybeMessage === "string" && /denied|perm/i.test(maybeMessage);
+  }
+
+  private async ensureCameraPermission(): Promise<boolean> {
+    try {
+      const current = await Camera.checkPermissions();
+      if (this.isCameraPermissionGranted(current.camera)) {
+        return true;
+      }
+      const requested = await Camera.requestPermissions({ permissions: ["camera"] as CameraPermissionType[] });
+      return this.isCameraPermissionGranted(requested.camera);
+    } catch (err) {
+      console.error("Failed to obtain camera permission", err);
+      return false;
+    }
+  }
+
+  private isCameraPermissionGranted(state: CameraPermissionState | undefined): boolean {
+    return state === "granted" || state === "limited";
   }
 }
