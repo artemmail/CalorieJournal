@@ -331,7 +331,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private resolvePreviewSize() {
+  private resolvePreviewSize1() {
     const fallback = {
       width: Math.max(1, Math.round(window.innerWidth || 0)),
       height: Math.max(1, Math.round(window.innerHeight || 0))
@@ -346,6 +346,23 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       height: height > 0 ? height : fallback.height
     };
   }
+
+  private resolvePreviewSize() {
+    const el = this.previewBox?.nativeElement;
+    const w = Math.round(el?.clientWidth || window.innerWidth);
+    const hAvail = Math.round(el?.clientHeight || window.innerHeight);
+
+    const ratio = 3 / 4; // width/height в портрете
+    let width = w;
+    let height = Math.round(w / ratio);
+
+    if (height > hAvail) {
+      height = hAvail;
+      width = Math.round(hAvail * ratio);
+    }
+    return { width, height };
+}
+
 
   private async startPreviewWithFallback() {
     try {
