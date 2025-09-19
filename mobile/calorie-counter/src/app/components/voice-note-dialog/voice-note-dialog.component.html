@@ -4,18 +4,20 @@
   </h2>
 
   <div mat-dialog-content class="dialog-content">
-    <mat-form-field appearance="outline" class="note-field">
-      <mat-label>{{ isHistoryClarify ? 'Текст' : 'Описание' }}</mat-label>
-      <textarea matInput
-                formControlName="note"
-                cdkTextareaAutosize
-                [attr.rows]="isHistoryClarify ? null : 4"
-                cdkAutosizeMinRows="4"
-                cdkAutosizeMaxRows="12"></textarea>
-      <button *ngIf="noteControl?.value" mat-icon-button matSuffix aria-label="Очистить" (click)="clearNote()">
-        <mat-icon>close</mat-icon>
-      </button>
-    </mat-form-field>
+    <app-voice-input-panel
+      class="voice-input"
+      [label]="isHistoryClarify ? 'Текст' : 'Описание'"
+      [control]="noteControl!"
+      [isRecording]="!!recorder"
+      [disabled]="transcribing"
+      [minRows]="4"
+      [maxRows]="12"
+      [idleHint]="'Удерживайте для записи'"
+      [recordingHint]="'Запись… отпустите, чтобы остановить'"
+      (cleared)="clearNote()"
+      (startRecord)="startRecord($event)"
+      (stopRecord)="stopRecord()">
+    </app-voice-input-panel>
 
     <mat-form-field appearance="outline" class="time-field">
       <mat-label>{{ isHistoryClarify ? 'Время' : 'Дата и время' }}</mat-label>
@@ -24,33 +26,6 @@
              formControlName="timestamp" />
       <mat-icon *ngIf="isHistoryClarify" matSuffix>schedule</mat-icon>
     </mat-form-field>
-
-    <div class="mic" [class.inline]="isHistoryClarify">
-      <button *ngIf="!isHistoryClarify"
-              mat-fab color="primary"
-              matTooltip="Удерживайте для записи"
-              aria-label="Записать голос"
-              (mousedown)="startRecord($event)" (touchstart)="startRecord($event)"
-              (mouseup)="stopRecord()" (mouseleave)="stopRecord()"
-              (touchend)="stopRecord()" (touchcancel)="stopRecord()"
-              [class.recording]="!!recorder" [disabled]="transcribing">
-        <mat-icon>{{ recorder ? 'mic' : 'mic_none' }}</mat-icon>
-      </button>
-
-      <button *ngIf="isHistoryClarify"
-              mat-icon-button color="primary"
-              matTooltip="Удерживайте для записи"
-              aria-label="Записать голос"
-              (mousedown)="startRecord($event)" (touchstart)="startRecord($event)"
-              (mouseup)="stopRecord()" (mouseleave)="stopRecord()"
-              (touchend)="stopRecord()" (touchcancel)="stopRecord()"
-              [class.recording]="!!recorder" [disabled]="transcribing">
-        <mat-icon>{{ recorder ? 'mic' : 'mic_none' }}</mat-icon>
-      </button>
-
-      <div class="hint" *ngIf="!recorder">Удерживайте для записи</div>
-      <div class="hint recording" *ngIf="recorder">Запись… отпустите, чтобы остановить</div>
-    </div>
 
     <mat-progress-bar *ngIf="transcribing" mode="indeterminate"></mat-progress-bar>
 

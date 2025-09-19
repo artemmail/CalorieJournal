@@ -1,6 +1,6 @@
 import { Component, Inject, OnDestroy } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { FormBuilder, FormGroup, ReactiveFormsModule } from "@angular/forms";
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -8,13 +8,12 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { TextFieldModule } from "@angular/cdk/text-field";
 import { firstValueFrom } from "rxjs";
 
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { ClarifyResult } from "../../services/foodbot-api.types";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../confirm-dialog/confirm-dialog.component";
+import { VoiceInputPanelComponent } from "../voice-input-panel/voice-input-panel.component";
 
 type AddMealVoiceNoteData = { title: string; kind: "addMeal" };
 type HistoryVoiceNoteData = { title: string; kind: "historyClarify"; mealId: number; createdAtUtc: string; note?: string };
@@ -29,8 +28,8 @@ export type VoiceNoteDialogData = AddMealVoiceNoteData | HistoryVoiceNoteData | 
     CommonModule,
     ReactiveFormsModule,
     MatButtonModule, MatDialogModule, MatFormFieldModule,
-    MatIconModule, MatInputModule, MatProgressBarModule, MatSnackBarModule, MatTooltipModule,
-    TextFieldModule
+    MatIconModule, MatInputModule, MatProgressBarModule, MatSnackBarModule,
+    VoiceInputPanelComponent
   ],
   templateUrl: "./voice-note-dialog.component.html",
   styleUrls: ["./voice-note-dialog.component.scss"]
@@ -86,8 +85,8 @@ export class VoiceNoteDialogComponent implements OnDestroy {
     }
   }
 
-  get noteControl() {
-    return this.form.get("note");
+  get noteControl(): FormControl<string | null> | null {
+    return this.form.get("note") as FormControl<string | null> | null;
   }
 
   get timestampControl() {
