@@ -34,6 +34,11 @@ type ClarifyPreviewInfo = {
   queued: boolean;
 };
 
+type NextClarifyDraft = {
+  note?: string;
+  time?: string;
+};
+
 @Component({
   selector: "app-add-meal",
   standalone: true,
@@ -59,7 +64,9 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private lastClarifyNote?: string;
   private pendingUpload = false;
   private previousMealId?: number;
+  private pendingClarifyResult?: NextClarifyDraft;
   clarifyPreview?: ClarifyPreviewInfo;
+  nextClarifyDraft?: NextClarifyDraft;
 
   @ViewChild("previewBox")
   private previewBox?: ElementRef<HTMLDivElement>;
@@ -145,6 +152,33 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     } finally {
       this.clarifyLoading = false;
     }
+  }
+
+  openNextClarifyDialog() {
+    const dialogRef = this.dialog.open(VoiceNoteDialogComponent, {
+      width: "min(480px, 90vw)",
+      maxWidth: "90vw",
+      autoFocus: false,
+      restoreFocus: false,
+      data: {
+        title: "Уточнение к следующему фото",
+        kind: "photoClarify" as const,
+        note: this.nextClarifyDraft?.note,
+        time: this.nextClarifyDraft?.time
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (!result || typeof result === "boolean") return;
+      const trimmed = result.note?.trim();
+      const note = trimmed ? trimmed : undefined;
+      const time = result.time ? result.time : undefined;
+      if (!note && !time) {
+        this.nextClarifyDraft = undefined;
+        return;
+      }
+      this.nextClarifyDraft = { note, time };
+    });
   }
 
   private handleClarifyDialogClose(
@@ -276,6 +310,15 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     this.previousMealId = item.id;
     this.pendingUpload = false;
     this.lastMealDetails = undefined;
+    const pendingClarify = this.pendingClarifyResult;
+    if (pendingClarify) {
+      const noteValue = pendingClarify.note;
+      const timeValue = pendingClarify.time ?? item.createdAtUtc;
+      this.lastClarifyNote = noteValue ? noteValue : undefined;
+      this.setClarifyPreview(this.lastClarifyNote, item.id, timeValue, false);
+      this.pendingClarifyResult = undefined;
+      return;
+    }
     if (this.clarifyPreview?.mealId !== item.id) {
       this.clarifyPreview = undefined;
       this.lastClarifyNote = undefined;
@@ -407,7 +450,14 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     const file = b64toFile(b64, `meal_${Date.now()}.jpg`);
     this.uploadProgress = 0;
     this.progressMode = "determinate";
-    this.api.uploadPhoto(file).subscribe({
+    const previousPendingClarify = this.pendingClarifyResult;
+    const clarifyDraft = this.nextClarifyDraft;
+    const noteToSend = clarifyDraft?.note;
+    const timeToSend = clarifyDraft?.time;
+    this.pendingClarifyResult = noteToSend || timeToSend ? { note: noteToSend, time: timeToSend } : undefined;
+    this.nextClarifyDraft = undefined;
+
+    this.api.uploadPhoto(file, noteToSend, timeToSend).subscribe({
       next: (event) => {
         if (event.type === HttpEventType.UploadProgress && event.total) {
           this.uploadProgress = Math.round(100 * event.loaded / event.total);
@@ -421,6 +471,12 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         this.uploadProgress = null;
         this.pendingUpload = false;
         void this.refreshLatestMeal();
+        if (clarifyDraft) {
+          this.nextClarifyDraft = clarifyDraft;
+          this.pendingClarifyResult = { note: noteToSend, time: timeToSend };
+        } else {
+          this.pendingClarifyResult = previousPendingClarify;
+        }
         this.snack.open("Не удалось отправить фото", "OK", { duration: 2000 });
       }
     });

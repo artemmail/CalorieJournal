@@ -7,6 +7,10 @@
       <span>Наведите камеру на блюдо и нажмите на кнопку, чтобы сделать снимок.</span>
     </div>
     <div class="preview-controls">
+      <button mat-mini-fab color="accent" (click)="openNextClarifyDialog()"
+              matTooltip="Добавить уточнение к следующему фото" aria-label="Уточнение к следующему фото">
+        <mat-icon>note_add</mat-icon>
+      </button>
       <button mat-mini-fab color="accent" (click)="openClarifyDialog()" [disabled]="clarifyLoading"
               matTooltip="Изменить время или уточнение последнего фото" aria-label="Редактировать уточнение">
         <mat-icon>edit</mat-icon>
@@ -26,6 +30,10 @@
       <span>Предпросмотр недоступен. Попробуйте включить его снова или воспользуйтесь системной камерой.</span>
     </div>
     <div class="preview-controls">
+      <button mat-mini-fab color="accent" (click)="openNextClarifyDialog()"
+              matTooltip="Добавить уточнение к следующему фото" aria-label="Уточнение к следующему фото">
+        <mat-icon>note_add</mat-icon>
+      </button>
       <button mat-raised-button color="primary" (click)="retryPreview()">
         <mat-icon>autorenew</mat-icon>
         Повторить попытку
@@ -46,6 +54,26 @@
 
 <div class="last-shot" *ngIf="photoDataUrl">
   <img [src]="photoDataUrl" alt="snapshot" />
+</div>
+
+<div class="clarify-preview" *ngIf="nextClarifyDraft as draft">
+  <div class="clarify-preview__header">
+    <mat-icon>note_add</mat-icon>
+    <span>Уточнение к следующему фото</span>
+  </div>
+  <div class="clarify-preview__body">
+    <div class="clarify-preview__row" *ngIf="draft.note">
+      <span class="clarify-preview__label">Текст:</span>
+      <span class="clarify-preview__value">{{ draft.note }}</span>
+    </div>
+    <div class="clarify-preview__row" *ngIf="draft.time">
+      <span class="clarify-preview__label">Время:</span>
+      <span class="clarify-preview__value">{{ draft.time | date: 'HH:mm, d MMMM' }}</span>
+    </div>
+    <div class="clarify-preview__queued">
+      Будет приложено к следующему фото
+    </div>
+  </div>
 </div>
 
 <div class="clarify-preview" *ngIf="clarifyPreview as preview">

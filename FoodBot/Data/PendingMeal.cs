@@ -14,5 +14,6 @@ public class PendingMeal
     public bool GenerateImage { get; set; }
     public int Attempts { get; set; }
     public DateTimeOffset? DesiredMealTimeUtc { get; set; }
+    public string? ClarifyNote { get; set; }
 }
 

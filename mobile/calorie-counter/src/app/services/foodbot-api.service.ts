@@ -33,9 +33,11 @@ export class FoodbotApiService {
   }
 
   // Загрузка фото
-  uploadPhoto(file: File): Observable<HttpEvent<{ queued: boolean }>> {
+  uploadPhoto(file: File, note?: string, time?: string): Observable<HttpEvent<{ queued: boolean }>> {
     const form = new FormData();
     form.append("image", file, file.name);
+    if (note) form.append("note", note);
+    if (time) form.append("time", time);
     return this.http.post<{ queued: boolean }>(
       `${this.baseUrl}/api/meals/upload`,
       form,
