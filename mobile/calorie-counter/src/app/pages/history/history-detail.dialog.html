@@ -14,9 +14,8 @@
 
   <div class="meta">
     <div class="meta-row">
-      <span class="meta-left">{{ time(data.item.createdAtUtc) }}</span>
-      <span class="dot">·</span>
-      <span class="meta-right">{{ data.item.caloriesKcal ?? '—' }} ккал</span>
+      <span class="meta-left">{{ formatDateTime(data.item.createdAtUtc) }}</span>
+      <span class="meta-right">Калории: {{ data.item.caloriesKcal ?? '—' }} ккал</span>
     </div>
 
     <div class="chips">
