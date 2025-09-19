@@ -8,12 +8,13 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { TextFieldModule } from "@angular/cdk/text-field";
 import { firstValueFrom } from "rxjs";
 
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { ClarifyResult } from "../../services/foodbot-api.types";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../confirm-dialog/confirm-dialog.component";
-import { VoiceInputPanelComponent } from "../voice-input-panel/voice-input-panel.component";
 
 type AddMealVoiceNoteData = { title: string; kind: "addMeal" };
 type HistoryVoiceNoteData = { title: string; kind: "historyClarify"; mealId: number; createdAtUtc: string; note?: string };
@@ -27,9 +28,15 @@ export type VoiceNoteDialogData = AddMealVoiceNoteData | HistoryVoiceNoteData | 
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatButtonModule, MatDialogModule, MatFormFieldModule,
-    MatIconModule, MatInputModule, MatProgressBarModule, MatSnackBarModule,
-    VoiceInputPanelComponent
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressBarModule,
+    MatSnackBarModule,
+    MatTooltipModule,
+    TextFieldModule
   ],
   templateUrl: "./voice-note-dialog.component.html",
   styleUrls: ["./voice-note-dialog.component.scss"]
@@ -45,6 +52,8 @@ export class VoiceNoteDialogComponent implements OnDestroy {
   private initialNote?: string;
   private historyData?: HistoryVoiceNoteData;
   private readonly mode: VoiceNoteDialogData["kind"];
+  readonly idleHint = "Удерживайте для записи";
+  readonly recordingHint = "Запись… отпустите, чтобы остановить";
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: VoiceNoteDialogData,
@@ -95,6 +104,22 @@ export class VoiceNoteDialogComponent implements OnDestroy {
 
   get isHistoryClarify(): boolean {
     return !!this.historyData;
+  }
+
+  get isRecording(): boolean {
+    return !!this.recorder;
+  }
+
+  get hasNoteValue(): boolean {
+    const value = this.noteControl?.value;
+    if (typeof value === "string") {
+      return value.trim().length > 0;
+    }
+    return !!value;
+  }
+
+  get micTooltip(): string {
+    return this.isRecording ? this.recordingHint : this.idleHint;
   }
 
   get canSend(): boolean {

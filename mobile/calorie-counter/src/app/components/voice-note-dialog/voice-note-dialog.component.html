@@ -4,20 +4,45 @@
   </h2>
 
   <div mat-dialog-content class="dialog-content">
-    <app-voice-input-panel
-      class="voice-input"
-      [label]="isHistoryClarify ? 'Текст' : 'Описание'"
-      [control]="noteControl!"
-      [isRecording]="!!recorder"
-      [disabled]="transcribing"
-      [minRows]="4"
-      [maxRows]="12"
-      [idleHint]="'Удерживайте для записи'"
-      [recordingHint]="'Запись… отпустите, чтобы остановить'"
-      (cleared)="clearNote()"
-      (startRecord)="startRecord($event)"
-      (stopRecord)="stopRecord()">
-    </app-voice-input-panel>
+    <div class="note-field">
+      <mat-form-field appearance="outline" class="note-field__form">
+        <mat-label>{{ isHistoryClarify ? 'Текст' : 'Описание' }}</mat-label>
+        <textarea matInput
+                  cdkTextareaAutosize
+                  [cdkAutosizeMinRows]="4"
+                  [cdkAutosizeMaxRows]="12"
+                  [disabled]="transcribing"
+                  [formControl]="noteControl!"></textarea>
+        <button *ngIf="hasNoteValue"
+                mat-icon-button
+                matSuffix
+                type="button"
+                aria-label="Очистить"
+                (click)="clearNote()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <button type="button"
+              class="note-field__mic-button"
+              [class.note-field__mic-button--recording]="isRecording"
+              [disabled]="transcribing"
+              aria-label="Записать голос"
+              [matTooltip]="micTooltip"
+              (mousedown)="startRecord($event)"
+              (touchstart)="startRecord($event)"
+              (mouseup)="stopRecord()"
+              (mouseleave)="stopRecord()"
+              (touchend)="stopRecord()"
+              (touchcancel)="stopRecord()">
+        <mat-icon>{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
+      </button>
+
+      <div class="note-field__hints">
+        <div class="note-field__hint" *ngIf="!isRecording">{{ idleHint }}</div>
+        <div class="note-field__hint note-field__hint--recording" *ngIf="isRecording">{{ recordingHint }}</div>
+      </div>
+    </div>
 
     <mat-form-field appearance="outline" class="time-field">
       <mat-label>{{ isHistoryClarify ? 'Время' : 'Дата и время' }}</mat-label>
