@@ -132,10 +132,12 @@
   .products-table .name { max-width: 240px; }
 }
 
-.buttons {
+.actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 8px;
+  padding-top: 8px;
 
   button {
     display: inline-flex;

@@ -90,18 +90,18 @@
     </table>
   </div>
 
-  <div class="buttons">
-    <button mat-raised-button color="primary" (click)="openClarify()">
-      <mat-icon>edit</mat-icon>
-      <span>Уточнить</span>
-    </button>
-    <button mat-button color="warn" (click)="remove()">
+  <div mat-dialog-actions align="end" class="actions">
+    <button mat-button color="warn" type="button" (click)="remove()">
       <mat-icon>delete</mat-icon>
       <span>Удалить</span>
     </button>
-    <button mat-button (click)="dialogRef.close()">
+    <button mat-button type="button" (click)="dialogRef.close()">
       <mat-icon>close</mat-icon>
       <span>Закрыть</span>
+    </button>
+    <button mat-flat-button color="primary" type="button" (click)="openClarify()">
+      <mat-icon>edit</mat-icon>
+      <span>Уточнить</span>
     </button>
   </div>
 </div>
