@@ -366,7 +366,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
     // Базовые ограничения — задняя камера и без звука
     const base: MediaStreamConstraints = {
-      video: { facingMode: { ideal: "environment" } },
+      video: { facingMode: { ideal: "environment" }, zoom: { ideal: 1 } },
       audio: false
     };
 
@@ -380,6 +380,26 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       }
 
       this.mediaStream = stream!;
+      const [track] = stream.getVideoTracks();
+      if (track && "getCapabilities" in track) {
+        const capabilities = track.getCapabilities() as MediaTrackCapabilities & {
+          zoom?: { min?: number; max?: number };
+        };
+        const zoomCap = capabilities.zoom;
+        if (
+          zoomCap &&
+          typeof zoomCap.min === "number" &&
+          typeof zoomCap.max === "number" &&
+          zoomCap.min <= 1 &&
+          zoomCap.max >= 1
+        ) {
+          try {
+            await track.applyConstraints({ advanced: [{ zoom: 1 }] });
+          } catch {
+            // ignore zoom errors on devices without support
+          }
+        }
+      }
       const video = this.videoEl?.nativeElement;
       if (video) {
         video.srcObject = stream!;
