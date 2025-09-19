@@ -1,3 +1,6 @@
+// =============================
+// File: add-meal.page.ts
+// =============================
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { HttpEventType } from "@angular/common/http";
@@ -9,7 +12,6 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 
 import { Camera, CameraResultType, CameraSource, type CameraPermissionState, type CameraPermissionType } from "@capacitor/camera";
-import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from "@capacitor-community/camera-preview";
 
 import { firstValueFrom, Subscription } from "rxjs";
 
@@ -51,7 +53,7 @@ type NextClarifyDraft = {
   styleUrls: ["./add-meal.page.scss"]
 })
 export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
-  photoDataUrl?: string;    // превью для UI (через pipe convert)
+  photoDataUrl?: string;    // превью для UI (через dataUrl)
   previewActive = false;
   uploadProgress: number | null = null;
   progressMode: "determinate" | "indeterminate" = "determinate";
@@ -65,11 +67,13 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private pendingUpload = false;
   private previousMealId?: number;
   private pendingClarifyResult?: NextClarifyDraft;
+  private mediaStream?: MediaStream; // <— DOM-превью поток
+
   clarifyPreview?: ClarifyPreviewInfo;
   nextClarifyDraft?: NextClarifyDraft;
 
-  @ViewChild("previewBox")
-  private previewBox?: ElementRef<HTMLDivElement>;
+  @ViewChild("previewBox") private previewBox?: ElementRef<HTMLDivElement>;
+  @ViewChild("videoEl") private videoEl?: ElementRef<HTMLVideoElement>;
 
   constructor(
     private api: FoodbotApiService,
@@ -92,7 +96,53 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     await this.stopPreview();
   }
 
-  // системная камера
+    async uploadBase64(b64: string) {
+    // превью
+    this.photoDataUrl = "data:image/jpeg;base64," + b64;
+    this.pendingUpload = true;
+    if (this.lastMeal) {
+      this.previousMealId = this.lastMeal.id;
+    }
+    this.lastMeal = undefined;
+    this.lastMealDetails = undefined;
+    this.lastClarifyNote = undefined;
+    this.clarifyPreview = undefined;
+    // upload
+    const file = b64toFile(b64, `meal_${Date.now()}.jpg`);
+    this.uploadProgress = 0;
+    this.progressMode = "determinate";
+    const previousPendingClarify = this.pendingClarifyResult;
+    const clarifyDraft = this.nextClarifyDraft;
+    const noteToSend = clarifyDraft?.note;
+    const timeToSend = clarifyDraft?.time;
+    this.pendingClarifyResult = noteToSend || timeToSend ? { note: noteToSend, time: timeToSend } : undefined;
+    this.nextClarifyDraft = undefined;
+
+    this.api.uploadPhoto(file, noteToSend, timeToSend).subscribe({
+      next: (event) => {
+        if (event.type === HttpEventType.UploadProgress && event.total) {
+          this.uploadProgress = Math.round(100 * event.loaded / event.total);
+          if (event.loaded === event.total) this.progressMode = "indeterminate";
+        } else if (event.type === HttpEventType.Response) {
+          this.uploadProgress = null;
+          this.snack.open("Фото отправлено. Обработка начнётся скоро.", "OK", { duration: 1500 });
+        }
+      },
+      error: () => {
+        this.uploadProgress = null;
+        this.pendingUpload = false;
+        void this.refreshLatestMeal();
+        if (clarifyDraft) {
+          this.nextClarifyDraft = clarifyDraft;
+          this.pendingClarifyResult = { note: noteToSend, time: timeToSend };
+        } else {
+          this.pendingClarifyResult = previousPendingClarify;
+        }
+        this.snack.open("Не удалось отправить фото", "OK", { duration: 2000 });
+      }
+    });
+  }
+  // системная камера (Capacitor Camera)
   async takePhotoSystem() {
     try {
       const img = await Camera.getPhoto({ quality: 80, resultType: CameraResultType.Base64, source: CameraSource.Camera });
@@ -309,95 +359,46 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     void this.startPreviewWithFallback();
   }
 
-  // превью
-  private async startPreview() {
+  // === DOM preview (WebRTC) ===
+  private async startDomPreview() {
     if (this.previewActive || this.previewStarting) return;
     this.previewStarting = true;
-    const { cssWidth, cssHeight, x, y } = this.resolvePreviewSize();
-    const opts: CameraPreviewOptions = {
-      parent: "cameraPreview",
-      className: "cameraPreview",
-      position: "rear",
-      disableAudio: true,
-      toBack: false,
-      x,
-      y,
-      width: cssWidth,
-      height: cssHeight,
-      disableExifHeaderStripping: false,
-      enableHighResolution: true
+
+    // Базовые ограничения — задняя камера и без звука
+    const base: MediaStreamConstraints = {
+      video: { facingMode: { ideal: "environment" } },
+      audio: false
     };
+
     try {
-      await CameraPreview.start(opts);
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(base);
+      } catch {
+        // Фолбэк: без facingMode (некоторые WebView/устройства)
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+
+      this.mediaStream = stream!;
+      const video = this.videoEl?.nativeElement;
+      if (video) {
+        video.srcObject = stream!;
+        await video.play();
+        // Установим корректную aspect-ratio после получения метаданных
+        const onMeta = () => {
+          const w = video.videoWidth || 3;
+          const h = video.videoHeight || 4;
+          this.previewBox?.nativeElement?.style.setProperty("--camera-aspect", `${w} / ${h}`);
+          video.removeEventListener('loadedmetadata', onMeta);
+        };
+        video.addEventListener('loadedmetadata', onMeta);
+      }
+
       this.previewActive = true;
     } finally {
       this.previewStarting = false;
     }
   }
-
-  private resolvePreviewSize1() {
-    const fallback = {
-      width: Math.max(1, Math.round(window.innerWidth || 0)),
-      height: Math.max(1, Math.round(window.innerHeight || 0))
-    };
-    const el = this.previewBox?.nativeElement;
-    if (!el) return fallback;
-    const rect = el.getBoundingClientRect();
-    const width = Math.round(rect.width);
-    const height = Math.round(rect.height);
-    return {
-      width: width > 0 ? width : fallback.width,
-      height: height > 0 ? height : fallback.height
-    };
-  }
-
-  private resolvePreviewSize() {
-    const el = this.previewBox?.nativeElement;
-    const container = el?.parentElement as HTMLElement | undefined;
-    const rect = el?.getBoundingClientRect();
-    const cssWidth = Math.max(1, Math.round(rect?.width || container?.clientWidth || window.innerWidth));
-
-    const ratio = this.resolveDeviceAspectRatio();
-    this.updatePreviewAspect(container, ratio);
-
-    const heightCss = Math.max(1, Math.round(cssWidth / ratio));
-
-    const scale = window.devicePixelRatio || 1;
-    const captureWidth = Math.max(1, Math.round(cssWidth * scale));
-    const captureHeight = Math.max(1, Math.round(heightCss * scale));
-
-    const scrollLeft = window.scrollX || window.pageXOffset || 0;
-    const scrollTop = window.scrollY || window.pageYOffset || 0;
-    const x = Math.max(0, Math.round((rect?.left || 0) + scrollLeft));
-    const y = Math.max(0, Math.round((rect?.top || 0) + scrollTop));
-
-    return {
-      cssWidth,
-      cssHeight: heightCss,
-      captureWidth,
-      captureHeight,
-      x,
-      y
-    };
-  }
-
-  private resolveDeviceAspectRatio() {
-    const screen = window.screen;
-    if (screen?.width && screen?.height) {
-      const min = Math.min(screen.width, screen.height);
-      const max = Math.max(screen.width, screen.height);
-      const ratio = min / max;
-      if (ratio > 0.4 && ratio < 1.1) {
-        return ratio;
-      }
-    }
-    return 3 / 4;
-  }
-
-  private updatePreviewAspect(container: HTMLElement | undefined, ratio: number) {
-    container?.style.setProperty("--camera-aspect", ratio.toString());
-  }
-
 
   private async startPreviewWithFallback() {
     const hasPermission = await this.ensureCameraPermission();
@@ -409,7 +410,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
-      await this.startPreview();
+      await this.startDomPreview();
     } catch (err) {
       this.previewActive = false;
       if (this.isPermissionError(err)) {
@@ -422,12 +423,16 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async stopPreview() {
-    if (!this.previewActive && !this.previewStarting) return;
     try {
-      await CameraPreview.stop();
-    } catch (err) {
-      if (!this.isPermissionError(err)) {
-        this.snack.open("Не удалось остановить превью камеры", "OK", { duration: 2000 });
+      const video = this.videoEl?.nativeElement;
+      if (video) {
+        video.pause();
+        
+        video.srcObject = null;
+      }
+      if (this.mediaStream) {
+        this.mediaStream.getTracks().forEach(t => t.stop());
+        this.mediaStream = undefined;
       }
     } finally {
       this.previewActive = false;
@@ -436,98 +441,30 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async captureFromPreview() {
-    this.resolvePreviewSize();
-    const picOpts: CameraPreviewPictureOptions = {
-      quality: 90
-    };
+    const video = this.videoEl?.nativeElement;
+    if (!video || !this.previewActive || !this.mediaStream) {
+      await this.takePhotoSystem();
+      return;
+    }
+
     try {
-      const r = await CameraPreview.capture(picOpts); // { value: base64 }
-      if (r?.value) {
-        const normalized = await this.normalizeCapturedImage(r.value);
-        await this.uploadBase64(normalized);
-      }
+      // Создать канвас под реальное разрешение видеопотока
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (!w || !h) throw new Error('Video metadata not ready');
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context failed');
+      ctx.drawImage(video, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const b64 = dataUrl.replace('data:image/jpeg;base64,', '');
+      await this.uploadBase64(b64);
     } catch (err) {
       this.handleCameraError(err, "Не удалось сделать фото");
     }
-  }
-
-  private async normalizeCapturedImage(b64: string): Promise<string> {
-    if (!b64) return b64;
-    if (window.innerWidth >= window.innerHeight) return b64;
-
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        if (img.naturalHeight >= img.naturalWidth) {
-          resolve(b64);
-          return;
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalHeight;
-        canvas.height = img.naturalWidth;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(b64);
-          return;
-        }
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-        const rotated = canvas
-          .toDataURL("image/jpeg", 0.95)
-          .replace("data:image/jpeg;base64,", "");
-        resolve(rotated);
-      };
-      img.onerror = () => resolve(b64);
-      img.src = "data:image/jpeg;base64," + b64;
-    });
-  }
-
-  async uploadBase64(b64: string) {
-    // превью
-    this.photoDataUrl = "data:image/jpeg;base64," + b64;
-    this.pendingUpload = true;
-    if (this.lastMeal) {
-      this.previousMealId = this.lastMeal.id;
-    }
-    this.lastMeal = undefined;
-    this.lastMealDetails = undefined;
-    this.lastClarifyNote = undefined;
-    this.clarifyPreview = undefined;
-    // upload
-    const file = b64toFile(b64, `meal_${Date.now()}.jpg`);
-    this.uploadProgress = 0;
-    this.progressMode = "determinate";
-    const previousPendingClarify = this.pendingClarifyResult;
-    const clarifyDraft = this.nextClarifyDraft;
-    const noteToSend = clarifyDraft?.note;
-    const timeToSend = clarifyDraft?.time;
-    this.pendingClarifyResult = noteToSend || timeToSend ? { note: noteToSend, time: timeToSend } : undefined;
-    this.nextClarifyDraft = undefined;
-
-    this.api.uploadPhoto(file, noteToSend, timeToSend).subscribe({
-      next: (event) => {
-        if (event.type === HttpEventType.UploadProgress && event.total) {
-          this.uploadProgress = Math.round(100 * event.loaded / event.total);
-          if (event.loaded === event.total) this.progressMode = "indeterminate";
-        } else if (event.type === HttpEventType.Response) {
-          this.uploadProgress = null;
-          this.snack.open("Фото отправлено. Обработка начнётся скоро.", "OK", { duration: 1500 });
-        }
-      },
-      error: () => {
-        this.uploadProgress = null;
-        this.pendingUpload = false;
-        void this.refreshLatestMeal();
-        if (clarifyDraft) {
-          this.nextClarifyDraft = clarifyDraft;
-          this.pendingClarifyResult = { note: noteToSend, time: timeToSend };
-        } else {
-          this.pendingClarifyResult = previousPendingClarify;
-        }
-        this.snack.open("Не удалось отправить фото", "OK", { duration: 2000 });
-      }
-    });
   }
 
   private handleCameraError(err: unknown, fallbackMessage: string) {

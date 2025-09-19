@@ -1,5 +1,8 @@
 <div class="camera-container">
-  <div #previewBox id="cameraPreview" class="preview-box"></div>
+  <div #previewBox id="cameraPreview" class="preview-box">
+    <!-- DOM-based camera preview (WebRTC) -->
+    <video #videoEl id="domCamera" class="preview-video" autoplay playsinline muted></video>
+  </div>
 
   <div class="preview-overlay" *ngIf="previewActive">
     <div class="preview-hint">
