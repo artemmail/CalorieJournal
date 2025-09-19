@@ -104,56 +104,6 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  async openClarifyDialog() {
-    if (this.clarifyLoading) return;
-    this.clarifyLoading = true;
-    try {
-      const item = await this.ensureLatestMealForClarify();
-      if (!item) {
-        const message = this.pendingUpload
-          ? "Фото ещё обрабатывается. Попробуйте чуть позже."
-          : "Нет записей для уточнения.";
-        this.snack.open(message, "OK", { duration: 2000 });
-        return;
-      }
-
-      const details = this.lastMealDetails && this.lastMealDetails.id === item.id
-        ? this.lastMealDetails
-        : await firstValueFrom(this.api.getMeal(item.id));
-      this.lastMealDetails = details;
-      this.lastClarifyNote = details.clarifyNote ?? undefined;
-      if (this.clarifyPreview?.mealId !== details.id) {
-        this.clarifyPreview = undefined;
-      }
-
-      const dialogRef = this.dialog.open(VoiceNoteDialogComponent, {
-        width: "min(480px, 90vw)",
-        maxWidth: "90vw",
-        autoFocus: false,
-        restoreFocus: false,
-        data: {
-          title: "Уточнение",
-          kind: "historyClarify",
-          mealId: details.id,
-          createdAtUtc: details.createdAtUtc,
-          note: details.clarifyNote ?? undefined
-        }
-      });
-
-      dialogRef.afterClosed().subscribe(result => {
-        this.handleClarifyDialogClose(result, details.id);
-        if (!this.previewActive) {
-          void this.startPreviewWithFallback();
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      this.snack.open("Не удалось открыть уточнение", "OK", { duration: 2000 });
-    } finally {
-      this.clarifyLoading = false;
-    }
-  }
-
   openNextClarifyDialog() {
     const dialogRef = this.dialog.open(VoiceNoteDialogComponent, {
       width: "min(480px, 90vw)",

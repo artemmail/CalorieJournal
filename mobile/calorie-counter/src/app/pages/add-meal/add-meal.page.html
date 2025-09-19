@@ -10,11 +10,7 @@
       <button mat-mini-fab color="accent" (click)="openNextClarifyDialog()"
               matTooltip="Добавить уточнение к следующему фото" aria-label="Уточнение к следующему фото">
         <mat-icon>note_add</mat-icon>
-      </button>
-      <button mat-mini-fab color="accent" (click)="openClarifyDialog()" [disabled]="clarifyLoading"
-              matTooltip="Изменить время или уточнение последнего фото" aria-label="Редактировать уточнение">
-        <mat-icon>edit</mat-icon>
-      </button>
+      </button>      
       <button mat-fab color="primary" (click)="captureFromPreview()" matTooltip="Сделать фото" aria-label="Сделать фото">
         <mat-icon>camera</mat-icon>
       </button>
@@ -41,11 +37,7 @@
       <button mat-stroked-button color="primary" (click)="takePhotoSystem()">
         <mat-icon>photo_camera</mat-icon>
         Системная камера
-      </button>
-      <button mat-mini-fab color="accent" (click)="openClarifyDialog()" [disabled]="clarifyLoading"
-              matTooltip="Изменить время или уточнение последнего фото" aria-label="Редактировать уточнение">
-        <mat-icon>edit</mat-icon>
-      </button>
+      </button>    
     </div>
   </div>
 </div>
