@@ -313,13 +313,15 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private async startPreview() {
     if (this.previewActive || this.previewStarting) return;
     this.previewStarting = true;
-    const { cssWidth, cssHeight } = this.resolvePreviewSize();
+    const { cssWidth, cssHeight, x, y } = this.resolvePreviewSize();
     const opts: CameraPreviewOptions = {
       parent: "cameraPreview",
       className: "cameraPreview",
       position: "rear",
       disableAudio: true,
       toBack: false,
+      x,
+      y,
       width: cssWidth,
       height: cssHeight,
       disableExifHeaderStripping: false,
@@ -352,7 +354,8 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private resolvePreviewSize() {
     const el = this.previewBox?.nativeElement;
     const container = el?.parentElement as HTMLElement | undefined;
-    const cssWidth = Math.max(1, Math.round(container?.clientWidth || window.innerWidth));
+    const rect = el?.getBoundingClientRect();
+    const cssWidth = Math.max(1, Math.round(rect?.width || container?.clientWidth || window.innerWidth));
 
     const ratio = this.resolveDeviceAspectRatio();
     this.updatePreviewAspect(container, ratio);
@@ -363,11 +366,18 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     const captureWidth = Math.max(1, Math.round(cssWidth * scale));
     const captureHeight = Math.max(1, Math.round(heightCss * scale));
 
+    const scrollLeft = window.scrollX || window.pageXOffset || 0;
+    const scrollTop = window.scrollY || window.pageYOffset || 0;
+    const x = Math.max(0, Math.round((rect?.left || 0) + scrollLeft));
+    const y = Math.max(0, Math.round((rect?.top || 0) + scrollTop));
+
     return {
       cssWidth,
       cssHeight: heightCss,
       captureWidth,
-      captureHeight
+      captureHeight,
+      x,
+      y
     };
   }
 
