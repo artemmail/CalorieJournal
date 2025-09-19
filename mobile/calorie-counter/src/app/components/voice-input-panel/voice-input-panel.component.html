@@ -1,0 +1,41 @@
+<div class="voice-input-panel">
+  <mat-form-field appearance="outline" class="voice-input-panel__field">
+    <mat-label>{{ label }}</mat-label>
+    <textarea matInput
+              cdkTextareaAutosize
+              [cdkAutosizeMinRows]="minRows"
+              [cdkAutosizeMaxRows]="maxRows"
+              [placeholder]="placeholder"
+              [formControl]="control"></textarea>
+    <button *ngIf="hasValue"
+            mat-icon-button
+            matSuffix
+            type="button"
+            aria-label="Очистить"
+            (click)="onClear($event)">
+      <mat-icon>close</mat-icon>
+    </button>
+  </mat-form-field>
+
+  <button type="button"
+          mat-mini-fab
+          color="primary"
+          class="voice-input-panel__mic"
+          [class.voice-input-panel__mic--recording]="isRecording"
+          [disabled]="disabled"
+          aria-label="Записать голос"
+          [matTooltip]="idleHint"
+          (mousedown)="onPress($event)"
+          (touchstart)="onPress($event)"
+          (mouseup)="onRelease()"
+          (mouseleave)="onRelease()"
+          (touchend)="onRelease()"
+          (touchcancel)="onRelease()">
+    <mat-icon>{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
+  </button>
+
+  <div *ngIf="showHints" class="voice-input-panel__hints">
+    <div class="voice-input-panel__hint" *ngIf="!isRecording">{{ idleHint }}</div>
+    <div class="voice-input-panel__hint voice-input-panel__hint--recording" *ngIf="isRecording">{{ recordingHint }}</div>
+  </div>
+</div>
