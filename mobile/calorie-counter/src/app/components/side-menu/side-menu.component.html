@@ -7,10 +7,12 @@
     <mat-icon fontSet="material-icons-outlined" matListItemIcon>add_a_photo</mat-icon>
     <span matListItemTitle>Добавить</span>
   </a>
-  <button mat-list-item type="button" (click)="openAddMealNoteDialog($event)">
-    <mat-icon fontSet="material-icons-outlined" matListItemIcon>edit_note</mat-icon>
-    <span matListItemTitle>Добавить описание</span>
-  </button>
+
+  <a mat-list-item routerLink="/analysis" routerLinkActive="active" (click)="openAddMealNoteDialog($event)">
+    <mat-icon fontSet="material-icons-outlined" matListItemIcon>microphone</mat-icon>
+    <span matListItemTitle>Добавить</span>
+  </a>
+
   <a mat-list-item routerLink="/analysis" routerLinkActive="active" (click)="close.emit()">
     <mat-icon fontSet="material-icons-outlined" matListItemIcon>medical_services</mat-icon>
     <span matListItemTitle>Диетолог</span>
