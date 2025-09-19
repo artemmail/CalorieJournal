@@ -10,7 +10,7 @@
   background: #fff;
   border: 1px solid #e5e7eb;        /* slate-200 */
   border-radius: 28px;               /* «пилюля» */
-  padding: 12px 56px 64px 16px;      /* extra снизу под плавающий микрофон */
+  padding: 12px 16px 64px 16px;      /* extra снизу под плавающий микрофон */
   box-shadow:
     0 1px 2px rgba(0,0,0,.04),
     0 2px 6px rgba(0,0,0,.02);
@@ -36,6 +36,8 @@
   background: transparent;
   font: inherit;
   line-height: 1.4;
+  padding-right: 16px;               /* базовый отступ, без «пустой» колонки */
+  padding-bottom: 56px;              /* чтобы текст не попадал под кнопку микрофона */
 }
 
 .chatgpt-input__textarea::placeholder {
