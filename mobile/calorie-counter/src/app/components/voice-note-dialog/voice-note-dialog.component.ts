@@ -18,8 +18,9 @@ import { ConfirmDialogComponent, ConfirmDialogData } from "../confirm-dialog/con
 
 type AddMealVoiceNoteData = { title: string; kind: "addMeal" };
 type HistoryVoiceNoteData = { title: string; kind: "historyClarify"; mealId: number; createdAtUtc: string; note?: string };
+type PhotoClarifyVoiceNoteData = { title: string; kind: "photoClarify"; note?: string; time?: string };
 
-export type VoiceNoteDialogData = AddMealVoiceNoteData | HistoryVoiceNoteData;
+export type VoiceNoteDialogData = AddMealVoiceNoteData | HistoryVoiceNoteData | PhotoClarifyVoiceNoteData;
 
 @Component({
   selector: "app-voice-note-dialog",
@@ -41,7 +42,10 @@ export class VoiceNoteDialogComponent implements OnDestroy {
   private chunks: Blob[] = [];
   private createdAt?: Date;
   private initialTime?: string;
+  private initialTimestamp?: string;
+  private initialNote?: string;
   private historyData?: HistoryVoiceNoteData;
+  private readonly mode: VoiceNoteDialogData["kind"];
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: VoiceNoteDialogData,
@@ -51,22 +55,34 @@ export class VoiceNoteDialogComponent implements OnDestroy {
     private dialog: MatDialog,
     private dialogRef: MatDialogRef<VoiceNoteDialogComponent>
   ) {
+    this.mode = data.kind;
     if (data.kind === "historyClarify") {
       this.historyData = data;
       this.createdAt = new Date(data.createdAtUtc);
       const pad = (v: number) => v.toString().padStart(2, "0");
       const time = `${pad(this.createdAt.getHours())}:${pad(this.createdAt.getMinutes())}`;
       this.initialTime = time;
+      this.initialNote = (data.note ?? "").trim();
       this.form = this.fb.group({
         note: [data.note ?? ""],
         timestamp: [time]
       });
+    } else if (data.kind === "photoClarify") {
+      const base = data.time ? new Date(data.time) : new Date();
+      this.form = this.fb.group({
+        note: [data.note ?? ""],
+        timestamp: [this.formatDateTimeLocal(base)]
+      });
+      this.initialTimestamp = this.timestampControl?.value as string | null ?? undefined;
+      this.initialNote = (data.note ?? "").trim();
     } else {
       const now = new Date();
       this.form = this.fb.group({
         note: [""],
         timestamp: [this.formatDateTimeLocal(now)]
       });
+      this.initialTimestamp = this.timestampControl?.value as string | null ?? undefined;
+      this.initialNote = "";
     }
   }
 
@@ -89,6 +105,12 @@ export class VoiceNoteDialogComponent implements OnDestroy {
       const currentTime = (this.timestampControl?.value as string | null) ?? "";
       const timeChanged = currentTime !== (this.initialTime ?? "");
       return note.length > 0 || timeChanged;
+    }
+    if (this.mode === "photoClarify") {
+      const currentTime = (this.timestampControl?.value as string | null) ?? "";
+      const timeChanged = currentTime !== (this.initialTimestamp ?? "");
+      const noteChanged = note !== (this.initialNote ?? "");
+      return noteChanged || timeChanged;
     }
     return note.length > 0;
   }
@@ -175,6 +197,8 @@ export class VoiceNoteDialogComponent implements OnDestroy {
     if (!this.canSend) return;
     if (this.isHistoryClarify) {
       this.sendHistoryClarify();
+    } else if (this.mode === "photoClarify") {
+      this.sendPhotoClarify();
     } else {
       this.sendAddMeal();
     }
@@ -195,6 +219,19 @@ export class VoiceNoteDialogComponent implements OnDestroy {
         this.snack.open("Не удалось отправить описание", "OK", { duration: 2000 });
       }
     });
+  }
+
+  private sendPhotoClarify() {
+    const note = ((this.noteControl?.value as string | null) ?? "").trim();
+    const time = this.buildTimestamp();
+    const payload: { note?: string; time?: string } = {};
+    if (note) payload.note = note;
+    if (time) payload.time = time;
+    if (!payload.note && !payload.time) {
+      this.dialogRef.close({ note: undefined, time: undefined });
+      return;
+    }
+    this.dialogRef.close(payload);
   }
 
   private sendHistoryClarify() {

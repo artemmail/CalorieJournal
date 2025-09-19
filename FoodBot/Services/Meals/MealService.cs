@@ -124,9 +124,10 @@ public sealed class MealService : IMealService
         return new(m.ImageBytes, mime);
     }
 
-    public Task QueueImageAsync(long chatId, byte[] bytes, string fileMime, CancellationToken ct)
+    public Task QueueImageAsync(long chatId, byte[] bytes, string fileMime, string? note, DateTimeOffset? desiredTime, CancellationToken ct)
     {
         var utcNow = DateTimeOffset.UtcNow;
+        var desired = (desiredTime ?? utcNow).ToUniversalTime();
         var pending = new PendingMeal
         {
             ChatId = chatId,
@@ -134,7 +135,8 @@ public sealed class MealService : IMealService
             FileMime = fileMime,
             ImageBytes = bytes,
             Attempts = 0,
-            DesiredMealTimeUtc = utcNow
+            DesiredMealTimeUtc = desired,
+            ClarifyNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim()
         };
         return _repo.QueuePendingMealAsync(pending, ct);
     }

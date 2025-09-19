@@ -130,7 +130,10 @@ public sealed class PhotoQueueWorker : BackgroundService
 
                 try
                 {
-                    var conv = await nutrition.AnalyzeAsync(next.ImageBytes, ct: stoppingToken);
+                    var note = string.IsNullOrWhiteSpace(next.ClarifyNote) ? null : next.ClarifyNote.Trim();
+                    var conv = note != null
+                        ? await nutrition.AnalyzeWithNoteAsync(next.ImageBytes, note, ct: stoppingToken)
+                        : await nutrition.AnalyzeAsync(next.ImageBytes, ct: stoppingToken);
                     if (conv != null)
                     {
                         var desiredTime = (next.DesiredMealTimeUtc ?? DateTimeOffset.UtcNow);
@@ -156,7 +159,8 @@ public sealed class PhotoQueueWorker : BackgroundService
                             WeightG = conv.Result.weight_g,
                             Model = "app",
                             Step1Json = JsonSerializer.Serialize(conv.Step1),
-                            ReasoningPrompt = conv.ReasoningPrompt
+                            ReasoningPrompt = conv.ReasoningPrompt,
+                            ClarifyNote = note
                         };
                         db.Meals.Add(entry);
                         db.PendingMeals.Remove(next);

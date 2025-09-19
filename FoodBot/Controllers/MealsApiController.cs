@@ -84,7 +84,11 @@ namespace FoodBot.Controllers
         // POST /api/meals/upload  (multipart/form-data: image)
         [HttpPost("upload")]
         [RequestSizeLimit(30_000_000)]
-        public async Task<IActionResult> Upload([FromForm] IFormFile image, CancellationToken ct)
+        public async Task<IActionResult> Upload(
+            [FromForm] IFormFile image,
+            [FromForm] string? note,
+            [FromForm] string? time,
+            CancellationToken ct)
         {
             if (image == null || image.Length == 0) return BadRequest("image required");
 
@@ -93,7 +97,14 @@ namespace FoodBot.Controllers
             var bytes = ms.ToArray();
 
             var chatId = User.GetChatId();
-            await _meals.QueueImageAsync(chatId, bytes, image.ContentType ?? "image/jpeg", ct);
+            var trimmedNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+            DateTimeOffset? desiredTime = null;
+            if (!string.IsNullOrWhiteSpace(time) && DateTimeOffset.TryParse(time, out var parsedTime))
+            {
+                desiredTime = parsedTime;
+            }
+
+            await _meals.QueueImageAsync(chatId, bytes, image.ContentType ?? "image/jpeg", trimmedNote, desiredTime, ct);
             return Ok(new { queued = true });
         }
 
