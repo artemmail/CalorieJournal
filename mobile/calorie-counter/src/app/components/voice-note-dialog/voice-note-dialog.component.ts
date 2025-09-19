@@ -1,4 +1,4 @@
-import { Component, Inject, OnDestroy } from "@angular/core";
+import { Component, Inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -8,7 +8,6 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { firstValueFrom } from "rxjs";
 
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { ClarifyResult } from "../../services/foodbot-api.types";
@@ -34,11 +33,9 @@ export type VoiceNoteDialogData = AddMealVoiceNoteData | HistoryVoiceNoteData | 
   templateUrl: "./voice-note-dialog.component.html",
   styleUrls: ["./voice-note-dialog.component.scss"]
 })
-export class VoiceNoteDialogComponent implements OnDestroy {
+export class VoiceNoteDialogComponent {
   form: FormGroup;
   transcribing = false;
-  recorder?: MediaRecorder;
-  private chunks: Blob[] = [];
   private createdAt?: Date;
   private initialTime?: string;
   private initialTimestamp?: string;
@@ -146,50 +143,8 @@ export class VoiceNoteDialogComponent implements OnDestroy {
     this.dialogRef.close();
   }
 
-  async startRecord(ev: Event) {
-    ev.preventDefault();
-    if (this.transcribing || this.recorder) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.chunks = [];
-      const recorder = new MediaRecorder(stream);
-      recorder.addEventListener("dataavailable", e => {
-        if (e.data.size > 0) this.chunks.push(e.data);
-      });
-      recorder.addEventListener("stop", () => {
-        stream.getTracks().forEach(t => t.stop());
-      }, { once: true });
-      recorder.start();
-      this.recorder = recorder;
-    } catch {
-      this.recorder = undefined;
-      this.snack.open("Не удалось получить доступ к микрофону", "OK", { duration: 1500 });
-    }
-  }
-
-  async stopRecord() {
-    if (!this.recorder) return;
-    const recorder = this.recorder;
-    this.recorder = undefined;
-    const stopped = new Promise<void>(resolve =>
-      recorder.addEventListener("stop", () => resolve(), { once: true })
-    );
-    recorder.stop();
-    await stopped;
-    const chunks = this.chunks.slice();
-    if (!chunks.length) return;
-
-    this.transcribing = true;
-    try {
-      const blob = new Blob(chunks, { type: "audio/webm" });
-      const file = new File([blob], "voice.webm", { type: blob.type });
-      const r = await firstValueFrom(this.api.transcribeVoice(file));
-      if (r.text) this.noteControl?.setValue(r.text);
-    } catch {
-      this.snack.open("Не удалось распознать речь", "OK", { duration: 1500 });
-    } finally {
-      this.transcribing = false;
-    }
+  onTranscribingChange(value: boolean) {
+    this.transcribing = value;
   }
 
   send() {
@@ -289,18 +244,6 @@ export class VoiceNoteDialogComponent implements OnDestroy {
         error: () => this.snack.open("Не удалось удалить", "OK", { duration: 1500 })
       });
     });
-  }
-
-  ngOnDestroy() {
-    if (this.recorder && this.recorder.state !== "inactive") {
-      try {
-        this.recorder.stop();
-      } catch {
-        // ignore
-      }
-    }
-    this.recorder = undefined;
-    this.chunks = [];
   }
 
   private formatDateTimeLocal(date: Date): string {
