@@ -27,17 +27,6 @@
 
     <mat-progress-bar *ngIf="transcribing" mode="indeterminate"></mat-progress-bar>
 
-    <div class="preview" *ngIf="previewNote || previewTime">
-      <div class="preview__title">Будет отправлено:</div>
-      <div class="preview__row" *ngIf="previewNote">
-        <span class="preview__label">Текст:</span>
-        <span class="preview__value">{{ previewNote }}</span>
-      </div>
-      <div class="preview__row" *ngIf="previewTime as previewTimeValue">
-        <span class="preview__label">Время:</span>
-        <span class="preview__value">{{ previewTimeValue | date: 'HH:mm, d MMMM' }}</span>
-      </div>
-    </div>
   </div>
 
   <div mat-dialog-actions class="actions" [class.actions--history]="isHistoryClarify">
