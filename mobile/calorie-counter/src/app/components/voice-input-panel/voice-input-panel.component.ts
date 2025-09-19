@@ -40,7 +40,6 @@ export class VoiceInputPanelComponent implements OnDestroy {
   @Input() recordingHint = "Запись… отпустите, чтобы остановить";
   @Input() showHints = true;
 
-  @Output() cleared = new EventEmitter<void>();
   @Output() transcribingChange = new EventEmitter<boolean>();
 
   isRecording = false;
@@ -60,18 +59,8 @@ export class VoiceInputPanelComponent implements OnDestroy {
     void this.stopRecording();
   }
 
-  onClear(event: MouseEvent) {
-    event.preventDefault();
-    this.cleared.emit();
-  }
-
   get isMicDisabled(): boolean {
     return this.disabled || this.transcribing;
-  }
-
-  get hasValue(): boolean {
-    const value = this.control.value;
-    return typeof value === "string" ? value.length > 0 : !!value;
   }
 
   ngOnDestroy() {

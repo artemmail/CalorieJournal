@@ -135,10 +135,6 @@ export class VoiceNoteDialogComponent {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  clearNote() {
-    this.noteControl?.setValue("");
-  }
-
   close() {
     this.dialogRef.close();
   }
