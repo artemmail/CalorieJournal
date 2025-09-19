@@ -41,6 +41,14 @@ type NextClarifyDraft = {
   time?: string;
 };
 
+type ZoomMediaTrackConstraints = MediaTrackConstraints & {
+  zoom?: ConstrainDoubleRange;
+};
+
+type ZoomMediaTrackConstraintSet = MediaTrackConstraintSet & {
+  zoom?: number;
+};
+
 @Component({
   selector: "app-add-meal",
   standalone: true,
@@ -365,8 +373,12 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     this.previewStarting = true;
 
     // Базовые ограничения — задняя камера и без звука
+    const videoConstraints: ZoomMediaTrackConstraints = {
+      facingMode: { ideal: "environment" },
+      zoom: { ideal: 1 }
+    };
     const base: MediaStreamConstraints = {
-      video: { facingMode: { ideal: "environment" }, zoom: { ideal: 1 } },
+      video: videoConstraints,
       audio: false
     };
 
@@ -394,7 +406,9 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
           zoomCap.max >= 1
         ) {
           try {
-            await track.applyConstraints({ advanced: [{ zoom: 1 }] });
+            const zoomConstraint: ZoomMediaTrackConstraintSet = { zoom: 1 };
+            const zoomApplyConstraints: MediaTrackConstraints = { advanced: [zoomConstraint] };
+            await track.applyConstraints(zoomApplyConstraints);
           } catch {
             // ignore zoom errors on devices without support
           }
