@@ -1,6 +1,6 @@
 <div class="chatgpt-input"
      [class.chatgpt-input--recording]="isRecording"
-     [class.chatgpt-input--disabled]="disabled">
+     [class.chatgpt-input--disabled]="isMicDisabled">
 
   <textarea
     class="chatgpt-input__textarea"
@@ -25,7 +25,7 @@
   <button type="button"
           class="chatgpt-input__mic"
           mat-icon-button
-          [disabled]="disabled"
+          [disabled]="isMicDisabled"
           [matTooltip]="idleHint"
           aria-label="Записать голос"
           (mousedown)="onPress($event)"

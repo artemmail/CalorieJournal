@@ -8,15 +8,13 @@
       class="voice-input"
       [label]="isHistoryClarify ? 'Текст' : 'Описание'"
       [control]="noteControl!"
-      [isRecording]="!!recorder"
       [disabled]="transcribing"
       [minRows]="4"
       [maxRows]="12"
       [idleHint]="'Удерживайте для записи'"
       [recordingHint]="'Запись… отпустите, чтобы остановить'"
       (cleared)="clearNote()"
-      (startRecord)="startRecord($event)"
-      (stopRecord)="stopRecord()">
+      (transcribingChange)="onTranscribingChange($event)">
     </app-voice-input-panel>
 
     <mat-form-field appearance="outline" class="time-field">
