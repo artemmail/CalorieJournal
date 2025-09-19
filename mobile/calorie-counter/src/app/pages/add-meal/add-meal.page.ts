@@ -321,7 +321,8 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       disableAudio: true,
       toBack: false,
       width,
-      height
+      height,
+      disableExifHeaderStripping: false
     };
     try {
       await CameraPreview.start(opts);
@@ -349,17 +350,22 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
   private resolvePreviewSize() {
     const el = this.previewBox?.nativeElement;
-    const w = Math.round(el?.clientWidth || window.innerWidth);
-    const hAvail = Math.round(el?.clientHeight || window.innerHeight);
+    const cssWidth = Math.max(1, Math.round(el?.clientWidth || window.innerWidth));
+    const cssHeight = Math.max(1, Math.round(el?.clientHeight || window.innerHeight));
 
     const ratio = 3 / 4; // width/height в портрете
-    let width = w;
-    let height = Math.round(w / ratio);
+    let widthCss = cssWidth;
+    let heightCss = Math.round(widthCss / ratio);
 
-    if (height > hAvail) {
-      height = hAvail;
-      width = Math.round(hAvail * ratio);
+    if (heightCss > cssHeight) {
+      heightCss = cssHeight;
+      widthCss = Math.round(heightCss * ratio);
     }
+
+    const scale = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(widthCss * scale));
+    const height = Math.max(1, Math.round(heightCss * scale));
+
     return { width, height };
 }
 
@@ -393,13 +399,49 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async captureFromPreview() {
-    const picOpts: CameraPreviewPictureOptions = { quality: 90 };
+    const { width, height } = this.resolvePreviewSize();
+    const picOpts: CameraPreviewPictureOptions = { quality: 90, width, height };
     try {
       const r = await CameraPreview.capture(picOpts); // { value: base64 }
-      if (r?.value) await this.uploadBase64(r.value);
+      if (r?.value) {
+        const normalized = await this.normalizeCapturedImage(r.value);
+        await this.uploadBase64(normalized);
+      }
     } catch (err) {
       this.handleCameraError(err, "Не удалось сделать фото");
     }
+  }
+
+  private async normalizeCapturedImage(b64: string): Promise<string> {
+    if (!b64) return b64;
+    if (window.innerWidth >= window.innerHeight) return b64;
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalHeight >= img.naturalWidth) {
+          resolve(b64);
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalHeight;
+        canvas.height = img.naturalWidth;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(b64);
+          return;
+        }
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+        const rotated = canvas
+          .toDataURL("image/jpeg", 0.95)
+          .replace("data:image/jpeg;base64,", "");
+        resolve(rotated);
+      };
+      img.onerror = () => resolve(b64);
+      img.src = "data:image/jpeg;base64," + b64;
+    });
   }
 
   async uploadBase64(b64: string) {
