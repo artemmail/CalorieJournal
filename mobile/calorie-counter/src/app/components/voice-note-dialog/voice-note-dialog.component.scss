@@ -25,8 +25,69 @@
   width: 100%;
 }
 
-.voice-input {
-  display: block;
+
+.note-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-field__form {
+  width: 100%;
+}
+
+.note-field__form textarea {
+  min-height: 116px;
+  padding-right: 96px;
+  padding-bottom: 56px;
+}
+
+.note-field__mic-button {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid #111827;
+  background: transparent;
+  color: #111827;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.note-field__mic-button:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.note-field__mic-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.note-field__mic-button--recording {
+  border-color: #f44336;
+  color: #f44336;
+}
+
+.note-field__mic-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.note-field__hints {
+  font-size: 12px;
+  opacity: 0.75;
+  line-height: 1.2;
+  min-height: 18px;
+}
+
+.note-field__hint--recording {
+  color: #f44336;
+  opacity: 0.85;
 }
 
 .actions {
@@ -85,7 +146,7 @@
     align-items: start;
   }
 
-  .voice-input {
+  .note-field {
     grid-column: 1 / -1;
   }
 
