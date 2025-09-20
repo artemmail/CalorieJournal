@@ -96,6 +96,11 @@
   }
 }
 
+.chatgpt-input__spinner {
+  width: 24px;
+  height: 24px;
+}
+
 /* во время записи — явная подсветка микрофона */
 .chatgpt-input--recording .chatgpt-input__mic {
   background: #ef4444 !important;
