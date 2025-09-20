@@ -24,7 +24,12 @@
           (mouseleave)="onRelease()"
           (touchend)="onRelease()"
           (touchcancel)="onRelease()">
-    <mat-icon>{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
+    <mat-icon *ngIf="!transcribing">{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
+    <mat-progress-spinner *ngIf="transcribing"
+                          class="chatgpt-input__spinner"
+                          mode="indeterminate"
+                          diameter="24"
+                          strokeWidth="3"></mat-progress-spinner>
   </button>
 </div>
 

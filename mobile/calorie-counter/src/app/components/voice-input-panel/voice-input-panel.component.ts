@@ -5,6 +5,7 @@ import { MatInputModule } from "@angular/material/input";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { TextFieldModule } from "@angular/cdk/text-field";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { MatSnackBar } from "@angular/material/snack-bar";
@@ -24,7 +25,8 @@ import { VoiceService } from "../../services/voice.service";
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    TextFieldModule
+    TextFieldModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: "./voice-input-panel.component.html",
   styleUrls: ["./voice-input-panel.component.scss"],
