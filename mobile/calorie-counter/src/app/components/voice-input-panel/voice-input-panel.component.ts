@@ -87,13 +87,14 @@ export class VoiceInputPanelComponent implements OnDestroy {
   private async startRecording() {
     if (this.isMicDisabled || this.recorder) return;
     try {
+      /*
       const granted = await this.voice.ensurePermission();
       if (!granted) {
         this.snack.open("Разрешите доступ к микрофону, чтобы записывать голос", "OK", {
           duration: 2000
         });
         return;
-      }
+      }*/
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.chunks = [];
       const recorder = new MediaRecorder(stream);
