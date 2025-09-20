@@ -14,9 +14,16 @@ public class MainActivity extends BridgeActivity {
     setTheme(R.style.AppTheme_NoActionBar);
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     View rootView = findViewById(android.R.id.content);
+    final float density = getResources().getDisplayMetrics().density;
     ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
       int bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
-      bridge.getWebView().evaluateJavascript("document.body.style.paddingBottom='" + bottom + "px';", null);
+      float cssBottom = bottom / density;
+      bridge
+        .getWebView()
+        .evaluateJavascript(
+          "document.body.style.paddingBottom='" + cssBottom + "px';",
+          null
+        );
       return insets;
     });
     ViewCompat.requestApplyInsets(rootView);
