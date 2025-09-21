@@ -90,6 +90,7 @@
   </div>
 
   <div mat-dialog-actions align="end" class="actions">
+
     <button
       type="button"
       class="icon-button icon-button--danger"
@@ -99,17 +100,17 @@
     </button>
     <button
       type="button"
-      class="icon-button icon-button--neutral"
-      (click)="dialogRef.close()"
-      aria-label="Закрыть диалог">
-      <span aria-hidden="true">✕</span>
-    </button>
-    <button
-      type="button"
       class="icon-button icon-button--primary"
       (click)="openClarify()"
       aria-label="Уточнить запись">
       <span aria-hidden="true">✎</span>
+    </button>    
+    <button
+      type="button"
+      class="icon-button icon-button--neutral"
+      (click)="dialogRef.close()"
+      aria-label="Закрыть диалог">
+      <span aria-hidden="true">✕</span>
     </button>
   </div>
 </div>

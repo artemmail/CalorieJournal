@@ -38,19 +38,20 @@
       <span aria-hidden="true">🗑</span>
     </button>
     <span class="spacer" *ngIf="isHistoryClarify"></span>
-    <button
-      type="button"
-      class="icon-button icon-button--neutral"
-      (click)="close()"
-      aria-label="Отменить и закрыть диалог">
-      <span aria-hidden="true">✕</span>
-    </button>
+    
     <button
       type="submit"
       class="icon-button icon-button--primary"
       [disabled]="!canSend"
       aria-label="Отправить описание">
       <span aria-hidden="true">✔</span>
+    </button>
+    <button
+      type="button"
+      class="icon-button icon-button--neutral"
+      (click)="close()"
+      aria-label="Отменить и закрыть диалог">
+      <span aria-hidden="true">✕</span>
     </button>
   </div>
 </form>
