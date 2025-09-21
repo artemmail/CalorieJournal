@@ -390,9 +390,27 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Базовые ограничения — задняя камера и без звука
-    const videoConstraints: ZoomMediaTrackConstraints = preferredDeviceId
+    const videoConstraints: ZoomMediaTrackConstraints = 
+    
+
+
+    
+    
+    preferredDeviceId
       ? { deviceId: { exact: preferredDeviceId }, zoom: { ideal: 1 } }
-      : { facingMode: { ideal: "environment" }, zoom: { ideal: 1 } };
+      :     
+    {
+    facingMode: { ideal: "environment" },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    aspectRatio: { ideal: 16/9 },
+  zoom: { ideal: 1 }
+  };
+
+
+
+
+
     const base: MediaStreamConstraints = {
       video: videoConstraints,
       audio: false
@@ -547,7 +565,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
     const cameras = await this.loadAvailableCameras();
     if (!cameras.length) {
-      alert("Камеры недоступны");
+      //alert("Камеры недоступны");
       return;
     }
 
@@ -559,11 +577,11 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       if (track) {
         await this.alertCameraDetails(nextCamera, track);
       } else {
-        alert(`Камера: ${nextCamera.label || "Неизвестная камера"}`);
+        //alert(`Камера: ${nextCamera.label || "Неизвестная камера"}`);
       }
     } catch (err) {
       console.error("Failed to switch camera", err);
-      alert("Не удалось переключить камеру");
+      //alert("Не удалось переключить камеру");
     }
   }
 
@@ -601,7 +619,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
   private async alertBackCameras() {
     if (!navigator?.mediaDevices?.enumerateDevices) {
-      alert("Браузер не поддерживает перечисление камер");
+      //alert("Браузер не поддерживает перечисление камер");
       return;
     }
 
@@ -612,7 +630,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       );
 
       if (!rearCameras.length) {
-        alert("Задние камеры не найдены");
+        //alert("Задние камеры не найдены");
         return;
       }
 
@@ -623,10 +641,10 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         listParts.push(`${index + 1}. ${label}${zoomInfo ? ` (${zoomInfo})` : ""}`);
       }
       const list = listParts.join("\n");
-      alert(`Доступные задние камеры:\n${list}`);
+      //alert(`Доступные задние камеры:\n${list}`);
     } catch (err) {
       console.error("Failed to enumerate camera devices", err);
-      alert("Не удалось получить список камер");
+      //alert("Не удалось получить список камер");
     }
   }
 
@@ -713,11 +731,15 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       lines.push(`Зум: ${this.normalizeZoomText(zoomRaw)}`);
     }
 
+   lines.push(JSON.stringify(settings.zoom));
+
+   lines.push(JSON.stringify(settings));
+
     if (lines.length === 1) {
       lines.push("Дополнительные характеристики недоступны");
     }
 
-    alert(lines.join("\n"));
+    //alert(lines.join("\n"));
   }
 
   private describeZoomFromTrack(track: MediaStreamTrack): string | null {
