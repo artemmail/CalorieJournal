@@ -445,6 +445,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
     try {
       await this.startDomPreview();
+      void this.alertBackCameras();
     } catch (err) {
       this.previewActive = false;
       if (this.isPermissionError(err)) {
@@ -531,5 +532,38 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
   private isCameraPermissionGranted(state: CameraPermissionState | undefined): boolean {
     return state === "granted" || state === "limited";
+  }
+
+  private async alertBackCameras() {
+    if (!navigator?.mediaDevices?.enumerateDevices) {
+      alert("Браузер не поддерживает перечисление камер");
+      return;
+    }
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const rearCameras = devices.filter(device =>
+        device.kind === "videoinput" && this.isBackCameraLabel(device.label)
+      );
+
+      if (!rearCameras.length) {
+        alert("Задние камеры не найдены");
+        return;
+      }
+
+      const list = rearCameras
+        .map((device, index) => `${index + 1}. ${device.label || "Неизвестная камера"}`)
+        .join("\n");
+      alert(`Доступные задние камеры:\n${list}`);
+    } catch (err) {
+      console.error("Failed to enumerate camera devices", err);
+      alert("Не удалось получить список камер");
+    }
+  }
+
+  private isBackCameraLabel(label: string): boolean {
+    if (!label) return false;
+    const normalized = label.toLowerCase();
+    return ["back", "rear", "environment", "world"].some(token => normalized.includes(token));
   }
 }
