@@ -8,9 +8,12 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { InfiniteScrollModule } from 'ngx-infinite-scroll';
 import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analysis.service';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { AnalysisDateDialogComponent } from './analysis-date-dialog.component';
 
 @Component({
   selector: 'app-analysis',
@@ -26,6 +29,7 @@ import { Router } from '@angular/router';
     MatChipsModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
+    MatDialogModule,
     InfiniteScrollModule
   ],
   templateUrl: './analysis.page.html',
@@ -41,7 +45,12 @@ export class AnalysisPage implements OnInit, OnDestroy {
 
   private timer?: any;
 
-  constructor(private api: AnalysisService, private sb: MatSnackBar, private router: Router) {}
+  constructor(
+    private api: AnalysisService,
+    private sb: MatSnackBar,
+    private router: Router,
+    private dialog: MatDialog
+  ) {}
 
   ngOnInit(): void {
     this.refresh();
@@ -74,10 +83,10 @@ export class AnalysisPage implements OnInit, OnDestroy {
 
   onScrollDown() { this.loadMore(); }
 
-  async create(period: AnalysisPeriod) {
+  async create(period: AnalysisPeriod, date?: Date) {
     try {
       this.loading = true;
-      const res = await this.api.create(period);
+      const res = await this.api.create(period, date ? { date } : undefined);
       if (res.status === 'no_changes') {
         this.sb.open('Новых приёмов пищи не было — отчёт не пересчитывался.', 'OK', { duration: 4000 });
       } else {
@@ -89,6 +98,13 @@ export class AnalysisPage implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
     }
+  }
+
+  async createFromDate() {
+    const ref = this.dialog.open(AnalysisDateDialogComponent);
+    const selected = await firstValueFrom(ref.afterClosed());
+    if (!selected) return;
+    await this.create('day', selected);
   }
 
   open(row: ReportRow) {

@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FoodBot.Models;
@@ -11,7 +12,7 @@ public interface IReportStrategy<TData>
     /// <summary>
     /// Load structured report data for the given chat and period.
     /// </summary>
-    Task<ReportData<TData>> LoadDataAsync(long chatId, CancellationToken ct);
+    Task<ReportData<TData>> LoadDataAsync(long chatId, DateOnly? periodStartLocalDate, CancellationToken ct);
 
     /// <summary>
     /// Build a prompt from the loaded report data.

@@ -43,13 +43,27 @@ public sealed class AnalysisController : ControllerBase
     }
 
     // Создать новый (ставим в очередь, с проверкой checksum)
-    public sealed record CreateReportRequest(AnalysisPeriod period);
+    public sealed record CreateReportRequest(AnalysisPeriod period, DateOnly? date = null);
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateReportRequest req, CancellationToken ct)
     {
         var chatId = User.GetChatId();
-        var (status, report) = await _service.StartReportAsync(chatId, req.period, ct);
+        (string status, AnalysisReport1 report) result;
+
+        if (req.date.HasValue)
+        {
+            if (req.period != AnalysisPeriod.Day)
+                return BadRequest(new { error = "date_not_supported_for_period" });
+
+            result = await _service.StartReportAsync(chatId, req.period, ct, req.date);
+        }
+        else
+        {
+            result = await _service.StartReportAsync(chatId, req.period, ct);
+        }
+
+        var (status, report) = result;
         return Ok(new
         {
             status,

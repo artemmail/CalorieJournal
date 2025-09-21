@@ -18,6 +18,17 @@
       <button mat-menu-item (click)="create('quarter')">Квартал</button>
     </mat-menu>
 
+    <button
+      mat-button
+      class="toolbar-action"
+      color="primary"
+      [disabled]="hasProcessing || loading"
+      (click)="createFromDate()"
+    >
+      <mat-icon>event</mat-icon>
+      <span>Создать от даты</span>
+    </button>
+
     <button mat-button class="toolbar-action" color="accent" (click)="refresh()">
       <mat-icon>refresh</mat-icon>
       <span>Обновить</span>

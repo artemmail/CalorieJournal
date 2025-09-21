@@ -45,12 +45,37 @@ public sealed class DietAnalysisService
     }
 
     /// <summary>Старт генерации отчёта (постановка в очередь) с проверкой checksum.</summary>
-    public async Task<(string status, AnalysisReport1 report)> StartReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    public async Task<(string status, AnalysisReport1 report)> StartReportAsync(
+        long chatId,
+        AnalysisPeriod period,
+        CancellationToken ct,
+        DateOnly? periodStartLocalDateOverride = null)
     {
         var tz = MoscowTz;
         var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
-        var (periodStartUtc, periodHuman, _, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
+
+        DateTime periodStartLocal;
+        DateTimeOffset periodStartUtcOffset;
+
+        if (periodStartLocalDateOverride.HasValue)
+        {
+            periodStartLocal = periodStartLocalDateOverride.Value.ToDateTime(TimeOnly.MinValue);
+            var offset = new DateTimeOffset(periodStartLocal, tz.GetUtcOffset(periodStartLocal));
+            periodStartUtcOffset = offset.ToUniversalTime();
+        }
+        else
+        {
+            (periodStartUtcOffset, _, _, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
+        }
+
         var periodStartLocalDate = DateOnly.FromDateTime(periodStartLocal);
+        DateTime? periodEndUtc = null;
+        if (periodStartLocalDateOverride.HasValue && period == AnalysisPeriod.Day)
+        {
+            var endLocal = periodStartLocal.AddDays(1);
+            var endOffset = new DateTimeOffset(endLocal, tz.GetUtcOffset(endLocal));
+            periodEndUtc = endOffset.UtcDateTime;
+        }
 
         // Уже есть processing этого периода?
         var existingProcessing = await _db.AnalysisReports2
@@ -61,7 +86,7 @@ public sealed class DietAnalysisService
             return ("processing", existingProcessing);
 
         // Посчитать текущую сумму калорий за период
-        var currentChecksum = await ComputeCaloriesChecksum(chatId, periodStartUtc.UtcDateTime, ct);
+        var currentChecksum = await ComputeCaloriesChecksum(chatId, periodStartUtcOffset.UtcDateTime, ct, periodEndUtc);
 
         // Последний готовый отчёт этого периода в этом же периоде дат
         var lastReady = await _db.AnalysisReports2.AsNoTracking()
@@ -115,14 +140,23 @@ public sealed class DietAnalysisService
 
         var tz = MoscowTz;
         var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
-        var (periodStartUtc, _, _, _) = GetPeriodStart(nowLocal, rec.Period, tz);
+        var periodStartLocal = rec.PeriodStartLocalDate.ToDateTime(TimeOnly.MinValue);
+        var periodStartOffset = new DateTimeOffset(periodStartLocal, tz.GetUtcOffset(periodStartLocal));
+        var periodStartUtc = periodStartOffset.ToUniversalTime();
+        DateTime? periodEndUtc = null;
+        if (rec.Period == AnalysisPeriod.Day)
+        {
+            var endLocal = periodStartLocal.AddDays(1);
+            var endOffset = new DateTimeOffset(endLocal, tz.GetUtcOffset(endLocal));
+            periodEndUtc = endOffset.UtcDateTime;
+        }
 
         // Генерация
         try
         {
-            var (markdown, requestJson) = await GenerateReportAsync(rec.ChatId, rec.Period, ct);
+            var (markdown, requestJson) = await GenerateReportAsync(rec.ChatId, rec.Period, ct, rec.PeriodStartLocalDate);
             // Обновить чек-сумму на момент завершения
-            var checksum = await ComputeCaloriesChecksum(rec.ChatId, periodStartUtc.UtcDateTime, ct);
+            var checksum = await ComputeCaloriesChecksum(rec.ChatId, periodStartUtc.UtcDateTime, ct, periodEndUtc);
 
             rec.Markdown = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(rec.Period, nowLocal) : markdown;
             rec.RequestJson = requestJson;
@@ -213,7 +247,7 @@ public sealed class DietAnalysisService
 
         try
         {
-            var (markdown, requestJson) = await GenerateReportAsync(chatId, AnalysisPeriod.Day, ct);
+            var (markdown, requestJson) = await GenerateReportAsync(chatId, AnalysisPeriod.Day, ct, periodStartLocalDate);
             var checksum = await ComputeCaloriesChecksum(chatId, dayStartUtc.UtcDateTime, ct);
 
             rec.Markdown = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(AnalysisPeriod.Day, nowLocal) : markdown;
@@ -303,11 +337,15 @@ public sealed class DietAnalysisService
 
     // === Генерация отчёта (как у тебя), + фоллбэк если пусто ===
 
-    private async Task<(string Markdown, string RequestJson)> GenerateReportAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    private async Task<(string Markdown, string RequestJson)> GenerateReportAsync(
+        long chatId,
+        AnalysisPeriod period,
+        CancellationToken ct,
+        DateOnly? periodStartLocalDate = null)
     {
         if (!_strategies.TryGetValue(period, out var strategy))
             throw new InvalidOperationException($"Strategy for period {period} not registered");
-        var data = await strategy.LoadDataAsync(chatId, ct);
+        var data = await strategy.LoadDataAsync(chatId, periodStartLocalDate, ct);
         var prompt = strategy.BuildPrompt(data);
         var markdown = await strategy.GenerateAsync(prompt, ct);
         return (markdown, prompt);
@@ -347,9 +385,13 @@ $@"# Отчёт ({kind})
 _Автоматический фоллбэк: содержимое не пустое, но LLM не вернул ответ. Попробуй перегенерировать позже или проверить входные данные._";
     }
 
-    private async Task<int> ComputeCaloriesChecksum(long chatId, DateTime periodStartUtc, CancellationToken ct)
+    private async Task<int> ComputeCaloriesChecksum(
+        long chatId,
+        DateTime periodStartUtc,
+        CancellationToken ct,
+        DateTime? periodEndUtc = null)
     {
-        var untilUtc = DateTime.UtcNow;
+        var untilUtc = periodEndUtc ?? DateTime.UtcNow;
         var sum = await _db.Meals.AsNoTracking()
             .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= periodStartUtc && m.CreatedAtUtc <= untilUtc)
             .Select(m => m.CaloriesKcal ?? 0)
