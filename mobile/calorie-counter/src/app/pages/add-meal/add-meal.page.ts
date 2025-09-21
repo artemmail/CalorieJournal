@@ -79,6 +79,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private availableCameras: MediaDeviceInfo[] = [];
   private currentCameraIndex = -1;
   private currentCameraId?: string;
+  private lastPreviewAspect?: number;
 
   clarifyPreview?: ClarifyPreviewInfo;
   nextClarifyDraft?: NextClarifyDraft;
@@ -379,6 +380,33 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // === DOM preview (WebRTC) ===
+  private setPreviewAspect(width?: number | null, height?: number | null, ratio?: number | null) {
+    const host = this.previewBox?.nativeElement;
+    if (!host) return;
+
+    const hasWidth = typeof width === "number" && width > 0;
+    const hasHeight = typeof height === "number" && height > 0;
+    let nextRatio: number | undefined;
+
+    if (hasWidth && hasHeight) {
+      const computedRatio = width / height;
+      if (Number.isFinite(computedRatio) && computedRatio > 0) {
+        host.style.setProperty("--camera-aspect", `${width} / ${height}`);
+        nextRatio = computedRatio;
+      }
+    } else if (typeof ratio === "number" && Number.isFinite(ratio) && ratio > 0) {
+      host.style.setProperty("--camera-aspect", `${ratio}`);
+      nextRatio = ratio;
+    } else if (typeof this.lastPreviewAspect === "number" && this.lastPreviewAspect > 0) {
+      host.style.setProperty("--camera-aspect", `${this.lastPreviewAspect}`);
+      return;
+    }
+
+    if (typeof nextRatio === "number") {
+      this.lastPreviewAspect = nextRatio;
+    }
+  }
+
   private async startDomPreview(preferredDeviceId?: string): Promise<MediaStreamTrack | undefined> {
     if (this.previewStarting) return;
 
@@ -457,16 +485,26 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       }
       const video = this.videoEl?.nativeElement;
       if (video) {
+        const onMeta = () => {
+          this.setPreviewAspect(video.videoWidth || null, video.videoHeight || null);
+          video.removeEventListener("loadedmetadata", onMeta);
+        };
+        video.addEventListener("loadedmetadata", onMeta);
+
+        if (track) {
+          const settings = track.getSettings();
+          this.setPreviewAspect(
+            settings.width ?? null,
+            settings.height ?? null,
+            settings.aspectRatio ?? null
+          );
+        }
+
         video.srcObject = stream!;
         await video.play();
-        // Установим корректную aspect-ratio после получения метаданных
-        const onMeta = () => {
-          const w = video.videoWidth || 3;
-          const h = video.videoHeight || 4;
-          this.previewBox?.nativeElement?.style.setProperty("--camera-aspect", `${w} / ${h}`);
-          video.removeEventListener('loadedmetadata', onMeta);
-        };
-        video.addEventListener('loadedmetadata', onMeta);
+        if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+          onMeta();
+        }
       }
 
       if (track) {
