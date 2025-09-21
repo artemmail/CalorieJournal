@@ -104,7 +104,7 @@ export class AnalysisPage implements OnInit, OnDestroy {
     const ref = this.dialog.open(AnalysisDateDialogComponent);
     const selected = await firstValueFrom(ref.afterClosed());
     if (!selected) return;
-    await this.create('day', selected);
+    await this.create(selected.period, selected.date);
   }
 
   open(row: ReportRow) {
