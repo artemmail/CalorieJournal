@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FoodBot.Models;
@@ -21,8 +22,8 @@ public sealed class ReportStrategy<TData> : IReportStrategy<TData>
 
     public AnalysisPeriod Period { get; }
 
-    public async Task<ReportData<TData>> LoadDataAsync(long chatId, CancellationToken ct)
-        => await _loader.LoadAsync(chatId, Period, ct);
+    public async Task<ReportData<TData>> LoadDataAsync(long chatId, DateOnly? periodStartLocalDate, CancellationToken ct)
+        => await _loader.LoadAsync(chatId, Period, ct, periodStartLocalDate);
 
     public string BuildPrompt(ReportData<TData> data)
         => _promptBuilder.Build(data);

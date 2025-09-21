@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using FoodBot.Data;
 using FoodBot.Models;
@@ -12,12 +13,45 @@ public sealed class ReportDataLoader : ReportDataLoaderBase<ReportPayload>
 
     private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
-    protected override async Task<(ReportPayload Data, string PeriodHuman)> LoadCoreAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    protected override async Task<(ReportPayload Data, string PeriodHuman)> LoadCoreAsync(
+        long chatId,
+        AnalysisPeriod period,
+        CancellationToken ct,
+        DateOnly? periodStartLocalDate = null)
     {
         var tz = MoscowTz;
-        var nowUtc = DateTimeOffset.UtcNow;
-        var nowLocal = TimeZoneInfo.ConvertTime(nowUtc, tz);
-        var (periodStartUtc, periodHuman, _, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
+
+        DateTimeOffset nowLocal;
+        DateTimeOffset nowUtc;
+        DateTimeOffset periodStartUtc;
+        DateTime periodStartLocal;
+        string periodHuman;
+
+        if (periodStartLocalDate.HasValue)
+        {
+            periodStartLocal = periodStartLocalDate.Value.ToDateTime(TimeOnly.MinValue);
+            var startLocalOffset = new DateTimeOffset(periodStartLocal, tz.GetUtcOffset(periodStartLocal));
+            periodStartUtc = startLocalOffset.ToUniversalTime();
+
+            if (period == AnalysisPeriod.Day)
+            {
+                var endLocal = periodStartLocal.AddDays(1).AddTicks(-1);
+                nowLocal = new DateTimeOffset(endLocal, tz.GetUtcOffset(endLocal));
+            }
+            else
+            {
+                nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
+            }
+
+            nowUtc = nowLocal.ToUniversalTime();
+            (_, periodHuman, _, _) = GetPeriodStart(nowLocal, period, tz);
+        }
+        else
+        {
+            nowUtc = DateTimeOffset.UtcNow;
+            nowLocal = TimeZoneInfo.ConvertTime(nowUtc, tz);
+            (periodStartUtc, periodHuman, _, periodStartLocal) = GetPeriodStart(nowLocal, period, tz);
+        }
 
         var card = await _db.PersonalCards
             .AsNoTracking()

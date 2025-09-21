@@ -54,9 +54,14 @@ export class AnalysisService {
   }
 
   /** Создать новый отчёт указанного периода */
-  create(period: AnalysisPeriod): Promise<CreateReportResponse> {
+  create(period: AnalysisPeriod, options?: { date?: Date }): Promise<CreateReportResponse> {
+    const payload: { period: AnalysisPeriod; date?: string } = { period };
+    if (options?.date) {
+      payload.date = this.formatDate(options.date);
+    }
+
     return firstValueFrom(
-      this.http.post<CreateReportResponse>(`${this.baseUrl}/api/analysis`, { period })
+      this.http.post<CreateReportResponse>(`${this.baseUrl}/api/analysis`, payload)
     );
   }
 
@@ -93,5 +98,14 @@ export class AnalysisService {
       filter(x => !!x),
       take(1)
     );
+  }
+
+  private formatDate(date: Date): string {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    const year = normalized.getFullYear();
+    const month = (normalized.getMonth() + 1).toString().padStart(2, '0');
+    const day = normalized.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

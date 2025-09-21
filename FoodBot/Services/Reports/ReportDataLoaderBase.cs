@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,9 +12,13 @@ namespace FoodBot.Services.Reports;
 public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
 {
     /// <inheritdoc />
-    public async Task<ReportData<TData>> LoadAsync(long chatId, AnalysisPeriod period, CancellationToken ct)
+    public async Task<ReportData<TData>> LoadAsync(
+        long chatId,
+        AnalysisPeriod period,
+        CancellationToken ct,
+        DateOnly? periodStartLocalDate = null)
     {
-        var (payload, periodHuman) = await LoadCoreAsync(chatId, period, ct);
+        var (payload, periodHuman) = await LoadCoreAsync(chatId, period, ct, periodStartLocalDate);
         return new ReportData<TData>
         {
             Data = payload,
@@ -25,5 +30,9 @@ public abstract class ReportDataLoaderBase<TData> : IReportDataLoader<TData>
     /// <summary>
     /// Implemented by derived classes to load the payload for the specified chat and period.
     /// </summary>
-    protected abstract Task<(TData Data, string PeriodHuman)> LoadCoreAsync(long chatId, AnalysisPeriod period, CancellationToken ct);
+    protected abstract Task<(TData Data, string PeriodHuman)> LoadCoreAsync(
+        long chatId,
+        AnalysisPeriod period,
+        CancellationToken ct,
+        DateOnly? periodStartLocalDate = null);
 }
