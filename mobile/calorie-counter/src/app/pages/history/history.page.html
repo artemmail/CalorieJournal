@@ -22,8 +22,13 @@
     <mat-card class="meal-card" (click)="openDialog(m)" tabindex="0" aria-label="Открыть карточку приёма">
       <div class="meal-card__grid">
         <!-- Фото без отступов: заполняет всю левую полосу карточки, квадрат по полной высоте -->
-        <div class="meal-card__thumb" *ngIf="m.hasImage && imgUrl(m.id)">
-          <img [src]="imgUrl(m.id)" alt="Фото блюда" loading="lazy" decoding="async">
+        <div class="meal-card__thumb" *ngIf="m.hasImage">
+          <ng-container *ngIf="imgUrl(m.id) as url; else thumbPlaceholder">
+            <img [src]="url" alt="Фото блюда" loading="lazy" decoding="async">
+          </ng-container>
+          <ng-template #thumbPlaceholder>
+            <div class="meal-card__thumb-placeholder" aria-hidden="true"></div>
+          </ng-template>
         </div>
 
         <!-- Контент с внутренними отступами справа -->
