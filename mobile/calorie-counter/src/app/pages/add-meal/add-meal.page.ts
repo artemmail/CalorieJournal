@@ -79,6 +79,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private availableCameras: MediaDeviceInfo[] = [];
   private currentCameraIndex = -1;
   private currentCameraId?: string;
+  private lastPreviewAspect = "16 / 9";
 
   clarifyPreview?: ClarifyPreviewInfo;
   nextClarifyDraft?: NextClarifyDraft;
@@ -379,6 +380,12 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // === DOM preview (WebRTC) ===
+  private applyLastPreviewAspect() {
+    if (!this.previewBox) return;
+    if (!this.lastPreviewAspect) return;
+    this.previewBox.nativeElement.style.setProperty("--camera-aspect", this.lastPreviewAspect);
+  }
+
   private setPreviewAspect(width?: number | null, height?: number | null, ratio?: number | null) {
     const host = this.previewBox?.nativeElement;
     if (!host) return;
@@ -386,14 +393,21 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     const hasWidth = typeof width === "number" && width > 0;
     const hasHeight = typeof height === "number" && height > 0;
 
+    let aspectValue: string | undefined;
+
     if (hasWidth && hasHeight) {
-      host.style.setProperty("--camera-aspect", `${width} / ${height}`);
+      aspectValue = `${width} / ${height}`;
+    } else if (typeof ratio === "number" && Number.isFinite(ratio) && ratio > 0) {
+      aspectValue = `${ratio}`;
+    }
+
+    if (aspectValue) {
+      host.style.setProperty("--camera-aspect", aspectValue);
+      this.lastPreviewAspect = aspectValue;
       return;
     }
 
-    if (typeof ratio === "number" && Number.isFinite(ratio) && ratio > 0) {
-      host.style.setProperty("--camera-aspect", `${ratio}`);
-    }
+    this.applyLastPreviewAspect();
   }
 
   private async startDomPreview(preferredDeviceId?: string): Promise<MediaStreamTrack | undefined> {
@@ -406,8 +420,10 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       this.previewStarting = true;
     }
 
+    this.applyLastPreviewAspect();
+
     // Базовые ограничения — задняя камера и без звука
-    const videoConstraints: ZoomMediaTrackConstraints = 
+    const videoConstraints: ZoomMediaTrackConstraints =
     
 
 
