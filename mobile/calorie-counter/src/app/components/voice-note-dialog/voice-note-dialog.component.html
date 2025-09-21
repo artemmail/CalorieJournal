@@ -29,9 +29,28 @@
   </div>
 
   <div mat-dialog-actions class="actions" [class.actions--history]="isHistoryClarify">
-    <button *ngIf="isHistoryClarify" mat-button color="warn" type="button" (click)="remove()">Удалить</button>
+    <button
+      *ngIf="isHistoryClarify"
+      type="button"
+      class="icon-button icon-button--danger"
+      (click)="remove()"
+      aria-label="Удалить запись">
+      <span aria-hidden="true">🗑</span>
+    </button>
     <span class="spacer" *ngIf="isHistoryClarify"></span>
-    <button mat-button type="button" (click)="close()">Отмена</button>
-    <button mat-flat-button color="primary" type="submit" [disabled]="!canSend">Отправить</button>
+    <button
+      type="button"
+      class="icon-button icon-button--neutral"
+      (click)="close()"
+      aria-label="Отменить и закрыть диалог">
+      <span aria-hidden="true">✕</span>
+    </button>
+    <button
+      type="submit"
+      class="icon-button icon-button--primary"
+      [disabled]="!canSend"
+      aria-label="Отправить описание">
+      <span aria-hidden="true">✔</span>
+    </button>
   </div>
 </form>

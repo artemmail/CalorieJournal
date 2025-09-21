@@ -45,6 +45,51 @@
   flex: 1;
 }
 
+.icon-button {
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #1f2937;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.2s ease;
+}
+
+.icon-button[disabled] {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+}
+
+.icon-button:not([disabled]):active {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.6);
+  outline-offset: 2px;
+}
+
+.icon-button--primary {
+  color: #2563eb;
+}
+
+.icon-button--neutral {
+  color: #4b5563;
+}
+
+.icon-button--danger {
+  color: #dc2626;
+}
+
 .preview {
   border-radius: 12px;
   background: #f5f7fb;
