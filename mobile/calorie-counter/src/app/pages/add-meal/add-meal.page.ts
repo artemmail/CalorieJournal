@@ -392,13 +392,25 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
     const hasWidth = typeof width === "number" && width > 0;
     const hasHeight = typeof height === "number" && height > 0;
+    const preferPortrait = this.shouldPreferPortraitAspect();
 
     let aspectValue: string | undefined;
 
     if (hasWidth && hasHeight) {
-      aspectValue = `${width} / ${height}`;
+      let w = width!;
+      let h = height!;
+
+      if (preferPortrait && w > h) {
+        [w, h] = [h, w];
+      }
+
+      aspectValue = `${w} / ${h}`;
     } else if (typeof ratio === "number" && Number.isFinite(ratio) && ratio > 0) {
-      aspectValue = `${ratio}`;
+      let ratioValue = ratio;
+      if (preferPortrait && ratioValue > 1) {
+        ratioValue = 1 / ratioValue;
+      }
+      aspectValue = `${ratioValue}`;
     }
 
     if (aspectValue) {
@@ -408,6 +420,23 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.applyLastPreviewAspect();
+  }
+
+  private shouldPreferPortraitAspect(): boolean {
+    if (typeof window === "undefined") return false;
+
+    try {
+      if (typeof window.matchMedia === "function") {
+        const query = window.matchMedia("(orientation: portrait)");
+        if (typeof query.matches === "boolean") {
+          return query.matches;
+        }
+      }
+    } catch {
+      // ignore matchMedia issues (e.g., iOS private mode)
+    }
+
+    return window.innerHeight >= window.innerWidth;
   }
 
   private async startDomPreview(preferredDeviceId?: string): Promise<MediaStreamTrack | undefined> {
