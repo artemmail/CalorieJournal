@@ -551,9 +551,13 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      const list = rearCameras
-        .map((device, index) => `${index + 1}. ${device.label || "Неизвестная камера"}`)
-        .join("\n");
+      const listParts: string[] = [];
+      for (const [index, device] of rearCameras.entries()) {
+        const zoomInfo = await this.getCameraZoomDescription(device.deviceId);
+        const label = device.label || "Неизвестная камера";
+        listParts.push(`${index + 1}. ${label}${zoomInfo ? ` (${zoomInfo})` : ""}`);
+      }
+      const list = listParts.join("\n");
       alert(`Доступные задние камеры:\n${list}`);
     } catch (err) {
       console.error("Failed to enumerate camera devices", err);
@@ -565,5 +569,73 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     if (!label) return false;
     const normalized = label.toLowerCase();
     return ["back", "rear", "environment", "world"].some(token => normalized.includes(token));
+  }
+
+  private async getCameraZoomDescription(deviceId: string | undefined): Promise<string | null> {
+    if (!deviceId) return null;
+
+    const currentTrack = this.mediaStream?.getVideoTracks()?.[0];
+    const currentDeviceId = currentTrack?.getSettings()?.deviceId;
+    if (currentTrack && currentDeviceId === deviceId) {
+      const currentZoom = this.describeZoomFromTrack(currentTrack);
+      if (currentZoom) return currentZoom;
+    }
+
+    return await this.probeCameraZoom(deviceId);
+  }
+
+  private describeZoomFromTrack(track: MediaStreamTrack): string | null {
+    if (!("getCapabilities" in track)) return null;
+    const capabilities = track.getCapabilities() as MediaTrackCapabilities & {
+      zoom?: { min?: number; max?: number };
+    };
+    return this.describeZoomCapability(capabilities.zoom);
+  }
+
+  private async probeCameraZoom(deviceId: string): Promise<string | null> {
+    if (!navigator?.mediaDevices?.getUserMedia) return null;
+
+    let stream: MediaStream | undefined;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId } },
+        audio: false
+      });
+      const [track] = stream.getVideoTracks();
+      if (!track) return null;
+      return this.describeZoomFromTrack(track);
+    } catch (err) {
+      console.warn("Failed to probe zoom for camera", deviceId, err);
+      return null;
+    } finally {
+      stream?.getTracks().forEach(track => track.stop());
+    }
+  }
+
+  private describeZoomCapability(zoomCap: { min?: number; max?: number } | undefined): string | null {
+    if (!zoomCap || typeof zoomCap.max !== "number") return null;
+
+    const max = zoomCap.max;
+    if (!Number.isFinite(max) || max <= 1) return null;
+
+    const minRaw = typeof zoomCap.min === "number" ? zoomCap.min : undefined;
+    const min = minRaw && Number.isFinite(minRaw) ? Math.max(1, minRaw) : 1;
+
+    const maxText = this.formatZoomValue(max);
+    if (Math.abs(min - max) < 0.05) {
+      return `zoom ${maxText}x`;
+    }
+
+    if (min <= 1.05) {
+      return `zoom до ${maxText}x`;
+    }
+
+    const minText = this.formatZoomValue(min);
+    return `zoom ${minText}–${maxText}x`;
+  }
+
+  private formatZoomValue(value: number): string {
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
   }
 }
