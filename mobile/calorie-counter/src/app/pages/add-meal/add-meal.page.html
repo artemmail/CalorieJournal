@@ -13,7 +13,11 @@
       <button mat-mini-fab color="accent" (click)="openNextClarifyDialog()"
               matTooltip="Добавить уточнение к следующему фото" aria-label="Уточнение к следующему фото">
         <mat-icon>note_add</mat-icon>
-      </button>      
+      </button>
+      <button mat-mini-fab color="primary" (click)="switchCamera()"
+              matTooltip="Переключить камеру" aria-label="Переключить камеру">
+        <mat-icon>cameraswitch</mat-icon>
+      </button>
       <button mat-fab color="primary" (click)="captureFromPreview()" matTooltip="Сделать фото" aria-label="Сделать фото">
         <mat-icon>camera</mat-icon>
       </button>
@@ -32,6 +36,10 @@
       <button mat-mini-fab color="accent" (click)="openNextClarifyDialog()"
               matTooltip="Добавить уточнение к следующему фото" aria-label="Уточнение к следующему фото">
         <mat-icon>note_add</mat-icon>
+      </button>
+      <button mat-mini-fab color="primary" (click)="switchCamera()"
+              matTooltip="Переключить камеру" aria-label="Переключить камеру">
+        <mat-icon>cameraswitch</mat-icon>
       </button>
       <button mat-raised-button color="primary" (click)="retryPreview()">
         <mat-icon>autorenew</mat-icon>

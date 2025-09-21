@@ -76,6 +76,9 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private previousMealId?: number;
   private pendingClarifyResult?: NextClarifyDraft;
   private mediaStream?: MediaStream; // <— DOM-превью поток
+  private availableCameras: MediaDeviceInfo[] = [];
+  private currentCameraIndex = -1;
+  private currentCameraId?: string;
 
   clarifyPreview?: ClarifyPreviewInfo;
   nextClarifyDraft?: NextClarifyDraft;
@@ -376,15 +379,20 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // === DOM preview (WebRTC) ===
-  private async startDomPreview() {
-    if (this.previewActive || this.previewStarting) return;
+  private async startDomPreview(preferredDeviceId?: string): Promise<MediaStreamTrack | undefined> {
+    if (this.previewStarting) return;
+
     this.previewStarting = true;
 
+    if (this.previewActive) {
+      await this.stopPreview();
+      this.previewStarting = true;
+    }
+
     // Базовые ограничения — задняя камера и без звука
-    const videoConstraints: ZoomMediaTrackConstraints = {
-      facingMode: { ideal: "environment" },
-      zoom: { ideal: 1 }
-    };
+    const videoConstraints: ZoomMediaTrackConstraints = preferredDeviceId
+      ? { deviceId: { exact: preferredDeviceId }, zoom: { ideal: 1 } }
+      : { facingMode: { ideal: "environment" }, zoom: { ideal: 1 } };
     const base: MediaStreamConstraints = {
       video: videoConstraints,
       audio: false
@@ -396,7 +404,14 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         stream = await navigator.mediaDevices.getUserMedia(base);
       } catch {
         // Фолбэк: без facingMode (некоторые WebView/устройства)
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        if (preferredDeviceId) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: preferredDeviceId } },
+            audio: false
+          });
+        } else {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
       }
 
       this.mediaStream = stream!;
@@ -436,7 +451,18 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         video.addEventListener('loadedmetadata', onMeta);
       }
 
+      if (track) {
+        const settings = track.getSettings();
+        const deviceId = settings.deviceId ?? preferredDeviceId;
+        if (deviceId) {
+          this.currentCameraId = deviceId;
+          this.updateCurrentCameraIndex(deviceId);
+        }
+      }
+
       this.previewActive = true;
+      void this.loadAvailableCameras();
+      return track;
     } finally {
       this.previewStarting = false;
     }
@@ -510,6 +536,37 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  async switchCamera() {
+    if (this.previewStarting) return;
+
+    const hasPermission = await this.ensureCameraPermission();
+    if (!hasPermission) {
+      this.snack.open("Доступ к камере не предоставлен", "OK", { duration: 2000 });
+      return;
+    }
+
+    const cameras = await this.loadAvailableCameras();
+    if (!cameras.length) {
+      alert("Камеры недоступны");
+      return;
+    }
+
+    const nextIndex = this.getNextCameraIndex(cameras.length);
+    const nextCamera = cameras[nextIndex];
+
+    try {
+      const track = await this.startDomPreview(nextCamera.deviceId);
+      if (track) {
+        await this.alertCameraDetails(nextCamera, track);
+      } else {
+        alert(`Камера: ${nextCamera.label || "Неизвестная камера"}`);
+      }
+    } catch (err) {
+      console.error("Failed to switch camera", err);
+      alert("Не удалось переключить камеру");
+    }
+  }
+
   private handleCameraError(err: unknown, fallbackMessage: string) {
     if (this.isPermissionError(err)) {
       this.snack.open("Доступ к камере не предоставлен", "OK", { duration: 2000 });
@@ -549,7 +606,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
+      const devices = await this.loadAvailableCameras();
       const rearCameras = devices.filter(device =>
         device.kind === "videoinput" && this.isBackCameraLabel(device.label)
       );
@@ -590,6 +647,77 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return await this.probeCameraZoom(deviceId);
+  }
+
+  private async loadAvailableCameras(): Promise<MediaDeviceInfo[]> {
+    if (!navigator?.mediaDevices?.enumerateDevices) {
+      this.availableCameras = [];
+      this.currentCameraIndex = -1;
+      return [];
+    }
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter(device => device.kind === "videoinput");
+      videoInputs.sort((a, b) => this.cameraPriority(b) - this.cameraPriority(a));
+      this.availableCameras = videoInputs;
+      this.updateCurrentCameraIndex(this.currentCameraId);
+      return videoInputs;
+    } catch (err) {
+      console.error("Failed to enumerate camera devices", err);
+      return this.availableCameras;
+    }
+  }
+
+  private cameraPriority(device: MediaDeviceInfo): number {
+    return this.isBackCameraLabel(device.label) ? 2 : 1;
+  }
+
+  private updateCurrentCameraIndex(deviceId: string | undefined) {
+    if (!deviceId) {
+      this.currentCameraIndex = -1;
+      return;
+    }
+    const index = this.availableCameras.findIndex(device => device.deviceId === deviceId);
+    this.currentCameraIndex = index;
+  }
+
+  private getNextCameraIndex(total: number): number {
+    if (!total) return 0;
+    if (this.currentCameraIndex < 0 || this.currentCameraIndex >= total) {
+      return 0;
+    }
+    return (this.currentCameraIndex + 1) % total;
+  }
+
+  private async alertCameraDetails(device: MediaDeviceInfo, track: MediaStreamTrack) {
+    const label = device.label || "Неизвестная камера";
+    const lines: string[] = [`Камера: ${label}`];
+
+    const settings = track.getSettings();
+    const facing = this.extractFacingMode(settings.facingMode);
+    if (facing) {
+      lines.push(`Расположение: ${facing}`);
+    }
+
+    if (typeof settings.width === "number" && typeof settings.height === "number") {
+      lines.push(`Разрешение: ${settings.width}×${settings.height}`);
+    }
+
+    if (typeof settings.frameRate === "number") {
+      lines.push(`Частота кадров: ${this.formatFrameRate(settings.frameRate)} fps`);
+    }
+
+    const zoomRaw = this.describeZoomFromTrack(track) ?? await this.getCameraZoomDescription(device.deviceId);
+    if (zoomRaw) {
+      lines.push(`Зум: ${this.normalizeZoomText(zoomRaw)}`);
+    }
+
+    if (lines.length === 1) {
+      lines.push("Дополнительные характеристики недоступны");
+    }
+
+    alert(lines.join("\n"));
   }
 
   private describeZoomFromTrack(track: MediaStreamTrack): string | null {
@@ -645,5 +773,32 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private formatZoomValue(value: number): string {
     const rounded = Math.round(value * 10) / 10;
     return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
+  }
+
+  private extractFacingMode(mode: string | string[] | undefined): string | null {
+    if (!mode) return null;
+    const value = Array.isArray(mode) ? mode[0] : mode;
+    switch (value) {
+      case "environment":
+        return "тыловая";
+      case "user":
+        return "фронтальная";
+      case "left":
+        return "левая";
+      case "right":
+        return "правая";
+      default:
+        return value;
+    }
+  }
+
+  private formatFrameRate(value: number): string {
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
+  }
+
+  private normalizeZoomText(raw: string): string {
+    const cleaned = raw.replace(/^zoom\s*/i, "").trim();
+    return cleaned || raw;
   }
 }
