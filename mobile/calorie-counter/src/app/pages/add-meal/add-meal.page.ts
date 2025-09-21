@@ -68,6 +68,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   clarifyLoading = false;
 
   private previewStarting = false;
+  private destroyed = false;
   private updatesSub?: Subscription;
   private lastMeal?: MealListItem;
   private lastMealDetails?: MealDetails;
@@ -100,6 +101,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async ngOnDestroy() {
+    this.destroyed = true;
     this.updatesSub?.unsubscribe();
     await this.stopPreview();
   }
@@ -603,20 +605,25 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private async probeCameraZoom(deviceId: string): Promise<string | null> {
     if (!navigator?.mediaDevices?.getUserMedia) return null;
 
-    let stream: MediaStream | undefined;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: deviceId } },
-        audio: false
-      });
-      const [track] = stream.getVideoTracks();
-      if (!track) return null;
-      return this.describeZoomFromTrack(track);
-    } catch (err) {
-      console.warn("Failed to probe zoom for camera", deviceId, err);
+    const firstAttempt = await this.tryProbeCameraZoom(deviceId);
+    if (!firstAttempt.error) {
+      return firstAttempt.zoom;
+    }
+
+    if (!this.mediaStream) {
+      console.warn("Failed to probe zoom for camera", deviceId, firstAttempt.error);
       return null;
+    }
+
+    const resumePreview = await this.pausePreview();
+    try {
+      const secondAttempt = await this.tryProbeCameraZoom(deviceId);
+      if (secondAttempt.error) {
+        console.warn("Failed to probe zoom for camera", deviceId, secondAttempt.error);
+      }
+      return secondAttempt.zoom;
     } finally {
-      stream?.getTracks().forEach(track => track.stop());
+      await resumePreview();
     }
   }
 
@@ -645,5 +652,48 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private formatZoomValue(value: number): string {
     const rounded = Math.round(value * 10) / 10;
     return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
+  }
+
+  private async tryProbeCameraZoom(deviceId: string): Promise<{ zoom: string | null; error?: unknown }> {
+    let stream: MediaStream | undefined;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId } },
+        audio: false
+      });
+    } catch (err) {
+      return { zoom: null, error: err };
+    }
+
+    try {
+      const [track] = stream.getVideoTracks();
+      if (!track) {
+        return { zoom: null };
+      }
+      return { zoom: this.describeZoomFromTrack(track) };
+    } finally {
+      stream?.getTracks().forEach(track => track.stop());
+    }
+  }
+
+  private async pausePreview(): Promise<() => Promise<void>> {
+    if (!this.mediaStream) {
+      return async () => {};
+    }
+
+    await this.stopPreview();
+
+    return async () => {
+      if (this.destroyed || this.previewActive || this.previewStarting) {
+        return;
+      }
+
+      try {
+        await this.startDomPreview();
+      } catch (err) {
+        console.error("Failed to restore camera preview after probe", err);
+        this.snack.open("Не удалось восстановить превью камеры", "OK", { duration: 2000 });
+      }
+    };
   }
 }
