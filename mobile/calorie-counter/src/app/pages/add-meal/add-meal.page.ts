@@ -152,6 +152,10 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
   // системная камера (Capacitor Camera)
   async takePhotoSystem() {
+    const hadDomPreview = this.previewActive || this.previewStarting || !!this.mediaStream;
+    if (hadDomPreview) {
+      await this.stopPreview();
+    }
     try {
       const img = await Camera.getPhoto({ quality: 80, resultType: CameraResultType.Base64, source: CameraSource.Camera });
       if (img.base64String) {
@@ -159,6 +163,10 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       }
     } catch (err) {
       this.handleCameraError(err, "Не удалось сделать фото");
+    } finally {
+      if (hadDomPreview) {
+        await this.startPreviewWithFallback();
+      }
     }
   }
 
