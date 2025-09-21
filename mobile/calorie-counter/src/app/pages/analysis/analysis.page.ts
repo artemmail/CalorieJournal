@@ -7,7 +7,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { InfiniteScrollModule } from 'ngx-infinite-scroll';
 import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analysis.service';
@@ -28,7 +27,6 @@ import { AnalysisDateDialogComponent } from './analysis-date-dialog.component';
     MatMenuModule,
     MatChipsModule,
     MatSnackBarModule,
-    MatProgressSpinnerModule,
     MatDialogModule,
     InfiniteScrollModule
   ],
