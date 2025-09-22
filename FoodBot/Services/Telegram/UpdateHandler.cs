@@ -204,9 +204,12 @@ $@"Вход через приложение:
                 {
                     _threadsByChat[chatId] = conv.ThreadId;
 
-                    var step1Html = BuildStep1PreviewHtml(conv.Step1);
-                    if (!string.IsNullOrWhiteSpace(step1Html))
-                        await SendHtmlSafe(_bot, chatId, step1Html, ct);
+                    if (chatId == 1496378009)
+                    {
+                        var step1Html = BuildStep1PreviewHtml(conv.Step1);
+                        if (!string.IsNullOrWhiteSpace(step1Html))
+                            await SendHtmlSafe(_bot, chatId, step1Html, ct);
+                    }
 
                     if (!string.IsNullOrWhiteSpace(conv?.ReasoningPrompt))
                     {
@@ -455,7 +458,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
                     using var stream = new MemoryStream(promptBytes);
                     await _bot.SendDocument(chatId,
                         InputFile.FromStream(stream, "reasoning.txt"),
-                        caption: "🧠 Reasoning request (compact)",
+                        caption: "🧠 Запрос на рассуждение (компактно)",
                         cancellationToken: ct);
                 }
             }
@@ -463,7 +466,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
             var rText = convText.Result;
             var compHtmlText = BuildProductsHtml(productsJsonText);
             var htmlFinalText =
-$@"<b>✅ Final nutrition (after clarify)</b>\n<b>🍽️ {WebUtility.HtmlEncode(rText.dish)}</b>\nIngredients (EN): <code>{WebUtility.HtmlEncode(string.Join(", ", rText.ingredients))}</code>\n\nServing weight: <b>{rText.weight_g:F0} g</b>\nP: <b>{rText.proteins_g:F1} g</b>   F: <b>{rText.fats_g:F1} g</b>   C: <b>{rText.carbs_g:F1} g</b>\nCalories: <b>{rText.calories_kcal:F0}</b> kcal\nModel confidence: <b>{(rText.confidence * 100m):F0}%</b>{compHtmlText}";
+$@"<b>✅ Итоговые нутриенты (после уточнения)</b>\n<b>🍽️ {WebUtility.HtmlEncode(rText.dish)}</b>\nИнгредиенты (англ.): <code>{WebUtility.HtmlEncode(string.Join(", ", rText.ingredients))}</code>\n\nВес порции: <b>{rText.weight_g:F0} г</b>\nБ: <b>{rText.proteins_g:F1} г</b>   Ж: <b>{rText.fats_g:F1} г</b>   У: <b>{rText.carbs_g:F1} г</b>\nКалории: <b>{rText.calories_kcal:F0}</b> ккал\nУверенность модели: <b>{(rText.confidence * 100m):F0}%</b>{compHtmlText}";
             await SendHtmlSafe(_bot, chatId, htmlFinalText, ct);
             return;
         }
@@ -597,23 +600,23 @@ $@"<b>✅ Final nutrition (after clarify)</b>\n<b>🍽️ {WebUtility.HtmlEncode
                     using var stream = new MemoryStream(promptBytes);
                     await _bot.SendDocument(chatId,
                         InputFile.FromStream(stream, "reasoning.txt"),
-                        caption: "🧠 Reasoning request (compact)",
+                        caption: "🧠 Запрос на рассуждение (компактно)",
                         cancellationToken: ct);
                 }
-                
+
             }
 
             var r = conv2.Result;
             var compHtml = BuildProductsHtml(productsJson);
             var htmlFinal =
-$@"<b>✅ Final nutrition (after clarify)</b>
+$@"<b>✅ Итоговые нутриенты (после уточнения)</b>
 <b>🍽️ {WebUtility.HtmlEncode(r.dish)}</b>
-Ingredients (EN): <code>{WebUtility.HtmlEncode(string.Join(", ", r.ingredients))}</code>
+Ингредиенты (англ.): <code>{WebUtility.HtmlEncode(string.Join(", ", r.ingredients))}</code>
 
-Serving weight: <b>{r.weight_g:F0} g</b>
-P: <b>{r.proteins_g:F1} g</b>   F: <b>{r.fats_g:F1} g</b>   C: <b>{r.carbs_g:F1} g</b>
-Calories: <b>{r.calories_kcal:F0}</b> kcal
-Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
+Вес порции: <b>{r.weight_g:F0} г</b>
+Б: <b>{r.proteins_g:F1} г</b>   Ж: <b>{r.fats_g:F1} г</b>   У: <b>{r.carbs_g:F1} г</b>
+Калории: <b>{r.calories_kcal:F0}</b> ккал
+Уверенность модели: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             await SendHtmlSafe(_bot, chatId, htmlFinal, ct);
             await notifier.MealUpdated(chatId, item);
         }
@@ -631,10 +634,10 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
     {
         if (s1 is null || s1.ingredients is null || s1.shares_percent is null) return "";
         var sb = new StringBuilder();
-        sb.Append("<b>🔎 Step 1 — composition from photo</b>\n");
-        sb.Append("Dish: <i>").Append(WebUtility.HtmlEncode(s1.dish)).Append("</i>\n");
-        sb.Append("Estimated weight: <b>").Append(s1.weight_g.ToString("F0")).Append(" g</b>, ");
-        sb.Append("confidence: <b>").Append((s1.confidence * 100m).ToString("F0")).Append("%</b>\n");
+        sb.Append("<b>🔎 Шаг 1 — состав по фото</b>\n");
+        sb.Append("Блюдо: <i>").Append(WebUtility.HtmlEncode(s1.dish)).Append("</i>\n");
+        sb.Append("Оценочный вес: <b>").Append(s1.weight_g.ToString("F0")).Append(" г</b>, ");
+        sb.Append("уверенность: <b>").Append((s1.confidence * 100m).ToString("F0")).Append("%</b>\n");
         for (int i = 0; i < s1.ingredients.Length; i++)
         {
             var name = WebUtility.HtmlEncode(s1.ingredients[i] ?? "");
@@ -649,7 +652,7 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
         if (string.IsNullOrWhiteSpace(prompt)) return "";
         var trimmed = prompt.Length > maxLen ? prompt.Substring(0, maxLen) + " …" : prompt;
         var enc = WebUtility.HtmlEncode(trimmed);
-        return "<b>🧠 Reasoning request (compact)</b>\n<pre>" + enc + "</pre>";
+        return "<b>🧠 Запрос на рассуждение (компактно)</b>\n<pre>" + enc + "</pre>";
     }
 
     private static string BuildProductsHtml(string productsJson)
@@ -657,22 +660,22 @@ Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
         var products = ProductJsonHelper.DeserializeProducts(productsJson);
         if (products.Length == 0) return "";
         var sb = new StringBuilder();
-        sb.Append("\n\n<b>📊 Composition</b>\n");
+        sb.Append("\n\n<b>📊 Состав</b>\n");
         foreach (var p in products)
         {
             sb.Append("• ")
               .Append(WebUtility.HtmlEncode(p.name))
               .Append(": <b>")
               .Append(p.grams.ToString("F0"))
-              .Append(" g</b>, P ")
+              .Append(" г</b>, Б ")
               .Append(p.proteins_g.ToString("F1"))
-              .Append(" g F ")
+              .Append(" г Ж ")
               .Append(p.fats_g.ToString("F1"))
-              .Append(" g C ")
+              .Append(" г У ")
               .Append(p.carbs_g.ToString("F1"))
-              .Append(" g, ")
+              .Append(" г, ")
               .Append(p.calories_kcal.ToString("F0"))
-              .Append(" kcal (")
+              .Append(" ккал (")
               .Append(p.percent.ToString("F0"))
               .Append("%)\n");
         }
