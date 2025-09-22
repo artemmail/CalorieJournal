@@ -60,6 +60,7 @@ FOODS_JSON (hints; per-100g & kcal_per_g for matched items):
 UNMATCHED: {(string.IsNullOrWhiteSpace(unmatchedList) ? "(none)" : unmatchedList)}
 
 TARGET_WEIGHT_G: {targetWeight}
+все наменования на русском. проверяй на достоверность
 
 Return ONLY:
 {{
