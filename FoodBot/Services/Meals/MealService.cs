@@ -17,8 +17,70 @@ public sealed class MealService : IMealService
         _notifier = notifier;
     }
 
+
     public async Task<MealListResult> ListAsync(long chatId, int limit, int offset, CancellationToken ct)
     {
+        // ===== Ћокальные Ђбезопасныеї хелперы =====
+
+        static string? ComputeIngredientsJson1Safe(string? productsJson)
+        {
+            if (string.IsNullOrWhiteSpace(productsJson))
+                return null;
+
+            // «ащита от аномально больших строк
+            if (productsJson.Length > 1_000_000)
+                return null;
+
+            try
+            {
+                var products = ProductJsonHelper.DeserializeProducts(productsJson);
+                if (products == null)
+                    return null;
+
+                var names = products
+                    .Select(p => p?.name?.Trim())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(128)
+                    .ToArray();
+
+                return names.Length > 0
+                    ? System.Text.Json.JsonSerializer.Serialize(names)
+                    : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        static string[] ParseIngredientsOrEmpty(string? ingredientsJson)
+        {
+            if (string.IsNullOrWhiteSpace(ingredientsJson))
+                return Array.Empty<string>();
+
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<string[]>(ingredientsJson!)
+                       ?? Array.Empty<string>();
+            }
+            catch
+            {
+                return Array.Empty<string>();
+            }
+        }
+
+        static string[] BuildIngredientsArraySafe(string? productsJson, string? fallbackIngredientsJson)
+        {
+            var computed = ComputeIngredientsJson1Safe(productsJson);
+            if (!string.IsNullOrWhiteSpace(computed))
+                return ParseIngredientsOrEmpty(computed);
+
+            return ParseIngredientsOrEmpty(fallbackIngredientsJson);
+        }
+
+        // ===== ќсновной запрос =====
+
         var baseQuery = _repo.Meals
             .AsNoTracking()
             .Where(m => m.ChatId == chatId)
@@ -26,10 +88,16 @@ public sealed class MealService : IMealService
 
         var total = await baseQuery.CountAsync(ct);
 
-        var pendingIds = await _repo.PendingClarifies.AsNoTracking()
+        // MealId тут int Ч приведЄм к long при построении множества
+        var pendingIdsInt = await _repo.PendingClarifies
+            .AsNoTracking()
             .Where(p => p.ChatId == chatId)
-            .Select(p => p.MealId)
+            .Select(p => p.MealId)              // int
             .ToListAsync(ct);
+
+        var pendingSet = pendingIdsInt.Count > 0
+            ? pendingIdsInt.Select(i => (long)i).ToHashSet()
+            : new HashSet<long>();
 
         var rows = await baseQuery
             .Skip(offset)
@@ -59,16 +127,16 @@ public sealed class MealService : IMealService
             r.ProteinsG,
             r.FatsG,
             r.CarbsG,
-            string.IsNullOrWhiteSpace(r.IngredientsJson)
-                ? Array.Empty<string>()
-                : (JsonSerializer.Deserialize<string[]>(r.IngredientsJson!) ?? Array.Empty<string>()),
+            // —начала пробуем вычислить из ProductsJson, иначе Ч парсим исходный IngredientsJson
+            BuildIngredientsArraySafe(r.ProductsJson, r.IngredientsJson),
             ProductJsonHelper.DeserializeProducts(r.ProductsJson),
             r.HasImage,
-            pendingIds.Contains(r.Id)
+            pendingSet.Contains(r.Id) // r.Id Ч long, pendingSet Ч HashSet<long>
         )).ToList();
 
         return new MealListResult(total, offset, limit, items);
     }
+
 
     public async Task<MealDetails?> GetDetailsAsync(long chatId, int id, CancellationToken ct)
     {
@@ -92,6 +160,8 @@ public sealed class MealService : IMealService
 
         var products = ProductJsonHelper.DeserializeProducts(m.ProductsJson);
 
+        var ingredients1 = products.Select(x => x.name).ToArray();
+
         var details = new MealDetails(
             m.Id,
             m.CreatedAtUtc,
@@ -102,7 +172,7 @@ public sealed class MealService : IMealService
             m.FatsG,
             m.CarbsG,
             m.Confidence,
-            ingredients,
+            ingredients1,
             products,
             m.ClarifyNote,
             step1,
