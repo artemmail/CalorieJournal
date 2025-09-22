@@ -216,27 +216,27 @@ $@"Вход через приложение:
                             using var stream = new MemoryStream(promptBytes);
                             await _bot.SendDocument(chatId,
                                 InputFile.FromStream(stream, "reasoning.txt"),
-                                caption: "🧠 Reasoning request (compact)",
+                                caption: "🧠 Запрос на рассуждение (компактно)",
                                 cancellationToken: ct);
                         }
-                       
+
                     }
 
                     var r = conv.Result;
                     var compHtml = BuildProductsHtml(productsJsonEntry!);
                     var htmlFinal =
-$@"<b>✅ Final nutrition (computed by AI)</b>
+$@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
 <b>🍽️ {WebUtility.HtmlEncode(r.dish)}</b>
-Ingredients (EN): <code>{WebUtility.HtmlEncode(string.Join(", ", r.ingredients))}</code>
+Ингредиенты (англ.): <code>{WebUtility.HtmlEncode(string.Join(", ", r.ingredients))}</code>
 
-Serving weight: <b>{r.weight_g:F0} g</b>
-P: <b>{r.proteins_g:F1} g</b>   F: <b>{r.fats_g:F1} g</b>   C: <b>{r.carbs_g:F1} g</b>
-Calories: <b>{r.calories_kcal:F0}</b> kcal
-Model confidence: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
+Вес порции: <b>{r.weight_g:F0} г</b>
+Б: <b>{r.proteins_g:F1} г</b>   Ж: <b>{r.fats_g:F1} г</b>   У: <b>{r.carbs_g:F1} г</b>
+Калории: <b>{r.calories_kcal:F0}</b> ккал
+Уверенность модели: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
                     await SendHtmlSafe(_bot, chatId, htmlFinal, ct);
 
                     await _bot.SendMessage(chatId,
-                        "Можно уточнить текстом или голосом: “+50 g bread”, “no sauce”, “replace mayo with yogurt”, “weight 220 g”.",
+                        "Можно уточнить текстом или голосом: «+50 г хлеба», «без соуса», «замени майонез на йогурт», «вес 220 г».",
                         cancellationToken: ct);
                 }
                 else
