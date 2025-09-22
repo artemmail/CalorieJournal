@@ -13,6 +13,9 @@ import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analy
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AnalysisDateDialogComponent } from './analysis-date-dialog.component';
+import { FoodbotApiService } from '../../services/foodbot-api.service';
+import { PersonalCard } from '../../services/foodbot-api.types';
+import { ProfileRequiredDialogComponent } from './profile-required-dialog.component';
 
 @Component({
   selector: 'app-analysis',
@@ -47,7 +50,8 @@ export class AnalysisPage implements OnInit, OnDestroy {
     private api: AnalysisService,
     private sb: MatSnackBar,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private foodbotApi: FoodbotApiService
   ) {}
 
   ngOnInit(): void {
@@ -81,7 +85,10 @@ export class AnalysisPage implements OnInit, OnDestroy {
 
   onScrollDown() { this.loadMore(); }
 
-  async create(period: AnalysisPeriod, date?: Date) {
+  async create(period: AnalysisPeriod, date?: Date, skipProfileCheck = false) {
+    if (!skipProfileCheck && !(await this.ensureProfileFilled())) {
+      return;
+    }
     try {
       this.loading = true;
       const res = await this.api.create(period, date ? { date } : undefined);
@@ -99,10 +106,13 @@ export class AnalysisPage implements OnInit, OnDestroy {
   }
 
   async createFromDate() {
+    if (!(await this.ensureProfileFilled())) {
+      return;
+    }
     const ref = this.dialog.open(AnalysisDateDialogComponent);
     const selected = await firstValueFrom(ref.afterClosed());
     if (!selected) return;
-    await this.create(selected.period, selected.date);
+    await this.create(selected.period, selected.date, true);
   }
 
   open(row: ReportRow) {
@@ -117,5 +127,32 @@ export class AnalysisPage implements OnInit, OnDestroy {
       case 'month': return 'Месяц';
       case 'quarter': return 'Квартал';
     }
+  }
+
+  private async ensureProfileFilled(): Promise<boolean> {
+    let card: PersonalCard | null = null;
+    try {
+      card = await firstValueFrom(this.foodbotApi.getPersonalCard());
+    } catch {
+      this.sb.open('Не удалось проверить профиль. Повторите позже.', 'OK', { duration: 4000 });
+      return false;
+    }
+
+    if (this.isProfileComplete(card)) {
+      return true;
+    }
+
+    const ref = this.dialog.open(ProfileRequiredDialogComponent, { autoFocus: false });
+    const action = await firstValueFrom(ref.afterClosed());
+    if (action === 'profile') {
+      this.router.navigate(['/profile']);
+    }
+    return false;
+  }
+
+  private isProfileComplete(card: PersonalCard | null): card is PersonalCard {
+    if (!card) return false;
+    const required: Array<keyof PersonalCard> = ['gender', 'birthYear', 'heightCm', 'weightKg', 'activityLevel'];
+    return required.every(field => card[field] !== null && card[field] !== undefined);
   }
 }
