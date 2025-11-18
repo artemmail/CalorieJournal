@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Clipboard, ClipboardModule } from '@angular/cdk/clipboard';
+import { HttpResponse } from '@angular/common/http';
 import { AnalysisService } from '../../services/analysis.service';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { App } from '@capacitor/app';
@@ -60,6 +61,14 @@ export class AnalysisReportPage implements OnInit, OnDestroy {
     });
   }
 
+  downloadDocx() {
+    if (!this.id) return;
+    this.api.downloadDocx(this.id).subscribe({
+      next: res => this.saveFile(res, `analysis-${this.id}.docx`, 'Word-файл скачан.'),
+      error: () => this.sb.open('Не удалось скачать Word-файл.', 'Закрыть', { duration: 4000 })
+    });
+  }
+
   copyMarkdown() {
     if (!this.markdown) return;
     const ok = this.clipboard.copy(this.markdown);
@@ -80,6 +89,40 @@ export class AnalysisReportPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.backButtonListener?.remove();
+  }
+
+  private saveFile(res: HttpResponse<Blob>, fallbackName: string, successMessage: string) {
+    const blob = res.body;
+    if (!blob) {
+      this.sb.open('Пустой ответ сервера.', 'Закрыть', { duration: 3000 });
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = this.extractFileName(res) ?? fallbackName;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    this.sb.open(successMessage, 'OK', { duration: 3000 });
+  }
+
+  private extractFileName(res: HttpResponse<Blob>): string | null {
+    const disposition = res.headers.get('Content-Disposition') ?? res.headers.get('content-disposition');
+    if (!disposition) return null;
+
+    const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(disposition);
+    if (match) {
+      const encoded = match[1] ?? match[2];
+      try {
+        return decodeURIComponent(encoded);
+      } catch {
+        return encoded;
+      }
+    }
+
+    return null;
   }
 }
 
