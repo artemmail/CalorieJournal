@@ -17,6 +17,16 @@
     <button
       mat-button
       class="toolbar-action"
+      color="primary"
+      (click)="downloadDocx()"
+      [disabled]="processing || loading || !markdown"
+    >
+      <mat-icon>description</mat-icon>
+      <span>Word</span>
+    </button>
+    <button
+      mat-button
+      class="toolbar-action"
       color="warn"
       (click)="downloadPdf()"
       [disabled]="processing || loading || !markdown"

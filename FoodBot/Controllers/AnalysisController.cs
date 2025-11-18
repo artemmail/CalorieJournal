@@ -18,11 +18,13 @@ public sealed class AnalysisController : ControllerBase
 {
     private readonly DietAnalysisService _service;
     private readonly BotDbContext _db;
+    private readonly AnalysisDocxService _docxService;
 
-    public AnalysisController(DietAnalysisService service, BotDbContext db)
+    public AnalysisController(DietAnalysisService service, BotDbContext db, AnalysisDocxService docxService)
     {
         _service = service;
         _db = db;
+        _docxService = docxService;
     }
 
     // История
@@ -112,6 +114,19 @@ public sealed class AnalysisController : ControllerBase
         _db.AnalysisPdfJobs.Add(job);
         await _db.SaveChangesAsync(ct);
         return Accepted(new { id = job.Id });
+    }
+
+    [HttpGet("{id:long}/docx")]
+    public async Task<IActionResult> DownloadDocx([FromRoute] long id, CancellationToken ct)
+    {
+        var chatId = User.GetChatId();
+        var report = await _service.GetReportAsync(chatId, id, ct);
+        if (report == null) return NotFound();
+        if (report.IsProcessing || string.IsNullOrEmpty(report.Markdown)) return BadRequest(new { error = "report_not_ready" });
+        if (string.IsNullOrWhiteSpace(report.RequestJson)) return BadRequest(new { error = "payload_missing" });
+
+        var (stream, fileName) = await _docxService.BuildAsync(report, ct);
+        return File(stream, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
     }
 
     [HttpGet("pdf-jobs/{id:long}")]

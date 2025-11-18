@@ -79,6 +79,14 @@ export class AnalysisService {
     );
   }
 
+  /** Скачать Word-файл готового отчёта */
+  downloadDocx(id: number): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.baseUrl}/api/analysis/${id}/docx`, {
+      responseType: 'blob',
+      observe: 'response'
+    });
+  }
+
   /** Запросить создание PDF, возвращает идентификатор задания */
   createPdfJob(id: number): Observable<PdfJobResponse> {
     return this.http.post<PdfJobResponse>(`${this.baseUrl}/api/analysis/${id}/pdf`, {});
