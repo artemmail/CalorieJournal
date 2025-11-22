@@ -9,11 +9,12 @@
 
   <!-- __FOODBOTOS_ENV__ -->
   <script>
-    window.environment = Object.assign({
-   //   apiBaseUrl:'https://localhost:52800',     // <== замени на свой backend
-      apiBaseUrl: 'https://healthymeals.space',     // <== замени на свой backend
-      telegramBot: 'CalorieJournal_bot'       // <== юзернейм бота без @
-    }, window.environment || {});
+    const envFromServer = window.environment || {};
+    window.environment = {
+      ...envFromServer,
+      apiBaseUrl: envFromServer.apiBaseUrl ?? window.location.origin,
+      telegramBot: envFromServer.telegramBot ?? 'CalorieJournal_bot'
+    };
   </script>
 </head>
 <body class="mat-app-background">
