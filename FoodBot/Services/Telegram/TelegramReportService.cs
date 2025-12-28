@@ -16,7 +16,7 @@ public class TelegramReportService
     public async Task<(MemoryStream stream, string filename)> BuildUserReportAsync(long chatId, CancellationToken ct)
     {
         var entries = await _db.Meals
-            .Where(x => x.ChatId == chatId)
+            .Where(x => x.AppUserId == chatId)
             .OrderByDescending(x => x.CreatedAtUtc)
             .ToListAsync(ct);
 

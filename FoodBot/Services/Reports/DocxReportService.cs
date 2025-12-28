@@ -30,7 +30,7 @@ public sealed class DocxReportService
     {
         var meals = await _db.Meals
             .AsNoTracking()
-            .Where(m => m.ChatId == chatId &&
+            .Where(m => m.AppUserId == chatId &&
                         m.CreatedAtUtc >= from &&
                         m.CreatedAtUtc <= to)
             .OrderBy(m => m.CreatedAtUtc)
@@ -38,7 +38,7 @@ public sealed class DocxReportService
 
         var card = await _db.PersonalCards
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
+            .FirstOrDefaultAsync(x => x.AppUserId == chatId, ct);
 
         var stream = new MemoryStream();
 
@@ -108,7 +108,7 @@ public sealed class DocxReportService
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "Failed to build DOCX report for chat {ChatId}", chatId);
+            _log.LogError(ex, "Failed to build DOCX report for user {UserId}", chatId);
             stream.Dispose();
             throw;
         }

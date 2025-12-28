@@ -23,12 +23,12 @@ public sealed class StatsController : ControllerBase
     public Task<StatsSummary> Summary([FromQuery] int days = 1, CancellationToken ct = default)
     {
         days = Math.Clamp(days, 1, 30);
-        return _stats.GetSummaryAsync(User.GetChatId(), days, ct);
+        return _stats.GetSummaryAsync(User.GetUserId(), days, ct);
     }
 
     [HttpGet("daily")]
     public Task<List<DailyTotals>> Daily([FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct = default)
     {
-        return _stats.GetDailyTotalsAsync(User.GetChatId(), from, to, ct);
+        return _stats.GetDailyTotalsAsync(User.GetUserId(), from, to, ct);
     }
 }

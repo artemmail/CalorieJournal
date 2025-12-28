@@ -31,7 +31,7 @@ public sealed class AnalysisController : ControllerBase
     [HttpGet("reports")]
     public async Task<IActionResult> List(CancellationToken ct)
     {
-        var chatId = User.GetChatId();
+        var chatId = User.GetUserId();
         var list = await _service.ListReportsAsync(chatId, ct);
         return Ok(list.Select(x => new {
             id = x.Id,
@@ -50,7 +50,7 @@ public sealed class AnalysisController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateReportRequest req, CancellationToken ct)
     {
-        var chatId = User.GetChatId();
+        var chatId = User.GetUserId();
         (string status, AnalysisReport1 report) result;
 
         if (req.date.HasValue)
@@ -79,7 +79,7 @@ public sealed class AnalysisController : ControllerBase
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById([FromRoute] long id, CancellationToken ct)
     {
-        var chatId = User.GetChatId();
+        var chatId = User.GetUserId();
         var r = await _service.GetReportAsync(chatId, id, ct);
         if (r == null) return NotFound();
 
@@ -99,14 +99,14 @@ public sealed class AnalysisController : ControllerBase
     [HttpPost("{id:long}/pdf")]
     public async Task<IActionResult> GetPdf([FromRoute] long id, CancellationToken ct)
     {
-        var chatId = User.GetChatId();
+        var chatId = User.GetUserId();
         var r = await _service.GetReportAsync(chatId, id, ct);
         if (r == null) return NotFound();
         if (r.IsProcessing || string.IsNullOrEmpty(r.Markdown)) return BadRequest();
 
         var job = new AnalysisPdfJob
         {
-            ChatId = chatId,
+            AppUserId = chatId,
             ReportId = id,
             Status = AnalysisPdfJobStatus.Queued,
             CreatedAtUtc = DateTimeOffset.UtcNow
@@ -119,7 +119,7 @@ public sealed class AnalysisController : ControllerBase
     [HttpGet("{id:long}/docx")]
     public async Task<IActionResult> DownloadDocx([FromRoute] long id, CancellationToken ct)
     {
-        var chatId = User.GetChatId();
+        var chatId = User.GetUserId();
         var report = await _service.GetReportAsync(chatId, id, ct);
         if (report == null) return NotFound();
         if (report.IsProcessing || string.IsNullOrEmpty(report.Markdown)) return BadRequest(new { error = "report_not_ready" });
@@ -132,9 +132,9 @@ public sealed class AnalysisController : ControllerBase
     [HttpGet("pdf-jobs/{id:long}")]
     public async Task<IActionResult> GetPdfJob([FromRoute] long id, CancellationToken ct)
     {
-        var chatId = User.GetChatId();
+        var chatId = User.GetUserId();
         var job = await _db.AnalysisPdfJobs.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id && x.ChatId == chatId, ct);
+            .FirstOrDefaultAsync(x => x.Id == id && x.AppUserId == chatId, ct);
         if (job == null) return NotFound();
 
         if (job.Status == AnalysisPdfJobStatus.Done &&
@@ -156,7 +156,7 @@ public sealed class AnalysisController : ControllerBase
     [HttpGet("day")]
     public async Task<IActionResult> GetDay(CancellationToken ct)
     {
-        var chatId = User.GetChatId();
+        var chatId = User.GetUserId();
         var report = await _service.GetDailyAsync(chatId, ct);
         if (report.IsProcessing)
             return Accepted(new { status = "processing" });
@@ -166,7 +166,7 @@ public sealed class AnalysisController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] AnalysisPeriod period, CancellationToken ct)
     {
-        var chatId = User.GetChatId();
+        var chatId = User.GetUserId();
         if (period == AnalysisPeriod.Day)
         {
             var report = await _service.GetDailyAsync(chatId, ct);

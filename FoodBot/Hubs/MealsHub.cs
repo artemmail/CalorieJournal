@@ -11,8 +11,8 @@ public sealed class MealsHub : Hub
     {
         try
         {
-            var chatId = Context.User.GetChatId();
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"chat-{chatId}");
+            var userId = Context.User.GetUserId();
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
         }
         catch { }
         await base.OnConnectedAsync();

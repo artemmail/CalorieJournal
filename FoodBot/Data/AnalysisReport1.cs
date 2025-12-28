@@ -15,7 +15,7 @@ public sealed class AnalysisReport1
 {
     public long Id { get; set; }
 
-    public long ChatId { get; set; }
+    public long AppUserId { get; set; }
 
     public AnalysisPeriod Period { get; set; }
 

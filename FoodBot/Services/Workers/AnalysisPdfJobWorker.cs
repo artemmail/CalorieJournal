@@ -45,7 +45,7 @@ public sealed class AnalysisPdfJobWorker : BackgroundService
                 try
                 {
                     var report = await db.AnalysisReports2.AsNoTracking()
-                        .FirstOrDefaultAsync(r => r.Id == job.ReportId && r.ChatId == job.ChatId, stoppingToken);
+                        .FirstOrDefaultAsync(r => r.Id == job.ReportId && r.AppUserId == job.AppUserId, stoppingToken);
                     if (report == null || string.IsNullOrEmpty(report.Markdown))
                         throw new InvalidOperationException($"Report {job.ReportId} not found or empty");
 
@@ -69,7 +69,7 @@ public sealed class AnalysisPdfJobWorker : BackgroundService
                         try
                         {
                             await using var sendStream = File.OpenRead(filePath);
-                            await sender.SendAsync(job.ChatId, sendStream, fileName, stoppingToken);
+                            await sender.SendAsync(job.AppUserId, sendStream, fileName, stoppingToken);
                         }
                         catch (Exception ex)
                         {

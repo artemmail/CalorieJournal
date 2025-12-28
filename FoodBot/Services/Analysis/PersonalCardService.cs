@@ -9,14 +9,14 @@ public sealed class PersonalCardService
     public PersonalCardService(BotDbContext db) => _db = db;
 
     public Task<PersonalCard?> GetAsync(long chatId, CancellationToken ct = default)
-        => _db.PersonalCards.AsNoTracking().FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
+        => _db.PersonalCards.AsNoTracking().FirstOrDefaultAsync(x => x.AppUserId == chatId, ct);
 
     public async Task<PersonalCard> UpsertAsync(long chatId, PersonalCard card, CancellationToken ct = default)
     {
-        var existing = await _db.PersonalCards.FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
+        var existing = await _db.PersonalCards.FirstOrDefaultAsync(x => x.AppUserId == chatId, ct);
         if (existing == null)
         {
-            card.ChatId = chatId;
+            card.AppUserId = chatId;
             RecalcDailyCalories(card);
             _db.PersonalCards.Add(card);
             await _db.SaveChangesAsync(ct);

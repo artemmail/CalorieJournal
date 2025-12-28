@@ -5,7 +5,7 @@ namespace FoodBot.Services;
 
 public interface IMealNotifier
 {
-    Task MealUpdated(long chatId, MealListItem item);
+    Task MealUpdated(long userId, MealListItem item);
 }
 
 public sealed class MealNotifier : IMealNotifier
@@ -16,8 +16,8 @@ public sealed class MealNotifier : IMealNotifier
         _hub = hub;
     }
 
-    public Task MealUpdated(long chatId, MealListItem item)
+    public Task MealUpdated(long userId, MealListItem item)
     {
-        return _hub.Clients.Group($"chat-{chatId}").SendAsync("MealUpdated", item);
+        return _hub.Clients.Group($"user-{userId}").SendAsync("MealUpdated", item);
     }
 }

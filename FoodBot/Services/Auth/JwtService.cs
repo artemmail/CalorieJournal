@@ -32,14 +32,14 @@ public sealed class JwtService
         _creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
     }
 
-    public string Issue(long chatId)
+    public string Issue(long userId)
     {
         var now = DateTimeOffset.UtcNow;
 
         var claims = new[]
         {
-            new Claim("chat_id", chatId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Sub, chatId.ToString()),
+            new Claim("user_id", userId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };

@@ -35,7 +35,7 @@ public sealed class PdfReportService
     {
         var meals = await _db.Meals
             .AsNoTracking()
-            .Where(m => m.ChatId == chatId &&
+            .Where(m => m.AppUserId == chatId &&
                         m.CreatedAtUtc >= from &&
                         m.CreatedAtUtc <= to)
             .OrderByDescending(m => m.CreatedAtUtc) // убывание по дате приёма
@@ -43,7 +43,7 @@ public sealed class PdfReportService
 
         var card = await _db.PersonalCards
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
+            .FirstOrDefaultAsync(x => x.AppUserId == chatId, ct);
 
         var tempDir = Path.Combine(Path.GetTempPath(), "foodbot_pdf_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);

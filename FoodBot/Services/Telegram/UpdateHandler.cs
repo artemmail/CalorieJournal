@@ -110,12 +110,14 @@ public class UpdateHandler
         var chatId = msg.Chat.Id;
         var userId = msg.From?.Id ?? 0;
         var username = msg.From?.Username ?? $"{msg.From?.FirstName} {msg.From?.LastName}".Trim();
+        var account = await EnsureAccountAsync(db, ExternalProvider.Telegram, chatId, username, ct);
+        var appUserId = account.AppUserId;
 
         // ===== /report → Excel
         if (msg.Text != null && msg.Text.StartsWith("/report", StringComparison.OrdinalIgnoreCase))
         {
             await _bot.SendChatAction(chatId, ChatAction.UploadDocument, cancellationToken: ct);
-            var (stream, filename) = await report.BuildUserReportAsync(chatId, ct);
+            var (stream, filename) = await report.BuildUserReportAsync(appUserId, ct);
             await _bot.SendDocument(chatId, InputFile.FromStream(stream, filename), caption: "Ваш отчёт 📊", cancellationToken: ct);
             return;
         }
@@ -172,7 +174,7 @@ $@"Вход через приложение:
                 var productsJsonEntry = conv is null ? null : ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson);
                 var entry = new MealEntry
                 {
-                    ChatId = chatId,
+                    AppUserId = appUserId,
                     UserId = userId,
                     Username = username,
                     CreatedAtUtc = DateTimeOffset.UtcNow,
@@ -198,7 +200,7 @@ $@"Вход через приложение:
                 };
                 db.Meals.Add(entry);
                 await db.SaveChangesAsync(ct);
-                await notifier.MealUpdated(chatId, entry.ToListItem());
+                await notifier.MealUpdated(appUserId, entry.ToListItem());
 
                 if (conv is not null)
                 {
@@ -277,7 +279,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
 
                 await _bot.SendMessage(chatId, $"🎙️ Уточнение с голоса: {sttText}", cancellationToken: ct);
 
-                await ApplyClarificationTextAsync(db, nutrition, notifier, chatId, sttText, ct);
+                await ApplyClarificationTextAsync(db, nutrition, notifier, appUserId, chatId, sttText, ct);
             }
             catch (Exception ex)
             {
@@ -311,7 +313,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
 
                 await _bot.SendMessage(chatId, $"🎙️ Уточнение с аудио: {sttText}", cancellationToken: ct);
 
-                await ApplyClarificationTextAsync(db, nutrition, notifier, chatId, sttText, ct);
+                await ApplyClarificationTextAsync(db, nutrition, notifier, appUserId, chatId, sttText, ct);
             }
             catch (Exception ex)
             {
@@ -326,7 +328,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
         {
             // 1) сначала пытаемся трактовать это как старт-код (линковка)
             var trimmed = msg.Text.Trim();
-            if (await TryLinkStartCodeAsync(db, chatId, trimmed, ct))
+            if (await TryLinkStartCodeAsync(db, account, chatId, trimmed, ct))
                 return;
 
             // 2) команды
@@ -335,7 +337,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
                 var payload = trimmed.Length > 6 ? trimmed.Substring(6).Trim() : "";
                 if (!string.IsNullOrWhiteSpace(payload))
                 {
-                    if (await TryLinkStartCodeAsync(db, chatId, payload, ct))
+                    if (await TryLinkStartCodeAsync(db, account, chatId, payload, ct))
                         return;
                 }
 
@@ -350,7 +352,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
             try
             {
                 await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
-                await ApplyClarificationTextAsync(db, nutrition, notifier, chatId, trimmed, ct);
+                await ApplyClarificationTextAsync(db, nutrition, notifier, appUserId, chatId, trimmed, ct);
             }
             catch (Exception ex)
             {
@@ -370,7 +372,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
     // ======= Линковка старт-кода (из приложения) =======
     private static readonly Regex CodePattern = new(@"^[A-Z0-9\-]{6,16}$", RegexOptions.Compiled);
 
-    private async Task<bool> TryLinkStartCodeAsync(BotDbContext db, long chatId, string text, CancellationToken ct)
+    private async Task<bool> TryLinkStartCodeAsync(BotDbContext db, ExternalAccount account, long chatId, string text, CancellationToken ct)
     {
         var code = text.Trim().ToUpperInvariant();
         if (!CodePattern.IsMatch(code))
@@ -391,13 +393,14 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
             return true;
         }
 
-        if (row.ChatId == chatId)
+        if (row.AppUserId == account.AppUserId)
         {
             await _bot.SendMessage(chatId, "Этот код уже привязан к вашему аккаунту. Можете вернуться в приложение и нажать «Обновить».", cancellationToken: ct);
             return true;
         }
 
-        row.ChatId = chatId; // линкуем
+        row.AppUserId = account.AppUserId; // линкуем
+        row.ExternalAccountId = account.Id;
         await db.SaveChangesAsync(ct);
 
         await _bot.SendMessage(chatId,
@@ -407,11 +410,11 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
     }
 
     // ======= Clarify helper (общий для текста и голоса) =======
-    private async Task ApplyClarificationTextAsync(BotDbContext db, NutritionService nutrition, IMealNotifier notifier, long chatId, string text, CancellationToken ct)
+    private async Task ApplyClarificationTextAsync(BotDbContext db, NutritionService nutrition, IMealNotifier notifier, long appUserId, long chatId, string text, CancellationToken ct)
     {
         // Берём последнюю запись
         var last = await db.Meals
-            .Where(m => m.ChatId == chatId)
+            .Where(m => m.AppUserId == appUserId)
             .OrderByDescending(m => m.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
         if (last is null)
@@ -444,7 +447,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
             last.ClarifyNote = text;
             last.CreatedAtUtc = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
-            await notifier.MealUpdated(chatId, last.ToListItem());
+            await notifier.MealUpdated(appUserId, last.ToListItem());
 
             var step1HtmlText = BuildStep1PreviewHtml(convText.Step1);
             if (!string.IsNullOrWhiteSpace(step1HtmlText))
@@ -618,7 +621,7 @@ $@"<b>✅ Итоговые нутриенты (после уточнения)</b
 Калории: <b>{r.calories_kcal:F0}</b> ккал
 Уверенность модели: <b>{(r.confidence * 100m):F0}%</b>{compHtml}";
             await SendHtmlSafe(_bot, chatId, htmlFinal, ct);
-            await notifier.MealUpdated(chatId, item);
+            await notifier.MealUpdated(appUserId, item);
         }
         else
         {
@@ -680,6 +683,39 @@ $@"<b>✅ Итоговые нутриенты (после уточнения)</b
               .Append("%)\n");
         }
         return sb.ToString();
+    }
+
+    private static async Task<ExternalAccount> EnsureAccountAsync(BotDbContext db, ExternalProvider provider, long externalId, string? username, CancellationToken ct)
+    {
+        var externalIdStr = externalId.ToString();
+        var account = await db.ExternalAccounts.FirstOrDefaultAsync(x => x.Provider == provider && x.ExternalId == externalIdStr, ct);
+        if (account != null)
+        {
+            if (!string.IsNullOrWhiteSpace(username) && username != account.Username)
+            {
+                account.Username = username;
+                await db.SaveChangesAsync(ct);
+            }
+            return account;
+        }
+
+        var user = new AppUser
+        {
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        account = new ExternalAccount
+        {
+            Provider = provider,
+            ExternalId = externalIdStr,
+            Username = username,
+            AppUser = user,
+            LinkedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        db.ExternalAccounts.Add(account);
+        await db.SaveChangesAsync(ct);
+        return account;
     }
 
     // Безопасная отправка HTML: если парсинг падает или слишком длинно — отправляем plain text чанками

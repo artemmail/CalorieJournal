@@ -47,8 +47,8 @@ public sealed class PeriodPdfJobWorker : BackgroundService
                 {
                     (MemoryStream stream, string fileName) result = job.Format switch
                     {
-                        PeriodReportFormat.Docx => await docx.BuildAsync(job.ChatId, job.From, job.To, stoppingToken),
-                        _ => await pdf.BuildAsync(job.ChatId, job.From, job.To, stoppingToken)
+                        PeriodReportFormat.Docx => await docx.BuildAsync(job.AppUserId, job.From, job.To, stoppingToken),
+                        _ => await pdf.BuildAsync(job.AppUserId, job.From, job.To, stoppingToken)
                     };
                     var stream = result.stream;
                     var fileName = result.fileName;
@@ -71,7 +71,7 @@ public sealed class PeriodPdfJobWorker : BackgroundService
                         try
                         {
                             await using var sendStream = File.OpenRead(filePath);
-                            await sender.SendAsync(job.ChatId, sendStream, fileName, stoppingToken);
+                            await sender.SendAsync(job.AppUserId, sendStream, fileName, stoppingToken);
                         }
                         catch (Exception ex)
                         {

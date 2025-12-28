@@ -20,11 +20,11 @@ public sealed class ProfileController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PersonalCard?>> Get(CancellationToken ct)
     {
-        var card = await _cards.GetAsync(User.GetChatId(), ct);
+        var card = await _cards.GetAsync(User.GetUserId(), ct);
         return Ok(card);
     }
 
     [HttpPost]
     public Task<PersonalCard> Save([FromBody] PersonalCard card, CancellationToken ct)
-        => _cards.UpsertAsync(User.GetChatId(), card, ct);
+        => _cards.UpsertAsync(User.GetUserId(), card, ct);
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -12,12 +12,25 @@ namespace FoodBot.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "AppUsers",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AnalysisPdfJobs",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ChatId = table.Column<long>(type: "bigint", nullable: false),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
                     ReportId = table.Column<long>(type: "bigint", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
@@ -35,7 +48,7 @@ namespace FoodBot.Migrations
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ChatId = table.Column<long>(type: "bigint", nullable: false),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
                     Period = table.Column<int>(type: "int", nullable: false),
                     RequestJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     PeriodStartLocalDate = table.Column<DateOnly>(type: "date", nullable: false),
@@ -57,7 +70,7 @@ namespace FoodBot.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ChatId = table.Column<long>(type: "bigint", nullable: false),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
                     UserId = table.Column<long>(type: "bigint", nullable: false),
                     Username = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
@@ -90,7 +103,7 @@ namespace FoodBot.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ChatId = table.Column<long>(type: "bigint", nullable: false),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
                     MealId = table.Column<int>(type: "int", nullable: false),
                     Note = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     NewTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
@@ -108,7 +121,7 @@ namespace FoodBot.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ChatId = table.Column<long>(type: "bigint", nullable: false),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
                     CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     FileMime = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ImageBytes = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
@@ -124,12 +137,57 @@ namespace FoodBot.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PersonalCards",
+                columns: table => new
+                {
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    BirthYear = table.Column<int>(type: "int", nullable: true),
+                    Gender = table.Column<int>(type: "int", nullable: true),
+                    HeightCm = table.Column<int>(type: "int", nullable: true),
+                    WeightKg = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    ActivityLevel = table.Column<int>(type: "int", nullable: true),
+                    DailyCalories = table.Column<int>(type: "int", nullable: true),
+                    DietGoals = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
+                    MedicalRestrictions = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PersonalCards", x => x.AppUserId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AppStartCodes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Code = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: true),
+                    ExternalAccountId = table.Column<long>(type: "bigint", nullable: true),
+                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    ExpiresAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    ConsumedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppStartCodes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AppStartCodes_AppUsers_AppUserId",
+                        column: x => x.AppUserId,
+                        principalTable: "AppUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "PeriodPdfJobs",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ChatId = table.Column<long>(type: "bigint", nullable: false),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
                     From = table.Column<DateTime>(type: "datetime2", nullable: false),
                     To = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Format = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
@@ -144,83 +202,101 @@ namespace FoodBot.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "PersonalCards",
+                name: "ExternalAccounts",
                 columns: table => new
                 {
-                    ChatId = table.Column<long>(type: "bigint", nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    BirthYear = table.Column<int>(type: "int", nullable: true),
-                    Gender = table.Column<int>(type: "int", nullable: true),
-                    HeightCm = table.Column<int>(type: "int", nullable: true),
-                    WeightKg = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    ActivityLevel = table.Column<int>(type: "int", nullable: true),
-                    DailyCalories = table.Column<int>(type: "int", nullable: true),
-                    DietGoals = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
-                    MedicalRestrictions = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_PersonalCards", x => x.ChatId);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "StartCodes",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Code = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ChatId = table.Column<long>(type: "bigint", nullable: true),
-                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    ExpiresAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    ConsumedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                    Provider = table.Column<int>(type: "int", nullable: false),
+                    ExternalId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    Username = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
+                    LinkedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false, defaultValueSql: "SYSUTCDATETIME()")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_StartCodes", x => x.Id);
+                    table.PrimaryKey("PK_ExternalAccounts", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ExternalAccounts_AppUsers_AppUserId",
+                        column: x => x.AppUserId,
+                        principalTable: "AppUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AnalysisPdfJobs_ChatId_CreatedAtUtc",
+                name: "IX_AnalysisPdfJobs_AppUserId_CreatedAtUtc",
                 table: "AnalysisPdfJobs",
-                columns: new[] { "ChatId", "CreatedAtUtc" });
+                columns: new[] { "AppUserId", "CreatedAtUtc" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Meals_ChatId_CreatedAtUtc",
-                table: "Meals",
-                columns: new[] { "ChatId", "CreatedAtUtc" });
+                name: "IX_AnalysisReports2_AppUserId_Period_PeriodStartLocalDate",
+                table: "AnalysisReports2",
+                columns: new[] { "AppUserId", "Period", "PeriodStartLocalDate" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_PendingClarifies_ChatId_CreatedAtUtc",
-                table: "PendingClarifies",
-                columns: new[] { "ChatId", "CreatedAtUtc" });
+                name: "IX_AppStartCodes_AppUserId_ExpiresAtUtc",
+                table: "AppStartCodes",
+                columns: new[] { "AppUserId", "ExpiresAtUtc" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_PendingMeals_ChatId_CreatedAtUtc",
-                table: "PendingMeals",
-                columns: new[] { "ChatId", "CreatedAtUtc" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PeriodPdfJobs_ChatId_CreatedAtUtc",
-                table: "PeriodPdfJobs",
-                columns: new[] { "ChatId", "CreatedAtUtc" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_StartCodes_ChatId_ExpiresAtUtc",
-                table: "StartCodes",
-                columns: new[] { "ChatId", "ExpiresAtUtc" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_StartCodes_Code",
-                table: "StartCodes",
+                name: "IX_AppStartCodes_Code",
+                table: "AppStartCodes",
                 column: "Code",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppStartCodes_ExternalAccountId",
+                table: "AppStartCodes",
+                column: "ExternalAccountId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExternalAccounts_AppUserId",
+                table: "ExternalAccounts",
+                column: "AppUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExternalAccounts_Provider_ExternalId",
+                table: "ExternalAccounts",
+                columns: new[] { "Provider", "ExternalId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Meals_AppUserId_CreatedAtUtc",
+                table: "Meals",
+                columns: new[] { "AppUserId", "CreatedAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PendingClarifies_AppUserId_CreatedAtUtc",
+                table: "PendingClarifies",
+                columns: new[] { "AppUserId", "CreatedAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PendingMeals_AppUserId_CreatedAtUtc",
+                table: "PendingMeals",
+                columns: new[] { "AppUserId", "CreatedAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PeriodPdfJobs_AppUserId_CreatedAtUtc",
+                table: "PeriodPdfJobs",
+                columns: new[] { "AppUserId", "CreatedAtUtc" });
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_AppStartCodes_ExternalAccounts_ExternalAccountId",
+                table: "AppStartCodes",
+                column: "ExternalAccountId",
+                principalTable: "ExternalAccounts",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_AppStartCodes_ExternalAccounts_ExternalAccountId",
+                table: "AppStartCodes");
+
             migrationBuilder.DropTable(
                 name: "AnalysisPdfJobs");
 
@@ -237,13 +313,19 @@ namespace FoodBot.Migrations
                 name: "PendingMeals");
 
             migrationBuilder.DropTable(
-                name: "PeriodPdfJobs");
-
-            migrationBuilder.DropTable(
                 name: "PersonalCards");
 
             migrationBuilder.DropTable(
-                name: "StartCodes");
+                name: "PeriodPdfJobs");
+
+            migrationBuilder.DropTable(
+                name: "AppStartCodes");
+
+            migrationBuilder.DropTable(
+                name: "ExternalAccounts");
+
+            migrationBuilder.DropTable(
+                name: "AppUsers");
         }
     }
 }

@@ -55,7 +55,7 @@ public sealed class AppAuthService : IAppAuthService
         if (row is null) return null;
         if (row.ExpiresAtUtc <= now) return new StatusResponse(false, row.ExpiresAtUtc, 0);
         var left = (int)Math.Max(0, (row.ExpiresAtUtc - now).TotalSeconds);
-        var linked = row.ChatId.HasValue;
+        var linked = row.AppUserId.HasValue;
         return new StatusResponse(linked, row.ExpiresAtUtc, left);
     }
 
@@ -66,13 +66,13 @@ public sealed class AppAuthService : IAppAuthService
         if (row is null) return new ExchangeStartCodeResult("not_found", false, null);
         if (row.ExpiresAtUtc <= now) return new ExchangeStartCodeResult("expired", false, null);
         if (row.ConsumedAtUtc is not null) return new ExchangeStartCodeResult("already_used", false, null);
-        if (row.ChatId is null) return new ExchangeStartCodeResult(null, true, null);
+        if (row.AppUserId is null) return new ExchangeStartCodeResult(null, true, null);
 
-        var jwt = _jwt.Issue(row.ChatId.Value);
+        var jwt = _jwt.Issue(row.AppUserId.Value);
         var hours = int.TryParse(_cfg["Auth:AccessTokenHours"], out var h) ? h : 72;
         row.ConsumedAtUtc = now;
         await _db.SaveChangesAsync(ct);
-        var resp = new ExchangeResponse(jwt, "Bearer", hours * 3600, row.ChatId.Value);
+        var resp = new ExchangeResponse(jwt, "Bearer", hours * 3600, row.AppUserId.Value);
         return new ExchangeStartCodeResult(null, false, resp);
     }
 }

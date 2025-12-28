@@ -13,8 +13,7 @@ public class MealEntry
 {
     [Key] public int Id { get; set; }
 
-    // Telegram
-    public long ChatId { get; set; }
+    public long AppUserId { get; set; }
     public long UserId { get; set; }
     [MaxLength(256)] public string? Username { get; set; }
 

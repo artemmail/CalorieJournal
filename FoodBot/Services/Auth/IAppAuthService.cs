@@ -9,5 +9,5 @@ public interface IAppAuthService
 
 public sealed record RequestCodeResponse(string Code, DateTimeOffset ExpiresAtUtc);
 public sealed record StatusResponse(bool Linked, DateTimeOffset ExpiresAtUtc, int SecondsLeft);
-public sealed record ExchangeResponse(string AccessToken, string TokenType, int ExpiresInSeconds, long ChatId);
+public sealed record ExchangeResponse(string AccessToken, string TokenType, int ExpiresInSeconds, long UserId);
 public sealed record ExchangeStartCodeResult(string? Error, bool Pending, ExchangeResponse? Response);
