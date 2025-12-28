@@ -20,14 +20,14 @@ public sealed class MealService : IMealService
 
     public async Task<MealListResult> ListAsync(long chatId, int limit, int offset, CancellationToken ct)
     {
-        // ===== Ëîêàëüíûå «áåçîïàñíûå» õåëïåðû =====
+        // =====    =====
 
         static string? ComputeIngredientsJson1Safe(string? productsJson)
         {
             if (string.IsNullOrWhiteSpace(productsJson))
                 return null;
 
-            // Çàùèòà îò àíîìàëüíî áîëüøèõ ñòðîê
+            //
             if (productsJson.Length > 1_000_000)
                 return null;
 
@@ -79,19 +79,19 @@ public sealed class MealService : IMealService
             return ParseIngredientsOrEmpty(fallbackIngredientsJson);
         }
 
+        // =====   =====
+
+        var baseQuery = _repo.Meals
+            .AsNoTracking()
             .Where(m => m.AppUserId == chatId)
+            .OrderByDescending(m => m.CreatedAtUtc);
 
-            .Where(p => p.AppUserId == chatId)
-            .FirstOrDefaultAsync(x => x.AppUserId == chatId && x.Id == id, ct);
-            .Where(x => x.AppUserId == chatId && x.Id == id)
-            AppUserId = chatId,
+        var total = await baseQuery.CountAsync(ct);
 
-            AppUserId = chatId,
-
-        var m = await _repo.Meals.FirstOrDefaultAsync(x => x.AppUserId == chatId && x.Id == id, ct);
+        // MealId  int    long
         var pendingIdsInt = await _repo.PendingClarifies
             .AsNoTracking()
-            .Where(p => p.ChatId == chatId)
+            .Where(p => p.AppUserId == chatId)
             .Select(p => p.MealId)              // int
             .ToListAsync(ct);
 
@@ -127,11 +127,11 @@ public sealed class MealService : IMealService
             r.ProteinsG,
             r.FatsG,
             r.CarbsG,
-            // Ñíà÷àëà ïðîáóåì âû÷èñëèòü èç ProductsJson, èíà÷å — ïàðñèì èñõîäíûé IngredientsJson
+            //     ProductsJson,     IngredientsJson
             BuildIngredientsArraySafe(r.ProductsJson, r.IngredientsJson),
             ProductJsonHelper.DeserializeProducts(r.ProductsJson),
             r.HasImage,
-            pendingSet.Contains(r.Id) // r.Id — long, pendingSet — HashSet<long>
+            pendingSet.Contains(r.Id) // r.Id  long, pendingSet  HashSet<long>
         )).ToList();
 
         return new MealListResult(total, offset, limit, items);
@@ -141,7 +141,7 @@ public sealed class MealService : IMealService
     public async Task<MealDetails?> GetDetailsAsync(long chatId, int id, CancellationToken ct)
     {
         var m = await _repo.Meals.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
+            .FirstOrDefaultAsync(x => x.AppUserId == chatId && x.Id == id, ct);
         if (m == null) return null;
 
         var ingredients = string.IsNullOrWhiteSpace(m.IngredientsJson)
@@ -185,7 +185,7 @@ public sealed class MealService : IMealService
     public async Task<(byte[] bytes, string mime)?> GetImageAsync(long chatId, int id, CancellationToken ct)
     {
         var m = await _repo.Meals.AsNoTracking()
-            .Where(x => x.ChatId == chatId && x.Id == id)
+            .Where(x => x.AppUserId == chatId && x.Id == id)
             .Select(x => new { x.ImageBytes, x.FileMime })
             .FirstOrDefaultAsync(ct);
         if (m == null || m.ImageBytes == null || m.ImageBytes.Length == 0)
@@ -200,7 +200,7 @@ public sealed class MealService : IMealService
         var desired = (desiredTime ?? utcNow).ToUniversalTime();
         var pending = new PendingMeal
         {
-            ChatId = chatId,
+            AppUserId = chatId,
             CreatedAtUtc = utcNow,
             FileMime = fileMime,
             ImageBytes = bytes,
@@ -217,7 +217,7 @@ public sealed class MealService : IMealService
         var desired = (desiredTime ?? utcNow).ToUniversalTime();
         var pending = new PendingMeal
         {
-            ChatId = chatId,
+            AppUserId = chatId,
             CreatedAtUtc = utcNow,
             Description = description,
             GenerateImage = generateImage,
@@ -229,7 +229,7 @@ public sealed class MealService : IMealService
 
     public async Task<ClarifyTextResult?> ClarifyTextAsync(long chatId, int id, string? note, DateTimeOffset? time, CancellationToken ct)
     {
-        var m = await _repo.Meals.FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
+        var m = await _repo.Meals.FirstOrDefaultAsync(x => x.AppUserId == chatId && x.Id == id, ct);
         if (m == null) return null;
 
         if (string.IsNullOrWhiteSpace(note))
