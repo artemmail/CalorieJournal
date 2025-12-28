@@ -42,9 +42,9 @@ namespace FoodBot.Controllers
         }
 
         public sealed record ExchangeRequest([Required] string code, string? device);
-        public sealed record ExchangeResponse(string accessToken, string tokenType, int expiresInSeconds, long chatId);
+        public sealed record ExchangeResponse(string accessToken, string tokenType, int expiresInSeconds, long userId);
 
-        // 3) Приложение обменивает КОД на JWT (если бот уже привязал ChatId)
+        // 3) Приложение обменивает КОД на JWT (если бот уже привязал аккаунт)
         // POST /api/auth/exchange-startcode
         [HttpPost("exchange-startcode")]
         public async Task<ActionResult<ExchangeResponse>> ExchangeStartCode([FromBody] ExchangeRequest req, CancellationToken ct)

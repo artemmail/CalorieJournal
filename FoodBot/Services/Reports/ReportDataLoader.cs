@@ -55,14 +55,14 @@ public sealed class ReportDataLoader : ReportDataLoaderBase<ReportPayload>
 
         var card = await _db.PersonalCards
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ChatId == chatId, ct);
+            .FirstOrDefaultAsync(x => x.AppUserId == chatId, ct);
 
         int? age = null;
         if (card?.BirthYear is int by && by > 1900 && by <= nowLocal.Year)
             age = nowLocal.Year - by;
 
         var mealsRaw = await _db.Meals.AsNoTracking()
-            .Where(m => m.ChatId == chatId &&
+            .Where(m => m.AppUserId == chatId &&
                         m.CreatedAtUtc >= periodStartUtc.UtcDateTime &&
                         m.CreatedAtUtc <= nowUtc.UtcDateTime)
             .OrderBy(m => m.CreatedAtUtc)

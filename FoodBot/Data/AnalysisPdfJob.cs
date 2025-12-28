@@ -14,7 +14,7 @@ public class AnalysisPdfJob
 {
     [Key]
     public long Id { get; set; }
-    public long ChatId { get; set; }
+    public long AppUserId { get; set; }
     public long ReportId { get; set; }
     public AnalysisPdfJobStatus Status { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }

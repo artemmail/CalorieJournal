@@ -5,8 +5,8 @@ namespace FoodBot.Controllers;
 
 public static class ClaimsPrincipalExtensions
 {
-    public static long GetChatId(this ClaimsPrincipal user) =>
-        long.TryParse(user.FindFirstValue("chat_id"), out var id)
+    public static long GetUserId(this ClaimsPrincipal user) =>
+        long.TryParse(user.FindFirstValue("user_id"), out var id)
             ? id
-            : throw new UnauthorizedAccessException();
+            : throw new UnauthorizedAccessException("Missing user_id claim");
 }

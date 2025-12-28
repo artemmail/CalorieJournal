@@ -6,7 +6,7 @@ namespace FoodBot.Data;
 public class PendingClarify
 {
     [Key] public int Id { get; set; }
-    public long ChatId { get; set; }
+    public long AppUserId { get; set; }
     public int MealId { get; set; }
     public string Note { get; set; } = string.Empty;
     public DateTimeOffset? NewTime { get; set; }

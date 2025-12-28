@@ -22,7 +22,7 @@ public class PersonalCard
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public long ChatId { get; set; }
+    public long AppUserId { get; set; }
 
     [MaxLength(256)] public string? Email { get; set; }
     [MaxLength(256)] public string? Name { get; set; }

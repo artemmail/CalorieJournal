@@ -40,8 +40,8 @@ public sealed class PhotoQueueWorker : BackgroundService
                     .FirstOrDefaultAsync(stoppingToken);
                 var nextClar = await db.PendingClarifies
                     .Join(db.Meals,
-                        c => new { c.ChatId, c.MealId },
-                        m => new { m.ChatId, MealId = m.Id },
+                        c => new { c.AppUserId, c.MealId },
+                        m => new { m.AppUserId, MealId = m.Id },
                         (c, m) => new { Clar = c, Meal = m })
                     .Where(x => x.Meal.SourceType == MealSourceType.Photo)
                     .OrderBy(x => x.Clar.CreatedAtUtc)
@@ -58,7 +58,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                 {
                     try
                     {
-                        var meal = await db.Meals.Where(m => m.ChatId == nextClar.ChatId && m.Id == nextClar.MealId)
+                        var meal = await db.Meals.Where(m => m.AppUserId == nextClar.AppUserId && m.Id == nextClar.MealId)
                             .FirstOrDefaultAsync(stoppingToken);
                         if (meal == null)
                         {
@@ -104,7 +104,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                             db.PendingClarifies.Remove(nextClar);
                             await db.SaveChangesAsync(stoppingToken);
 
-                            await notifier.MealUpdated(meal.ChatId, meal.ToListItem());
+                            await notifier.MealUpdated(meal.AppUserId, meal.ToListItem());
                         }
                         else
                         {
@@ -140,7 +140,7 @@ public sealed class PhotoQueueWorker : BackgroundService
 
                         var entry = new MealEntry
                         {
-                            ChatId = next.ChatId,
+                            AppUserId = next.AppUserId,
                             UserId = 0,
                             Username = "app",
                             CreatedAtUtc = desiredTime,
@@ -166,7 +166,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                         db.PendingMeals.Remove(next);
                         await db.SaveChangesAsync(stoppingToken);
 
-                        await notifier.MealUpdated(entry.ChatId, entry.ToListItem());
+                        await notifier.MealUpdated(entry.AppUserId, entry.ToListItem());
                     }
                     else
                     {

@@ -25,7 +25,7 @@ public sealed class StatsService
 
         var totals = await _db.Meals
             .AsNoTracking()
-            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= from && m.CreatedAtUtc < to)
+            .Where(m => m.AppUserId == chatId && m.CreatedAtUtc >= from && m.CreatedAtUtc < to)
             .GroupBy(_ => 1)
             .Select(g => new
             {
@@ -68,7 +68,7 @@ public sealed class StatsService
 
         var results = await _db.Meals
             .AsNoTracking()
-            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= start && m.CreatedAtUtc < end)
+            .Where(m => m.AppUserId == chatId && m.CreatedAtUtc >= start && m.CreatedAtUtc < end)
             .GroupBy(m => m.CreatedAtUtc.Date)
             .Select(g => new DailyTotals
             {

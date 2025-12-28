@@ -33,7 +33,7 @@ public sealed class DietAnalysisService
     {
         await CleanupStaleAsync(ct); // авто-очистка "висящих"
         return await _db.AnalysisReports2.AsNoTracking()
-            .Where(x => x.ChatId == chatId)
+            .Where(x => x.AppUserId == chatId)
             .OrderByDescending(x => x.CreatedAtUtc)
             .ToListAsync(ct);
     }
@@ -41,7 +41,7 @@ public sealed class DietAnalysisService
     public async Task<AnalysisReport1?> GetReportAsync(long chatId, long id, CancellationToken ct)
     {
         return await _db.AnalysisReports2.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
+            .FirstOrDefaultAsync(x => x.AppUserId == chatId && x.Id == id, ct);
     }
 
     /// <summary>Старт генерации отчёта (постановка в очередь) с проверкой checksum.</summary>
@@ -79,7 +79,7 @@ public sealed class DietAnalysisService
 
         // Уже есть processing этого периода?
         var existingProcessing = await _db.AnalysisReports2
-            .FirstOrDefaultAsync(r => r.ChatId == chatId && r.Period == period
+            .FirstOrDefaultAsync(r => r.AppUserId == chatId && r.Period == period
                 && r.PeriodStartLocalDate == periodStartLocalDate && r.IsProcessing, ct);
 
         if (existingProcessing != null)
@@ -90,7 +90,7 @@ public sealed class DietAnalysisService
 
         // Последний готовый отчёт этого периода в этом же периоде дат
         var lastReady = await _db.AnalysisReports2.AsNoTracking()
-            .Where(r => r.ChatId == chatId && r.Period == period
+            .Where(r => r.AppUserId == chatId && r.Period == period
                 && r.PeriodStartLocalDate == periodStartLocalDate
                 && !r.IsProcessing && r.Markdown != null)
             .OrderByDescending(r => r.CreatedAtUtc)
@@ -102,7 +102,7 @@ public sealed class DietAnalysisService
             var phantom = new AnalysisReport1
             {
                 Id = lastReady.Id,
-                ChatId = chatId,
+                AppUserId = chatId,
                 Period = period,
                 PeriodStartLocalDate = periodStartLocalDate,
                 Name = lastReady.Name ?? BuildName(period, periodStartLocalDate),
@@ -117,7 +117,7 @@ public sealed class DietAnalysisService
         // Создаём запись "в обработке"
         var rec = new AnalysisReport1
         {
-            ChatId = chatId,
+            AppUserId = chatId,
             Period = period,
             PeriodStartLocalDate = periodStartLocalDate,
             Name = BuildName(period, periodStartLocalDate),
@@ -154,9 +154,9 @@ public sealed class DietAnalysisService
         // Генерация
         try
         {
-            var (markdown, requestJson) = await GenerateReportAsync(rec.ChatId, rec.Period, ct, rec.PeriodStartLocalDate);
+            var (markdown, requestJson) = await GenerateReportAsync(rec.AppUserId, rec.Period, ct, rec.PeriodStartLocalDate);
             // Обновить чек-сумму на момент завершения
-            var checksum = await ComputeCaloriesChecksum(rec.ChatId, periodStartUtc.UtcDateTime, ct, periodEndUtc);
+            var checksum = await ComputeCaloriesChecksum(rec.AppUserId, periodStartUtc.UtcDateTime, ct, periodEndUtc);
 
             rec.Markdown = string.IsNullOrWhiteSpace(markdown) ? BuildFallbackMarkdown(rec.Period, nowLocal) : markdown;
             rec.RequestJson = requestJson;
@@ -215,12 +215,12 @@ public sealed class DietAnalysisService
         var periodStartLocalDate = DateOnly.FromDateTime(dayStartLocal);
 
         var existing = await _db.AnalysisReports2
-            .FirstOrDefaultAsync(r => r.ChatId == chatId
+            .FirstOrDefaultAsync(r => r.AppUserId == chatId
                                    && r.Period == AnalysisPeriod.Day
                                    && r.PeriodStartLocalDate == periodStartLocalDate, ct);
 
         var lastMealTimeUtc = await _db.Meals.AsNoTracking()
-            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= dayStartUtc.UtcDateTime)
+            .Where(m => m.AppUserId == chatId && m.CreatedAtUtc >= dayStartUtc.UtcDateTime)
             .OrderByDescending(m => m.CreatedAtUtc)
             .Select(m => (DateTimeOffset?)m.CreatedAtUtc)
             .FirstOrDefaultAsync(ct);
@@ -230,7 +230,7 @@ public sealed class DietAnalysisService
 
         var rec = existing ?? new AnalysisReport1
         {
-            ChatId = chatId,
+            AppUserId = chatId,
             Period = AnalysisPeriod.Day,
             PeriodStartLocalDate = periodStartLocalDate,
             Name = BuildName(AnalysisPeriod.Day, periodStartLocalDate)
@@ -280,7 +280,7 @@ public sealed class DietAnalysisService
         var periodStartLocalDate = DateOnly.FromDateTime(periodStartLocal);
 
         var existing = await _db.AnalysisReports2.AsNoTracking()
-            .FirstOrDefaultAsync(r => r.ChatId == chatId
+            .FirstOrDefaultAsync(r => r.AppUserId == chatId
                                    && r.Period == period
                                    && r.PeriodStartLocalDate == periodStartLocalDate, ct);
 
@@ -292,7 +292,7 @@ public sealed class DietAnalysisService
             return existing.Markdown ?? string.Empty;
 
         var updatable = await _db.AnalysisReports2
-            .FirstOrDefaultAsync(r => r.ChatId == chatId
+            .FirstOrDefaultAsync(r => r.AppUserId == chatId
                                    && r.Period == period
                                    && r.PeriodStartLocalDate == periodStartLocalDate, ct);
 
@@ -300,7 +300,7 @@ public sealed class DietAnalysisService
         {
             updatable = new AnalysisReport1
             {
-                ChatId = chatId,
+                AppUserId = chatId,
                 Period = period,
                 PeriodStartLocalDate = periodStartLocalDate,
                 Name = BuildName(period, periodStartLocalDate)
@@ -393,7 +393,7 @@ _Автоматический фоллбэк: содержимое не пуст
     {
         var untilUtc = periodEndUtc ?? DateTime.UtcNow;
         var sum = await _db.Meals.AsNoTracking()
-            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= periodStartUtc && m.CreatedAtUtc <= untilUtc)
+            .Where(m => m.AppUserId == chatId && m.CreatedAtUtc >= periodStartUtc && m.CreatedAtUtc <= untilUtc)
             .Select(m => m.CaloriesKcal ?? 0)
             .SumAsync(ct);
 

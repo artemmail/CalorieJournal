@@ -20,14 +20,14 @@ public sealed class MealService : IMealService
 
     public async Task<MealListResult> ListAsync(long chatId, int limit, int offset, CancellationToken ct)
     {
-        // ===== Локальные «безопасные» хелперы =====
+        // ===== Г‹Г®ГЄГ Г«ГјГ­Г»ГҐ В«ГЎГҐГ§Г®ГЇГ Г±Г­Г»ГҐВ» ГµГҐГ«ГЇГҐГ°Г» =====
 
         static string? ComputeIngredientsJson1Safe(string? productsJson)
         {
             if (string.IsNullOrWhiteSpace(productsJson))
                 return null;
 
-            // Защита от аномально больших строк
+            // Г‡Г Г№ГЁГІГ  Г®ГІ Г Г­Г®Г¬Г Г«ГјГ­Г® ГЎГ®Г«ГјГёГЁГµ Г±ГІГ°Г®ГЄ
             if (productsJson.Length > 1_000_000)
                 return null;
 
@@ -79,16 +79,16 @@ public sealed class MealService : IMealService
             return ParseIngredientsOrEmpty(fallbackIngredientsJson);
         }
 
-        // ===== Основной запрос =====
+            .Where(m => m.AppUserId == chatId)
 
-        var baseQuery = _repo.Meals
-            .AsNoTracking()
-            .Where(m => m.ChatId == chatId)
-            .OrderByDescending(m => m.CreatedAtUtc);
+            .Where(p => p.AppUserId == chatId)
+            .FirstOrDefaultAsync(x => x.AppUserId == chatId && x.Id == id, ct);
+            .Where(x => x.AppUserId == chatId && x.Id == id)
+            AppUserId = chatId,
 
-        var total = await baseQuery.CountAsync(ct);
+            AppUserId = chatId,
 
-        // MealId тут int — приведём к long при построении множества
+        var m = await _repo.Meals.FirstOrDefaultAsync(x => x.AppUserId == chatId && x.Id == id, ct);
         var pendingIdsInt = await _repo.PendingClarifies
             .AsNoTracking()
             .Where(p => p.ChatId == chatId)
@@ -127,11 +127,11 @@ public sealed class MealService : IMealService
             r.ProteinsG,
             r.FatsG,
             r.CarbsG,
-            // Сначала пробуем вычислить из ProductsJson, иначе — парсим исходный IngredientsJson
+            // Г‘Г­Г Г·Г Г«Г  ГЇГ°Г®ГЎГіГҐГ¬ ГўГ»Г·ГЁГ±Г«ГЁГІГј ГЁГ§ ProductsJson, ГЁГ­Г Г·ГҐ вЂ” ГЇГ Г°Г±ГЁГ¬ ГЁГ±ГµГ®Г¤Г­Г»Г© IngredientsJson
             BuildIngredientsArraySafe(r.ProductsJson, r.IngredientsJson),
             ProductJsonHelper.DeserializeProducts(r.ProductsJson),
             r.HasImage,
-            pendingSet.Contains(r.Id) // r.Id — long, pendingSet — HashSet<long>
+            pendingSet.Contains(r.Id) // r.Id вЂ” long, pendingSet вЂ” HashSet<long>
         )).ToList();
 
         return new MealListResult(total, offset, limit, items);
@@ -296,7 +296,7 @@ public sealed class MealService : IMealService
 
         var pending = new PendingClarify
         {
-            ChatId = chatId,
+            AppUserId = chatId,
             MealId = id,
             Note = note!,
             NewTime = time?.ToUniversalTime(),
@@ -309,7 +309,7 @@ public sealed class MealService : IMealService
 
     public async Task<bool> DeleteAsync(long chatId, int id, CancellationToken ct)
     {
-        var m = await _repo.Meals.FirstOrDefaultAsync(x => x.ChatId == chatId && x.Id == id, ct);
+        var m = await _repo.Meals.FirstOrDefaultAsync(x => x.AppUserId == chatId && x.Id == id, ct);
         if (m == null) return false;
         await _repo.RemoveMealAsync(m, ct);
         return true;
