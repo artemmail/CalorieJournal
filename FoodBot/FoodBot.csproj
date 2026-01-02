@@ -3,6 +3,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <SkipClientBuild>false</SkipClientBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +25,11 @@
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
   </ItemGroup>
 
-  <Target Name="BuildClientApp" BeforeTargets="Build;ProcessStaticWebAssets">
+  <ItemGroup>
+    <Folder Include="Migrations\" />
+  </ItemGroup>
+
+  <Target Name="BuildClientApp" BeforeTargets="Build;ProcessStaticWebAssets" Condition="'$(SkipClientBuild)' != 'true'">
     <RemoveDir Directories="$(ProjectDir)wwwroot" />
     <Exec WorkingDirectory="../mobile/calorie-counter" Command="npm install" />
     <Exec WorkingDirectory="../mobile/calorie-counter" Command="npm run build -- --configuration production" />

@@ -17,6 +17,13 @@ public sealed class AppAuthService : IAppAuthService
         _cfg = cfg;
     }
 
+    private ExchangeResponse BuildExchangeResponse(long appUserId)
+    {
+        var hours = int.TryParse(_cfg["Auth:AccessTokenHours"], out var h) ? h : 72;
+        var jwt = _jwt.Issue(appUserId);
+        return new ExchangeResponse(jwt, "Bearer", hours * 3600, appUserId);
+    }
+
     private static string GenerateCode(int length = 8)
     {
         const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -68,11 +75,42 @@ public sealed class AppAuthService : IAppAuthService
         if (row.ConsumedAtUtc is not null) return new ExchangeStartCodeResult("already_used", false, null);
         if (row.AppUserId is null) return new ExchangeStartCodeResult(null, true, null);
 
-        var jwt = _jwt.Issue(row.AppUserId.Value);
-        var hours = int.TryParse(_cfg["Auth:AccessTokenHours"], out var h) ? h : 72;
         row.ConsumedAtUtc = now;
         await _db.SaveChangesAsync(ct);
-        var resp = new ExchangeResponse(jwt, "Bearer", hours * 3600, row.AppUserId.Value);
+        var resp = BuildExchangeResponse(row.AppUserId.Value);
         return new ExchangeStartCodeResult(null, false, resp);
+    }
+
+    public async Task<ExchangeResponse> ExchangeExternalAsync(ExternalProvider provider, string externalId, string? username, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(externalId))
+            throw new ArgumentException("ExternalId is required", nameof(externalId));
+
+        var normalizedId = externalId.Trim();
+        var normalizedUsername = string.IsNullOrWhiteSpace(username) ? null : username.Trim();
+
+        var account = await _db.ExternalAccounts.FirstOrDefaultAsync(
+            x => x.Provider == provider && x.ExternalId == normalizedId, ct);
+
+        if (account is null)
+        {
+            var user = new AppUser { CreatedAtUtc = DateTimeOffset.UtcNow };
+            account = new ExternalAccount
+            {
+                Provider = provider,
+                ExternalId = normalizedId,
+                Username = normalizedUsername,
+                AppUser = user,
+                LinkedAtUtc = DateTimeOffset.UtcNow
+            };
+            _db.ExternalAccounts.Add(account);
+        }
+        else if (!string.IsNullOrWhiteSpace(normalizedUsername) && account.Username != normalizedUsername)
+        {
+            account.Username = normalizedUsername;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return BuildExchangeResponse(account.AppUserId);
     }
 }

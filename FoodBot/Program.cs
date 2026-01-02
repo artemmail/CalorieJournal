@@ -3,7 +3,7 @@ using FoodBot.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Logging.AddProvider(new FileLoggerProvider("c:/log/fb"));
+//builder.Logging.AddProvider(new FileLoggerProvider("c:/log/fb"));
 
 builder.Services
     .AddBotServices(builder.Configuration)

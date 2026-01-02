@@ -1,3 +1,5 @@
+using FoodBot.Data;
+
 namespace FoodBot.Services;
 
 public interface IAppAuthService
@@ -5,6 +7,7 @@ public interface IAppAuthService
     Task<RequestCodeResponse> RequestCodeAsync(CancellationToken ct);
     Task<StatusResponse?> GetStatusAsync(string code, CancellationToken ct);
     Task<ExchangeStartCodeResult> ExchangeStartCodeAsync(string code, CancellationToken ct);
+    Task<ExchangeResponse> ExchangeExternalAsync(ExternalProvider provider, string externalId, string? username, CancellationToken ct);
 }
 
 public sealed record RequestCodeResponse(string Code, DateTimeOffset ExpiresAtUtc);

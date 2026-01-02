@@ -445,7 +445,7 @@ namespace FoodBot.Migrations
                     b.HasOne("FoodBot.Data.AppUser", null)
                         .WithMany()
                         .HasForeignKey("AppUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("FoodBot.Data.ExternalAccount", null)
                         .WithMany()

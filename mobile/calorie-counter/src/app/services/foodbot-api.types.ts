@@ -82,7 +82,7 @@ export interface ExchangeResponse {
   accessToken: string;
   tokenType: string;        // "Bearer"
   expiresInSeconds: number;
-  chatId: number;
+  userId: number;
 }
 
 export type Gender = 'male' | 'female';

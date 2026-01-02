@@ -55,7 +55,7 @@ public class BotDbContext : DbContext
             .HasOne<AppUser>()
             .WithMany()
             .HasForeignKey(x => x.AppUserId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<AppStartCode>()
             .HasOne<ExternalAccount>()

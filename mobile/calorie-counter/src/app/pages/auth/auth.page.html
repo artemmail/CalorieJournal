@@ -42,5 +42,38 @@
 
       <p class="expires" *ngIf="expiresAt">Код действителен до: {{ expiresAt | date:'medium' }}</p>
     </mat-tab>
+    <mat-tab label="Без Telegram">
+      <h2>Вход через внешний аккаунт</h2>
+      <p>Авторизуйтесь с помощью другого провайдера (например, VK). Мы создадим или найдём ваш профиль и выдадим токен входа.</p>
+
+      <div class="external-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Провайдер</mat-label>
+          <mat-select [(ngModel)]="externalProvider" name="provider">
+            <mat-option *ngFor="let p of providerOptions" [value]="p">
+              {{ p === 'vk' ? 'VK' : 'Telegram' }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>ID внешнего аккаунта</mat-label>
+          <input matInput [(ngModel)]="externalId" name="externalId" autocomplete="off" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Имя пользователя (опционально)</mat-label>
+          <input matInput [(ngModel)]="externalUsername" name="externalUsername" autocomplete="off" />
+        </mat-form-field>
+
+        <div class="external-actions">
+          <button mat-raised-button color="primary" (click)="loginExternal()" [disabled]="externalBusy || !externalProvider || !externalId.trim()">
+            <mat-icon>login</mat-icon> Войти
+          </button>
+          <mat-progress-spinner *ngIf="externalBusy" mode="indeterminate" diameter="28"></mat-progress-spinner>
+          <span class="error" *ngIf="externalError">{{ externalError }}</span>
+        </div>
+      </div>
+    </mat-tab>
   </mat-tab-group>
 </mat-card>

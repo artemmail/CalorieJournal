@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Threading;
 using System.Threading.Tasks;
+using FoodBot.Data;
 using FoodBot.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -43,6 +44,7 @@ namespace FoodBot.Controllers
 
         public sealed record ExchangeRequest([Required] string code, string? device);
         public sealed record ExchangeResponse(string accessToken, string tokenType, int expiresInSeconds, long userId);
+        public sealed record ExternalLoginRequest([Required] ExternalProvider provider, [Required] string externalId, string? username, string? device);
 
         // 3) Приложение обменивает КОД на JWT (если бот уже привязал аккаунт)
         // POST /api/auth/exchange-startcode
@@ -53,6 +55,18 @@ namespace FoodBot.Controllers
             if (res.Error != null) return BadRequest(new { error = res.Error });
             if (res.Pending) return Ok(new { status = "pending" });
             return Ok(res.Response);
+        }
+
+        // 4) Вход через внешний провайдер (без Telegram)
+        // POST /api/auth/external-login
+        [HttpPost("external-login")]
+        public async Task<ActionResult<ExchangeResponse>> ExternalLogin([FromBody] ExternalLoginRequest req, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(req.externalId))
+                return BadRequest(new { error = "external_id_required" });
+
+            var resp = await _auth.ExchangeExternalAsync(req.provider, req.externalId, req.username, ct);
+            return Ok(resp);
         }
     }
 }

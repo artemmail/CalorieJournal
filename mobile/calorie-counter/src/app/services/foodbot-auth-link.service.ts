@@ -6,10 +6,11 @@ import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
 import { Observable, interval, firstValueFrom, of, Subject } from "rxjs";
 import { catchError, map, switchMap, takeWhile, timeout } from "rxjs/operators";
 
+export type ExternalProvider = 'telegram' | 'vk';
 export interface RequestCodeResponse { code: string; expiresAtUtc: string; }
 export interface StatusResponse { linked: boolean; expiresAtUtc: string; secondsLeft: number; }
 export interface ExchangeStartCodeResponse {
-  accessToken: string; tokenType: 'Bearer'; expiresInSeconds: number; chatId: number;
+  accessToken: string; tokenType: 'Bearer'; expiresInSeconds: number; userId: number;
 }
 export interface ExchangePending { status: 'pending'; }
 
@@ -23,6 +24,7 @@ export class FoodBotAuthLinkService {
 
   private tokenChangedSubj = new Subject<string | null>();
   tokenChanges(): Observable<string | null> { return this.tokenChangedSubj.asObservable(); }
+  readonly supportedProviders: ExternalProvider[] = ['telegram', 'vk'];
 
   private get apiBase(): string {
     return (window as any).environment?.apiBaseUrl ?? environment?.apiBaseUrl ?? '';
@@ -31,6 +33,12 @@ export class FoodBotAuthLinkService {
 
   private get botUsername(): string {
     return (window as any).environment?.telegramBot ?? environment?.telegramBot ?? 'your_bot_username';
+  }
+
+  getDefaultProvider(): ExternalProvider {
+    const envProvider = ((window as any).environment?.defaultAuthProvider ?? environment?.defaultAuthProvider) as ExternalProvider | undefined;
+    if (envProvider && this.supportedProviders.includes(envProvider)) return envProvider;
+    return 'telegram';
   }
 
   get token(): string | null {
@@ -69,6 +77,11 @@ export class FoodBotAuthLinkService {
 
   exchangeStartCode(code: string, device = 'Android-Ionic'): Observable<ExchangeStartCodeResponse | ExchangePending> {
     return this.http.post<ExchangeStartCodeResponse | ExchangePending>(`${this.apiBase}/api/auth/exchange-startcode`, { code, device });
+  }
+
+  externalLogin(provider: ExternalProvider, externalId: string, username?: string, device = 'Android-Ionic'): Promise<ExchangeStartCodeResponse> {
+    const body = { provider, externalId, username, device };
+    return firstValueFrom(this.http.post<ExchangeStartCodeResponse>(`${this.apiBase}/api/auth/external-login`, body));
   }
 
   openBotWithCode(code: string) {
