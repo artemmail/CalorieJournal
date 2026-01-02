@@ -19,8 +19,6 @@ namespace FoodBot.Controllers
             _auth = auth;
         }
 
-        public sealed record RequestCodeResponse(string code, DateTimeOffset expiresAtUtc);
-
         // 1) Приложение просит КОД
         // POST /api/auth/request-code
         [HttpPost("request-code")]
@@ -29,8 +27,6 @@ namespace FoodBot.Controllers
             var resp = await _auth.RequestCodeAsync(ct);
             return Ok(resp);
         }
-
-        public sealed record StatusResponse(bool linked, DateTimeOffset expiresAtUtc, int secondsLeft);
 
         // 2) Приложение проверяет статус линковки (нажата ли кнопка в боте)
         // GET /api/auth/status?code=XXXX
@@ -42,16 +38,15 @@ namespace FoodBot.Controllers
             return Ok(resp);
         }
 
-        public sealed record ExchangeRequest([Required] string code, string? device);
-        public sealed record ExchangeResponse(string accessToken, string tokenType, int expiresInSeconds, long userId);
-        public sealed record ExternalLoginRequest([Required] ExternalProvider provider, [Required] string externalId, string? username, string? device);
+        public sealed record ExchangeRequest([Required] string Code, string? Device);
+        public sealed record ExternalLoginRequest([Required] ExternalProvider Provider, [Required] string ExternalId, string? Username, string? Device);
 
         // 3) Приложение обменивает КОД на JWT (если бот уже привязал аккаунт)
         // POST /api/auth/exchange-startcode
         [HttpPost("exchange-startcode")]
         public async Task<ActionResult<ExchangeResponse>> ExchangeStartCode([FromBody] ExchangeRequest req, CancellationToken ct)
         {
-            var res = await _auth.ExchangeStartCodeAsync(req.code, ct);
+            var res = await _auth.ExchangeStartCodeAsync(req.Code, ct);
             if (res.Error != null) return BadRequest(new { error = res.Error });
             if (res.Pending) return Ok(new { status = "pending" });
             return Ok(res.Response);
@@ -62,10 +57,10 @@ namespace FoodBot.Controllers
         [HttpPost("external-login")]
         public async Task<ActionResult<ExchangeResponse>> ExternalLogin([FromBody] ExternalLoginRequest req, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(req.externalId))
+            if (string.IsNullOrWhiteSpace(req.ExternalId))
                 return BadRequest(new { error = "external_id_required" });
 
-            var resp = await _auth.ExchangeExternalAsync(req.provider, req.externalId, req.username, ct);
+            var resp = await _auth.ExchangeExternalAsync(req.Provider, req.ExternalId, req.Username, ct);
             return Ok(resp);
         }
     }
