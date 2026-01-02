@@ -4,7 +4,7 @@
 import { Injectable } from "@angular/core";
 import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
 import { Observable, interval, firstValueFrom, of, Subject } from "rxjs";
-import { catchError, map, switchMap, takeWhile, timeout } from "rxjs/operators";
+import { catchError, filter, map, switchMap, take, timeout } from "rxjs/operators";
 
 export type ExternalProvider = 'telegram' | 'vk';
 export interface RequestCodeResponse { code: string; expiresAtUtc: string; }
@@ -84,6 +84,13 @@ export class FoodBotAuthLinkService {
     return firstValueFrom(this.http.post<ExchangeStartCodeResponse>(`${this.apiBase}/api/auth/external-login`, body));
   }
 
+  openVk(returnUrl?: string, newTab = false) {
+    const backUrl = returnUrl ?? window.location.href;
+    const url = `${this.apiBase}/api/auth/vk/start?returnUrl=${encodeURIComponent(backUrl)}`;
+    if (newTab) window.open(url, "_blank");
+    else window.location.href = url;
+  }
+
   openBotWithCode(code: string) {
     const bot = this.botUsername.replace(/^@/, '');
     const urlApp = `tg://resolve?domain=${encodeURIComponent(bot)}&start=${encodeURIComponent(code)}`;
@@ -108,18 +115,17 @@ export class FoodBotAuthLinkService {
     const openBot = () => this.openBotWithCode(req.code);
 
     const waitForJwt = async () => {
-      const jwt = await firstValueFrom(
+      return await firstValueFrom(
         interval(pollEvery).pipe(
           switchMap(() => this.exchangeStartCode(req.code, device).pipe(
             catchError(() => of<ExchangeStartCodeResponse | ExchangePending>({ status: 'pending' }))
           )),
           map(res => ('status' in (res as any)) ? null : (res as ExchangeStartCodeResponse)),
-          takeWhile(res => res === null, true),
-          map(res => { if (res === null) throw new Error('pending'); return res; }),
-          timeout({ first: pollTimeout })
+          filter((res): res is ExchangeStartCodeResponse => res !== null),
+          timeout({ first: pollTimeout }),
+          take(1)
         )
       );
-      return jwt;
     };
 
     return { code: req.code, expiresAtUtc: req.expiresAtUtc, openBot, waitForJwt };

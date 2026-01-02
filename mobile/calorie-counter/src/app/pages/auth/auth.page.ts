@@ -6,12 +6,11 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { Router } from "@angular/router";
-import { FoodBotAuthLinkService, ExchangeStartCodeResponse, ExternalProvider } from "../../services/foodbot-auth-link.service";
+import { FoodBotAuthLinkService, ExchangeStartCodeResponse } from "../../services/foodbot-auth-link.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTabsModule } from "@angular/material/tabs";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
 import { showErrorAlert } from "../../utils/alerts";
 
 @Component({
@@ -27,8 +26,7 @@ import { showErrorAlert } from "../../utils/alerts";
       MatProgressSpinnerModule,
       MatTabsModule,
       MatFormFieldModule,
-      MatInputModule,
-      MatSelectModule
+      MatInputModule
     ],
   templateUrl: "./auth.page.html",
   styleUrls: ["./auth.page.scss"]
@@ -42,8 +40,6 @@ export class AuthPage implements OnInit, OnDestroy {
   externalError = "";
   externalId = "";
   externalUsername = "";
-  externalProvider: ExternalProvider;
-  readonly providerOptions: ExternalProvider[];
   flow?: Awaited<ReturnType<FoodBotAuthLinkService["startLoginFlow"]>>;
   private autoRefreshInterval?: ReturnType<typeof setInterval>;
   private autoRefreshTimeout?: ReturnType<typeof setTimeout>;
@@ -52,10 +48,7 @@ export class AuthPage implements OnInit, OnDestroy {
     private auth: FoodBotAuthLinkService,
     private snack: MatSnackBar,
     private router: Router
-  ) {
-    this.providerOptions = this.auth.supportedProviders;
-    this.externalProvider = this.auth.getDefaultProvider();
-  }
+  ) {}
 
   async ngOnInit() {
     try {
@@ -135,27 +128,15 @@ export class AuthPage implements OnInit, OnDestroy {
 
   async loginExternal() {
     if (this.externalBusy) return;
-    if (!this.externalProvider || !this.externalId.trim()) {
-      this.externalError = "Укажите провайдера и ID внешнего аккаунта.";
-      return;
-    }
-
     this.externalBusy = true;
     this.externalError = "";
     try {
-      const resp = await this.auth.externalLogin(
-        this.externalProvider,
-        this.externalId.trim(),
-        this.externalUsername.trim() || undefined
-      );
-      this.auth.setToken(resp);
-      this.snack.open("Вход выполнен", "OK", { duration: 1200 });
-      this.router.navigateByUrl("/history");
+      const back = window.location.origin + "/auth";
+      this.auth.openVk(back, false);
     } catch (e) {
-      this.externalError = "Не удалось войти через внешний аккаунт.";
-      showErrorAlert(e, "Ошибка входа");
-    } finally {
       this.externalBusy = false;
+      this.externalError = "Не удалось открыть VK.";
+      showErrorAlert(e, "Ошибка VK");
     }
   }
 

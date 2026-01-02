@@ -8,6 +8,7 @@
 .actions { display:flex; gap:8px; flex-wrap: wrap; margin-bottom: 12px; }
 .pending { display:flex; align-items:center; gap:8px; margin:8px 0; }
 .expires { opacity:.7; font-size: 12px; }
+.vk-block { margin-top: 18px; }
 .external-form { display:flex; flex-direction:column; gap:12px; max-width:420px; }
 .external-actions { display:flex; align-items:center; gap:10px; flex-wrap: wrap; }
 .error { color:#c62828; }
