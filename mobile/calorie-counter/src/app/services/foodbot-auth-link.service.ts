@@ -37,6 +37,23 @@ const INSTALL_ID_KEY = "foodbot.install_id";
 export class FoodBotAuthLinkService {
   constructor(private http: HttpClient) {}
 
+  private parseJwtExpMs(token: string): number | null {
+    try {
+      const parts = token.split(".");
+      if (parts.length < 2) return null;
+
+      const payloadBase64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const pad = "=".repeat((4 - (payloadBase64.length % 4)) % 4);
+      const json = atob(payloadBase64 + pad);
+      const payload = JSON.parse(json) as { exp?: number };
+
+      if (!payload?.exp || !Number.isFinite(payload.exp)) return null;
+      return payload.exp * 1000;
+    } catch {
+      return null;
+    }
+  }
+
   private tokenChangedSubj = new Subject<string | null>();
   tokenChanges(): Observable<string | null> { return this.tokenChangedSubj.asObservable(); }
 
@@ -65,8 +82,20 @@ export class FoodBotAuthLinkService {
 
   get token(): string | null {
     const t = localStorage.getItem(JWT_KEY);
-    const exp = Number(localStorage.getItem(JWT_EXP) ?? 0);
     if (!t) return null;
+
+    let exp = Number(localStorage.getItem(JWT_EXP) ?? 0);
+    if (!exp) {
+      const jwtExpMs = this.parseJwtExpMs(t);
+      if (!jwtExpMs) {
+        localStorage.removeItem(JWT_KEY);
+        localStorage.removeItem(JWT_EXP);
+        return null;
+      }
+      exp = jwtExpMs;
+      localStorage.setItem(JWT_EXP, String(exp));
+    }
+
     if (exp && Date.now() > exp) {
       localStorage.removeItem(JWT_KEY);
       localStorage.removeItem(JWT_EXP);
@@ -79,6 +108,11 @@ export class FoodBotAuthLinkService {
     const t = localStorage.getItem(REFRESH_KEY);
     const exp = Number(localStorage.getItem(REFRESH_EXP) ?? 0);
     if (!t) return null;
+    if (!exp) {
+      localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem(REFRESH_EXP);
+      return null;
+    }
     if (exp && Date.now() > exp) {
       localStorage.removeItem(REFRESH_KEY);
       localStorage.removeItem(REFRESH_EXP);
