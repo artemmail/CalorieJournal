@@ -159,6 +159,16 @@
   padding: 12px 0 24px;
 }
 
+.empty-state {
+  margin: 24px 0 12px;
+  padding: 14px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  font-size: 14px;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
 .safe-area-bottom {
   height: env(safe-area-inset-bottom, 0px);
   padding-bottom: 60px; /* под фиксированный нижний таб-бар */

@@ -75,5 +75,9 @@
     <mat-spinner diameter="32"></mat-spinner>
   </div>
 
+  <div class="empty-state" *ngIf="!loading && items.length === 0">
+    История пока пуста. Сделайте фото еды и/или подключите Telegram-бота в разделе «Аккаунт».
+  </div>
+
   <div class="safe-area-bottom"></div>
 </div>
