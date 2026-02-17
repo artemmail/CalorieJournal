@@ -22,11 +22,22 @@ public sealed class AnalysisQueueWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Очистка зависших/висящих при старте — в отдельном скоупе
-        using (var startupScope = _scopeFactory.CreateScope())
+        // Очистка зависших/висящих при старте — в отдельном скоупе.
+        // Если схема БД отстаёт (например, после деплоя на другой машине),
+        // не валим весь хост: API должно продолжать работать.
+        try
         {
+            using var startupScope = _scopeFactory.CreateScope();
             var service = startupScope.ServiceProvider.GetRequiredService<DietAnalysisService>();
             await service.CleanupAllProcessingOnStartupAsync(stoppingToken);
+        }
+        catch (TaskCanceledException)
+        {
+            // shutdown path
+        }
+        catch (System.Exception ex)
+        {
+            _log.LogError(ex, "AnalysisQueueWorker startup cleanup failed");
         }
 
         while (!stoppingToken.IsCancellationRequested)
