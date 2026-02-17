@@ -1,16 +1,41 @@
 using FoodBot;
 using FoodBot.Logging;
 
-var builder = WebApplication.CreateBuilder(args);
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
 
-builder.Logging.AddProvider(new FileLoggerProvider("c:/log/fb"));
+    // Keep file logging enabled, but do not crash startup when the directory
+    // is unavailable on a different machine/user profile.
+    var fallbackLogDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FoodBot",
+        "logs");
+    var configuredLogDir = builder.Configuration["Logging:File:Directory"];
+    var fileLogDir = string.IsNullOrWhiteSpace(configuredLogDir) ? fallbackLogDir : configuredLogDir;
 
-builder.Services
-    .AddBotServices(builder.Configuration)
-    .AddBotAuth(builder.Configuration);
+    try
+    {
+        builder.Logging.AddProvider(new FileLoggerProvider(fileLogDir));
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[startup] File logger disabled ({fileLogDir}): {ex.Message}");
+    }
 
-var app = builder.Build();
+    builder.Services
+        .AddBotServices(builder.Configuration)
+        .AddBotAuth(builder.Configuration);
 
-app.UseBotEndpoints();
+    var app = builder.Build();
 
-app.Run();
+    app.UseBotEndpoints();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine("[startup] Fatal application error:");
+    Console.Error.WriteLine(ex);
+    throw;
+}
