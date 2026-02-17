@@ -9,10 +9,15 @@
 @import "@fontsource/material-icons-round/index.css";
 @import "@fontsource/material-icons-sharp/index.css";
 
-/* базовый набор (ligatures) */
+/* ligature icon font classes for Angular Material mat-icon + fontSet */
 .material-icons,
-.mat-icon.material-icons {
-  font-family: "Material Icons";
+.mat-icon.material-icons,
+.material-icons-outlined,
+.mat-icon.material-icons-outlined,
+.material-icons-round,
+.mat-icon.material-icons-round,
+.material-icons-sharp,
+.mat-icon.material-icons-sharp {
   font-weight: normal;
   font-style: normal;
   font-size: 24px;
@@ -25,6 +30,26 @@
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
+}
+
+.material-icons,
+.mat-icon.material-icons {
+  font-family: "Material Icons";
+}
+
+.material-icons-outlined,
+.mat-icon.material-icons-outlined {
+  font-family: "Material Icons Outlined";
+}
+
+.material-icons-round,
+.mat-icon.material-icons-round {
+  font-family: "Material Icons Round";
+}
+
+.material-icons-sharp,
+.mat-icon.material-icons-sharp {
+  font-family: "Material Icons Sharp";
 }
 
 html, body, ion-app, ion-content { height: 100dvh; }

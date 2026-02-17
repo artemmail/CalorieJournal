@@ -1,23 +1,39 @@
-﻿/**
- * FoodBotAuthLinkService — аутентификация через старт-код от сервера.
+/**
+ * FoodBotAuthLinkService — bootstrap anonymous account and optional provider linking.
  */
 import { Injectable } from "@angular/core";
-import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
-import { Observable, interval, firstValueFrom, of, Subject } from "rxjs";
-import { catchError, map, switchMap, takeWhile, timeout } from "rxjs/operators";
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from "@angular/common/http";
+import { Observable, firstValueFrom, of, Subject, throwError, timer } from "rxjs";
+import { catchError, exhaustMap, filter, map, take, timeout } from "rxjs/operators";
+
+declare const environment: any;
+
+export interface AuthSessionResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresInSeconds: number;
+  refreshExpiresInSeconds: number;
+  appUserId: number;
+  chatId: number;
+  isAnonymous: boolean;
+}
 
 export interface RequestCodeResponse { code: string; expiresAtUtc: string; }
 export interface StatusResponse { linked: boolean; expiresAtUtc: string; secondsLeft: number; }
-export interface ExchangeStartCodeResponse {
-  accessToken: string; tokenType: 'Bearer'; expiresInSeconds: number; chatId: number;
-}
-export interface ExchangePending { status: 'pending'; }
+export interface ExchangeStartCodeResponse extends AuthSessionResponse {}
+export interface ExchangePending { status: "pending"; }
 
-const JWT_KEY = 'foodbot.jwt';
-const JWT_EXP  = 'foodbot.jwt.exp';
-declare const environment: any;
+const JWT_KEY = "foodbot.jwt";
+const JWT_EXP = "foodbot.jwt.exp";
+const REFRESH_KEY = "foodbot.refresh";
+const REFRESH_EXP = "foodbot.refresh.exp";
+const APP_USER_ID_KEY = "foodbot.app_user_id";
+const CHAT_ID_KEY = "foodbot.chat_id";
+const IS_ANON_KEY = "foodbot.is_anonymous";
+const INSTALL_ID_KEY = "foodbot.install_id";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class FoodBotAuthLinkService {
   constructor(private http: HttpClient) {}
 
@@ -25,58 +41,153 @@ export class FoodBotAuthLinkService {
   tokenChanges(): Observable<string | null> { return this.tokenChangedSubj.asObservable(); }
 
   private get apiBase(): string {
-    return (window as any).environment?.apiBaseUrl ?? environment?.apiBaseUrl ?? '';
+    return (window as any).environment?.apiBaseUrl ?? environment?.apiBaseUrl ?? "";
   }
   get apiBaseUrl(): string { return this.apiBase; }
 
   private get botUsername(): string {
-    return (window as any).environment?.telegramBot ?? environment?.telegramBot ?? 'your_bot_username';
+    return (window as any).environment?.telegramBot ?? environment?.telegramBot ?? "your_bot_username";
+  }
+
+  get installId(): string {
+    let id = localStorage.getItem(INSTALL_ID_KEY);
+    if (id) return id;
+
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      id = crypto.randomUUID();
+    } else {
+      id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    localStorage.setItem(INSTALL_ID_KEY, id);
+    return id;
   }
 
   get token(): string | null {
     const t = localStorage.getItem(JWT_KEY);
     const exp = Number(localStorage.getItem(JWT_EXP) ?? 0);
     if (!t) return null;
-    if (exp && Date.now() > exp) { this.logout(); return null; }
+    if (exp && Date.now() > exp) {
+      localStorage.removeItem(JWT_KEY);
+      localStorage.removeItem(JWT_EXP);
+      return null;
+    }
     return t;
   }
+
+  get refreshToken(): string | null {
+    const t = localStorage.getItem(REFRESH_KEY);
+    const exp = Number(localStorage.getItem(REFRESH_EXP) ?? 0);
+    if (!t) return null;
+    if (exp && Date.now() > exp) {
+      localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem(REFRESH_EXP);
+      return null;
+    }
+    return t;
+  }
+
+  get appUserId(): number | null {
+    const raw = localStorage.getItem(APP_USER_ID_KEY);
+    if (!raw) return null;
+    const id = Number(raw);
+    return Number.isFinite(id) ? id : null;
+  }
+
+  get isAnonymousAccount(): boolean {
+    return localStorage.getItem(IS_ANON_KEY) === "1";
+  }
+
   isAuthenticated(): boolean { return !!this.token; }
 
-  setToken(resp: ExchangeStartCodeResponse) {
-    const expMs = Date.now() + resp.expiresInSeconds * 1000;
+  authHeaders(): HttpHeaders {
+    const t = this.token;
+    return new HttpHeaders(t ? { Authorization: `Bearer ${t}` } : {});
+  }
+
+  setToken(resp: AuthSessionResponse) {
+    const now = Date.now();
+    const accessExpMs = now + resp.expiresInSeconds * 1000;
+    const refreshExpMs = now + resp.refreshExpiresInSeconds * 1000;
+
     localStorage.setItem(JWT_KEY, resp.accessToken);
-    localStorage.setItem(JWT_EXP, String(expMs));
+    localStorage.setItem(JWT_EXP, String(accessExpMs));
+    localStorage.setItem(REFRESH_KEY, resp.refreshToken);
+    localStorage.setItem(REFRESH_EXP, String(refreshExpMs));
+    localStorage.setItem(APP_USER_ID_KEY, String(resp.appUserId));
+    localStorage.setItem(CHAT_ID_KEY, String(resp.chatId));
+    localStorage.setItem(IS_ANON_KEY, resp.isAnonymous ? "1" : "0");
+
     this.tokenChangedSubj.next(resp.accessToken);
   }
+
   logout() {
     localStorage.removeItem(JWT_KEY);
     localStorage.removeItem(JWT_EXP);
+    localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem(REFRESH_EXP);
+    localStorage.removeItem(APP_USER_ID_KEY);
+    localStorage.removeItem(CHAT_ID_KEY);
+    localStorage.removeItem(IS_ANON_KEY);
     this.tokenChangedSubj.next(null);
   }
 
-  authHeaders(): HttpHeaders {
-    const t = this.token; return new HttpHeaders(t ? { Authorization: `Bearer ${t}` } : {});
+  startAnonymousSession(device = "Android-Ionic"): Observable<AuthSessionResponse> {
+    return this.http.post<AuthSessionResponse>(`${this.apiBase}/api/auth/anonymous/start`, {
+      installId: this.installId,
+      device
+    });
+  }
+
+  refreshSession(token: string, device = "Android-Ionic"): Observable<AuthSessionResponse> {
+    return this.http.post<AuthSessionResponse>(`${this.apiBase}/api/auth/refresh`, {
+      refreshToken: token,
+      installId: this.installId,
+      device
+    });
+  }
+
+  async ensureSession(device = "Android-Ionic"): Promise<void> {
+    if (this.token) return;
+
+    const rt = this.refreshToken;
+    if (rt) {
+      try {
+        const refreshed = await firstValueFrom(this.refreshSession(rt, device));
+        this.setToken(refreshed);
+        return;
+      } catch {
+        this.logout();
+      }
+    }
+
+    const anon = await firstValueFrom(this.startAnonymousSession(device));
+    this.setToken(anon);
   }
 
   requestStartCode(): Observable<RequestCodeResponse> {
-    return this.http.post<RequestCodeResponse>(`${this.apiBase}/api/auth/request-code`, {});
+    return this.http.post<RequestCodeResponse>(`${this.apiBase}/api/auth/link/telegram/request-code`, {});
   }
 
   getStatus(code: string): Observable<StatusResponse> {
-    const params = new HttpParams().set('code', code);
+    const params = new HttpParams().set("code", code);
     return this.http.get<StatusResponse>(`${this.apiBase}/api/auth/status`, { params });
   }
 
-  exchangeStartCode(code: string, device = 'Android-Ionic'): Observable<ExchangeStartCodeResponse | ExchangePending> {
-    return this.http.post<ExchangeStartCodeResponse | ExchangePending>(`${this.apiBase}/api/auth/exchange-startcode`, { code, device });
+  exchangeStartCode(code: string, device = "Android-Ionic"): Observable<ExchangeStartCodeResponse | ExchangePending> {
+    return this.http.post<ExchangeStartCodeResponse | ExchangePending>(`${this.apiBase}/api/auth/exchange-startcode`, {
+      code,
+      device,
+      installId: this.installId
+    });
   }
 
   openBotWithCode(code: string) {
-    const bot = this.botUsername.replace(/^@/, '');
+    const bot = this.botUsername.replace(/^@/, "");
     const urlApp = `tg://resolve?domain=${encodeURIComponent(bot)}&start=${encodeURIComponent(code)}`;
     const urlWeb = `https://t.me/${encodeURIComponent(bot)}?start=${encodeURIComponent(code)}`;
     window.location.href = urlApp;
-    setTimeout(() => window.open(urlWeb, '_blank'), 400);
+    setTimeout(() => window.open(urlWeb, "_blank"), 400);
   }
 
   async startLoginFlow(options?: {
@@ -87,7 +198,7 @@ export class FoodBotAuthLinkService {
   }): Promise<{ code: string; expiresAtUtc: string; openBot: () => void; waitForJwt: () => Promise<ExchangeStartCodeResponse>; }> {
     const pollEvery = options?.pollIntervalMs ?? 2000;
     const pollTimeout = options?.pollTimeoutMs ?? 120000;
-    const device = options?.deviceLabel ?? 'Android-Ionic';
+    const device = options?.deviceLabel ?? "Android-Ionic";
 
     const req = await firstValueFrom(this.requestStartCode());
     options?.onCode?.(req.code, req.expiresAtUtc);
@@ -96,13 +207,14 @@ export class FoodBotAuthLinkService {
 
     const waitForJwt = async () => {
       const jwt = await firstValueFrom(
-        interval(pollEvery).pipe(
-          switchMap(() => this.exchangeStartCode(req.code, device).pipe(
-            catchError(() => of<ExchangeStartCodeResponse | ExchangePending>({ status: 'pending' }))
+        timer(0, pollEvery).pipe(
+          // Keep one in-flight request; do not cancel it on next tick.
+          exhaustMap(() => this.exchangeStartCode(req.code, device).pipe(
+            catchError(err => this.mapExchangeError(err))
           )),
-          map(res => ('status' in (res as any)) ? null : (res as ExchangeStartCodeResponse)),
-          takeWhile(res => res === null, true),
-          map(res => { if (res === null) throw new Error('pending'); return res; }),
+          map(res => ("status" in (res as any)) ? null : (res as ExchangeStartCodeResponse)),
+          filter((res): res is ExchangeStartCodeResponse => res !== null),
+          take(1),
           timeout({ first: pollTimeout })
         )
       );
@@ -110,5 +222,18 @@ export class FoodBotAuthLinkService {
     };
 
     return { code: req.code, expiresAtUtc: req.expiresAtUtc, openBot, waitForJwt };
+  }
+
+  private mapExchangeError(err: unknown): Observable<ExchangeStartCodeResponse | ExchangePending> {
+    if (err instanceof HttpErrorResponse) {
+      const status = err.status;
+      // For auth/validation errors we must stop polling and show explicit backend error.
+      if (status >= 400 && status < 500 && status !== 429) {
+        return throwError(() => err);
+      }
+    }
+
+    // Network hiccups / 5xx / temporary overload keep polling.
+    return of<ExchangeStartCodeResponse | ExchangePending>({ status: "pending" });
   }
 }

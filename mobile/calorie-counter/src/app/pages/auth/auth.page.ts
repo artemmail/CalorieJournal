@@ -5,6 +5,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { Router } from "@angular/router";
+import { HttpErrorResponse } from "@angular/common/http";
 import { FoodBotAuthLinkService, ExchangeStartCodeResponse } from "../../services/foodbot-auth-link.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTabsModule } from "@angular/material/tabs";
@@ -42,6 +43,7 @@ export class AuthPage implements OnInit, OnDestroy {
 
   async ngOnInit() {
     try {
+      await this.auth.ensureSession();
       await this.startFlow();
     } catch (e) {
       this.errorMsg = "Не удалось получить код. Проверьте доступность API/CORS.";
@@ -98,8 +100,14 @@ export class AuthPage implements OnInit, OnDestroy {
       this.snack.open("Вход выполнен", "OK", { duration: 1200 });
       this.router.navigateByUrl("/history");
     } catch (e) {
-      showErrorAlert(e, "Ещё нет привязки кода");
-      this.snack.open("Пока ожидаем привязку кода в боте…", "OK", { duration: 1500 });
+      const terminalMsg = this.getTerminalExchangeMessage(e);
+      if (terminalMsg) {
+        this.stopAutoRefresh();
+        this.errorMsg = terminalMsg;
+        showErrorAlert(e, terminalMsg);
+      } else {
+        this.snack.open("Пока ожидаем привязку кода в боте…", "OK", { duration: 1500 });
+      }
     } finally {
       this.busy = false;
     }
@@ -137,6 +145,25 @@ export class AuthPage implements OnInit, OnDestroy {
     if (this.autoRefreshTimeout) {
       clearTimeout(this.autoRefreshTimeout);
       this.autoRefreshTimeout = undefined;
+    }
+  }
+
+  private getTerminalExchangeMessage(err: unknown): string | null {
+    if (!(err instanceof HttpErrorResponse)) return null;
+    const code = err.error?.error;
+    if (typeof code !== "string") return null;
+
+    switch (code) {
+      case "expired":
+        return "Код истёк. Запросите новый и повторите вход.";
+      case "not_found":
+        return "Код не найден. Проверьте, что отправили его правильному боту.";
+      case "already_used":
+        return "Код уже использован. Запросите новый код.";
+      case "identity_conflict":
+        return "Этот Telegram уже привязан к другому аккаунту.";
+      default:
+        return "Ошибка привязки кода. Попробуйте запросить новый код.";
     }
   }
 }

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FoodBot.Migrations
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class ini : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -49,6 +49,23 @@ namespace FoodBot.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AnalysisReports2", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AppUsers",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    StorageChatId = table.Column<long>(type: "bigint", nullable: false),
+                    IsAnonymous = table.Column<bool>(type: "bit", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false, defaultValue: "active"),
+                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    LastSeenAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppUsers", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -165,6 +182,55 @@ namespace FoodBot.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AppIdentities",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
+                    Provider = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
+                    ExternalUserId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    ExternalUsername = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    VerifiedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppIdentities", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AppIdentities_AppUsers_AppUserId",
+                        column: x => x.AppUserId,
+                        principalTable: "AppUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AppUserDevices",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
+                    InstallId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    DeviceName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    LastSeenAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    RevokedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppUserDevices", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AppUserDevices_AppUsers_AppUserId",
+                        column: x => x.AppUserId,
+                        principalTable: "AppUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "StartCodes",
                 columns: table => new
                 {
@@ -172,6 +238,7 @@ namespace FoodBot.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Code = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     ChatId = table.Column<long>(type: "bigint", nullable: true),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: true),
                     CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     ExpiresAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     ConsumedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
@@ -179,12 +246,92 @@ namespace FoodBot.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_StartCodes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_StartCodes_AppUsers_AppUserId",
+                        column: x => x.AppUserId,
+                        principalTable: "AppUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AppRefreshTokens",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppUserId = table.Column<long>(type: "bigint", nullable: false),
+                    AppUserDeviceId = table.Column<long>(type: "bigint", nullable: false),
+                    TokenHash = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    CreatedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    ExpiresAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    RevokedAtUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    ReplacedByTokenHash = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppRefreshTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AppRefreshTokens_AppUserDevices_AppUserDeviceId",
+                        column: x => x.AppUserDeviceId,
+                        principalTable: "AppUserDevices",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AppRefreshTokens_AppUsers_AppUserId",
+                        column: x => x.AppUserId,
+                        principalTable: "AppUsers",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_AnalysisPdfJobs_ChatId_CreatedAtUtc",
                 table: "AnalysisPdfJobs",
                 columns: new[] { "ChatId", "CreatedAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppIdentities_AppUserId",
+                table: "AppIdentities",
+                column: "AppUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppIdentities_Provider_ExternalUserId",
+                table: "AppIdentities",
+                columns: new[] { "Provider", "ExternalUserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppRefreshTokens_AppUserDeviceId",
+                table: "AppRefreshTokens",
+                column: "AppUserDeviceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppRefreshTokens_AppUserId_ExpiresAtUtc",
+                table: "AppRefreshTokens",
+                columns: new[] { "AppUserId", "ExpiresAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppRefreshTokens_TokenHash",
+                table: "AppRefreshTokens",
+                column: "TokenHash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppUserDevices_AppUserId",
+                table: "AppUserDevices",
+                column: "AppUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppUserDevices_InstallId",
+                table: "AppUserDevices",
+                column: "InstallId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppUsers_StorageChatId",
+                table: "AppUsers",
+                column: "StorageChatId",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Meals_ChatId_CreatedAtUtc",
@@ -205,6 +352,11 @@ namespace FoodBot.Migrations
                 name: "IX_PeriodPdfJobs_ChatId_CreatedAtUtc",
                 table: "PeriodPdfJobs",
                 columns: new[] { "ChatId", "CreatedAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StartCodes_AppUserId_ExpiresAtUtc",
+                table: "StartCodes",
+                columns: new[] { "AppUserId", "ExpiresAtUtc" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_StartCodes_ChatId_ExpiresAtUtc",
@@ -228,6 +380,12 @@ namespace FoodBot.Migrations
                 name: "AnalysisReports2");
 
             migrationBuilder.DropTable(
+                name: "AppIdentities");
+
+            migrationBuilder.DropTable(
+                name: "AppRefreshTokens");
+
+            migrationBuilder.DropTable(
                 name: "Meals");
 
             migrationBuilder.DropTable(
@@ -244,6 +402,12 @@ namespace FoodBot.Migrations
 
             migrationBuilder.DropTable(
                 name: "StartCodes");
+
+            migrationBuilder.DropTable(
+                name: "AppUserDevices");
+
+            migrationBuilder.DropTable(
+                name: "AppUsers");
         }
     }
 }

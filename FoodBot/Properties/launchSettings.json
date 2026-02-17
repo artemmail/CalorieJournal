@@ -3,10 +3,11 @@
     "FoodBot": {
       "commandName": "Project",
       "launchBrowser": true,
+      "dotnetRunMessages": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:52800;http://localhost:52801"
+      "applicationUrl": "http://localhost:52804;https://localhost:52712"
     }
   }
 }

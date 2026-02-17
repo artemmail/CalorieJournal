@@ -8,12 +8,13 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 
   <!-- __FOODBOTOS_ENV__ -->
+  <script src="/app-env.js"></script>
   <script>
     const envFromServer = window.environment || {};
     window.environment = {
       ...envFromServer,
       apiBaseUrl: envFromServer.apiBaseUrl ?? window.location.origin,
-      telegramBot: envFromServer.telegramBot ?? 'CalorieJournal_bot'
+      telegramBot: envFromServer.telegramBot ?? 'yaltasportcards_bot'
     };
   </script>
 </head>

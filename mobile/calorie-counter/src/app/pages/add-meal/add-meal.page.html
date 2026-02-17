@@ -49,6 +49,15 @@
   </div>
 </div>
 
+<input
+  #systemFileInput
+  type="file"
+  accept="image/*"
+  capture="environment"
+  hidden
+  (change)="onSystemFileSelected($event)"
+/>
+
 <mat-progress-bar *ngIf="uploadProgress !== null" [mode]="progressMode" [value]="uploadProgress"></mat-progress-bar>
 
 <div class="last-shot" *ngIf="photoDataUrl">

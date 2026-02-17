@@ -236,6 +236,23 @@ public static class BotExtensions
         app.MapControllers();
         app.MapHub<FoodBot.Hubs.MealsHub>("/hubs/meals");
 
+        app.MapGet("/app-env.js", (IConfiguration cfg) =>
+        {
+            var payload = new
+            {
+                apiBaseUrl = cfg["App:ApiBaseUrl"],
+                telegramBot = cfg["Telegram:BotUsername"]
+            };
+
+            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            });
+
+            var script = $"window.environment = Object.assign(window.environment || {{}}, {json});";
+            return Results.Text(script, "application/javascript; charset=utf-8");
+        });
+
         var secret = app.Configuration["Telegram:WebhookSecretPath"] ?? "my-secret";
         app.MapPost($"/bot/{secret}", async (HttpContext http, UpdateHandler handler, ILogger<Program> logger, CancellationToken ct) =>
         {

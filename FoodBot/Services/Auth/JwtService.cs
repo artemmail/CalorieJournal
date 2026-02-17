@@ -32,14 +32,17 @@ public sealed class JwtService
         _creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
     }
 
-    public string Issue(long chatId)
+    public int AccessTokenExpiresInSeconds => (int)_ttl.TotalSeconds;
+
+    public string Issue(long appUserId, long chatId)
     {
         var now = DateTimeOffset.UtcNow;
 
         var claims = new[]
         {
+            new Claim("app_user_id", appUserId.ToString()),
             new Claim("chat_id", chatId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Sub, chatId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Sub, appUserId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };
@@ -55,6 +58,8 @@ public sealed class JwtService
 
         return new JwtSecurityTokenHandler().WriteToken(jwt);
     }
+
+    public string Issue(long chatId) => Issue(chatId, chatId);
 }
 
 /// <summary>Единая нормализация ключа для HS256.</summary>

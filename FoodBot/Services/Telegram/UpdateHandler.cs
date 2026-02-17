@@ -106,6 +106,7 @@ public class UpdateHandler
         var httpf = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
         var stt = scope.ServiceProvider.GetRequiredService<SpeechToTextService>();
         var notifier = scope.ServiceProvider.GetRequiredService<IMealNotifier>();
+        var auth = scope.ServiceProvider.GetRequiredService<IAppAuthService>();
 
         var chatId = msg.Chat.Id;
         var userId = msg.From?.Id ?? 0;
@@ -326,7 +327,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
         {
             // 1) сначала пытаемся трактовать это как старт-код (линковка)
             var trimmed = msg.Text.Trim();
-            if (await TryLinkStartCodeAsync(db, chatId, trimmed, ct))
+            if (await TryLinkStartCodeAsync(auth, chatId, username, trimmed, ct))
                 return;
 
             // 2) команды
@@ -335,7 +336,7 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
                 var payload = trimmed.Length > 6 ? trimmed.Substring(6).Trim() : "";
                 if (!string.IsNullOrWhiteSpace(payload))
                 {
-                    if (await TryLinkStartCodeAsync(db, chatId, payload, ct))
+                    if (await TryLinkStartCodeAsync(auth, chatId, username, payload, ct))
                         return;
                 }
 
@@ -370,39 +371,17 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
     // ======= Линковка старт-кода (из приложения) =======
     private static readonly Regex CodePattern = new(@"^[A-Z0-9\-]{6,16}$", RegexOptions.Compiled);
 
-    private async Task<bool> TryLinkStartCodeAsync(BotDbContext db, long chatId, string text, CancellationToken ct)
+    private async Task<bool> TryLinkStartCodeAsync(IAppAuthService auth, long chatId, string? username, string text, CancellationToken ct)
     {
         var code = text.Trim().ToUpperInvariant();
         if (!CodePattern.IsMatch(code))
             return false;
 
-        var row = await db.StartCodes.FirstOrDefaultAsync(x => x.Code == code, ct);
-        if (row is null)
+        var link = await auth.LinkTelegramStartCodeAsync(chatId, username, code, ct);
+        if (link.Status == "not_found")
             return false;
 
-        if (row.ExpiresAtUtc <= DateTimeOffset.UtcNow)
-        {
-            await _bot.SendMessage(chatId, "Код просрочен. Попросите новый в приложении.", cancellationToken: ct);
-            return true;
-        }
-        if (row.ConsumedAtUtc is not null)
-        {
-            await _bot.SendMessage(chatId, "Этот код уже использован. Попросите новый в приложении.", cancellationToken: ct);
-            return true;
-        }
-
-        if (row.ChatId == chatId)
-        {
-            await _bot.SendMessage(chatId, "Этот код уже привязан к вашему аккаунту. Можете вернуться в приложение и нажать «Обновить».", cancellationToken: ct);
-            return true;
-        }
-
-        row.ChatId = chatId; // линкуем
-        await db.SaveChangesAsync(ct);
-
-        await _bot.SendMessage(chatId,
-            "✅ Код принят. Вернитесь в приложение и нажмите «Обновить».",
-            cancellationToken: ct);
+        await _bot.SendMessage(chatId, link.Message, cancellationToken: ct);
         return true;
     }
 

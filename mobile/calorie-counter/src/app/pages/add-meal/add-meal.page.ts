@@ -11,7 +11,8 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 
-import { Camera, CameraResultType, CameraSource, type CameraPermissionState, type CameraPermissionType } from "@capacitor/camera";
+import { Camera, CameraResultType, CameraSource, type CameraPermissionState } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 
 import { firstValueFrom, Subscription } from "rxjs";
 
@@ -80,12 +81,14 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private currentCameraIndex = -1;
   private currentCameraId?: string;
   private lastPreviewAspect = "16 / 9";
+  private readonly isWebPlatform = Capacitor.getPlatform() === "web";
 
   clarifyPreview?: ClarifyPreviewInfo;
   nextClarifyDraft?: NextClarifyDraft;
 
   @ViewChild("previewBox") private previewBox?: ElementRef<HTMLDivElement>;
   @ViewChild("videoEl") private videoEl?: ElementRef<HTMLVideoElement>;
+  @ViewChild("systemFileInput") private systemFileInput?: ElementRef<HTMLInputElement>;
 
   constructor(
     private api: FoodbotApiService,
@@ -156,6 +159,11 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
   // системная камера (Capacitor Camera)
   async takePhotoSystem() {
+    if (this.isWebPlatform) {
+      this.openWebFilePicker();
+      return;
+    }
+
     const hadDomPreview = this.previewActive || this.previewStarting || !!this.mediaStream;
     if (hadDomPreview) {
       await this.stopPreview();
@@ -172,6 +180,28 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
         await this.startPreviewWithFallback();
       }
     }
+  }
+
+  onSystemFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const base64 = await this.readFileAsBase64(file);
+        await this.uploadBase64(base64);
+      } catch (err) {
+        console.error("Failed to process selected photo", err);
+        this.snack.open("Не удалось загрузить выбранное фото", "OK", { duration: 2000 });
+      } finally {
+        if (input) {
+          input.value = "";
+        }
+      }
+    })();
   }
 
   openNextClarifyDialog() {
@@ -672,12 +702,16 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async ensureCameraPermission(): Promise<boolean> {
+    if (this.isWebPlatform) {
+      return !!navigator?.mediaDevices?.getUserMedia;
+    }
+
     try {
       const current = await Camera.checkPermissions();
       if (this.isCameraPermissionGranted(current.camera)) {
         return true;
       }
-      const requested = await Camera.requestPermissions({ permissions: ["camera"] as CameraPermissionType[] });
+      const requested = await Camera.requestPermissions();
       return this.isCameraPermissionGranted(requested.camera);
     } catch (err) {
       console.error("Failed to obtain camera permission", err);
@@ -894,5 +928,33 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
   private normalizeZoomText(raw: string): string {
     const cleaned = raw.replace(/^zoom\s*/i, "").trim();
     return cleaned || raw;
+  }
+
+  private openWebFilePicker() {
+    const input = this.systemFileInput?.nativeElement;
+    if (!input) {
+      this.snack.open("Выбор фото недоступен", "OK", { duration: 2000 });
+      return;
+    }
+
+    input.value = "";
+    input.click();
+  }
+
+  private readFileAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        const commaIndex = dataUrl.indexOf(",");
+        if (!dataUrl.startsWith("data:") || commaIndex < 0) {
+          reject(new Error("Invalid data URL from file reader"));
+          return;
+        }
+        resolve(dataUrl.slice(commaIndex + 1));
+      };
+      reader.onerror = () => reject(reader.error ?? new Error("FileReader failed"));
+      reader.readAsDataURL(file);
+    });
   }
 }

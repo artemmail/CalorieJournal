@@ -9,7 +9,7 @@
   </a>
 
   <a mat-list-item routerLink="/analysis" routerLinkActive="active" (click)="openAddMealNoteDialog($event)">
-    <mat-icon fontSet="material-icons-outlined" matListItemIcon>microphone</mat-icon>
+    <mat-icon fontSet="material-icons-outlined" matListItemIcon>mic</mat-icon>
     <span matListItemTitle>Добавить</span>
   </a>
 
@@ -24,5 +24,9 @@
   <a mat-list-item routerLink="/profile" routerLinkActive="active" (click)="close.emit()">
     <mat-icon fontSet="material-icons-outlined" matListItemIcon>person</mat-icon>
     <span matListItemTitle>Профиль</span>
+  </a>
+  <a mat-list-item routerLink="/auth" routerLinkActive="active" (click)="close.emit()">
+    <mat-icon fontSet="material-icons-outlined" matListItemIcon>link</mat-icon>
+    <span matListItemTitle>Аккаунт</span>
   </a>
 </mat-nav-list>

@@ -5,10 +5,8 @@ import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { InfiniteScrollModule } from "ngx-infinite-scroll";
-import { Router } from "@angular/router";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
 import { MealListItem } from "../../services/foodbot-api.types";
-import { FoodBotAuthLinkService } from "../../services/foodbot-auth-link.service";
 import { HistoryDetailDialogComponent } from "./history-detail.dialog";
 import { HistoryUpdatesService } from "../../services/history-updates.service";
 import { Subscription } from "rxjs";
@@ -43,17 +41,11 @@ export class HistoryPage implements OnInit, OnDestroy {
   constructor(
     private api: FoodbotApiService,
     private snack: MatSnackBar,
-    private router: Router,
-    private auth: FoodBotAuthLinkService,
     private dialog: MatDialog,
     private updates: HistoryUpdatesService
   ) {}
 
   ngOnInit() {
-    if (!this.auth.isAuthenticated()) {
-      this.router.navigateByUrl("/auth");
-      return;
-    }
     this.loadMore();
 
     this.updatesSub = this.updates.updates().subscribe(item => {

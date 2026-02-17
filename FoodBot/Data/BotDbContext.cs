@@ -12,6 +12,10 @@ public class BotDbContext : DbContext
 
 
     public DbSet<AppStartCode> StartCodes => Set<AppStartCode>();
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
+    public DbSet<AppIdentity> AppIdentities => Set<AppIdentity>();
+    public DbSet<AppUserDevice> AppUserDevices => Set<AppUserDevice>();
+    public DbSet<AppRefreshToken> AppRefreshTokens => Set<AppRefreshToken>();
     public DbSet<PersonalCard> PersonalCards => Set<PersonalCard>();
     public DbSet<AnalysisReport1> AnalysisReports2 => Set<AnalysisReport1>();
     public DbSet<PeriodPdfJob> PeriodPdfJobs => Set<PeriodPdfJob>();
@@ -36,6 +40,58 @@ public class BotDbContext : DbContext
 
         modelBuilder.Entity<AppStartCode>()
             .HasIndex(x => new { x.ChatId, x.ExpiresAtUtc });
+        modelBuilder.Entity<AppStartCode>()
+            .HasIndex(x => new { x.AppUserId, x.ExpiresAtUtc });
+        modelBuilder.Entity<AppStartCode>()
+            .HasOne(x => x.AppUser)
+            .WithMany()
+            .HasForeignKey(x => x.AppUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AppUser>()
+            .HasIndex(x => x.StorageChatId)
+            .IsUnique();
+        modelBuilder.Entity<AppUser>()
+            .Property(x => x.Status)
+            .HasDefaultValue("active");
+
+        modelBuilder.Entity<AppIdentity>()
+            .HasOne(x => x.AppUser)
+            .WithMany()
+            .HasForeignKey(x => x.AppUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AppIdentity>()
+            .HasIndex(x => new { x.Provider, x.ExternalUserId })
+            .IsUnique();
+        modelBuilder.Entity<AppIdentity>()
+            .HasIndex(x => x.AppUserId);
+
+        modelBuilder.Entity<AppUserDevice>()
+            .HasOne(x => x.AppUser)
+            .WithMany()
+            .HasForeignKey(x => x.AppUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AppUserDevice>()
+            .HasIndex(x => x.InstallId)
+            .IsUnique();
+        modelBuilder.Entity<AppUserDevice>()
+            .HasIndex(x => x.AppUserId);
+
+        modelBuilder.Entity<AppRefreshToken>()
+            .HasOne(x => x.AppUser)
+            .WithMany()
+            .HasForeignKey(x => x.AppUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+        modelBuilder.Entity<AppRefreshToken>()
+            .HasOne(x => x.AppUserDevice)
+            .WithMany()
+            .HasForeignKey(x => x.AppUserDeviceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AppRefreshToken>()
+            .HasIndex(x => x.TokenHash)
+            .IsUnique();
+        modelBuilder.Entity<AppRefreshToken>()
+            .HasIndex(x => new { x.AppUserId, x.ExpiresAtUtc });
 
         modelBuilder.Entity<PersonalCard>()
             .HasKey(x => x.ChatId);
