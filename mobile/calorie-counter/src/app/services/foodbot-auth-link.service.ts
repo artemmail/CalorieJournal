@@ -3,6 +3,7 @@
  */
 import { Injectable } from "@angular/core";
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from "@angular/common/http";
+import { Capacitor } from "@capacitor/core";
 import { Observable, firstValueFrom, of, Subject, throwError, timer } from "rxjs";
 import { catchError, exhaustMap, filter, map, take, timeout } from "rxjs/operators";
 
@@ -32,6 +33,7 @@ const APP_USER_ID_KEY = "foodbot.app_user_id";
 const CHAT_ID_KEY = "foodbot.chat_id";
 const IS_ANON_KEY = "foodbot.is_anonymous";
 const INSTALL_ID_KEY = "foodbot.install_id";
+const MOBILE_DEFAULT_API_BASE_URL = "https://healthymeals.space";
 
 @Injectable({ providedIn: "root" })
 export class FoodBotAuthLinkService {
@@ -58,9 +60,53 @@ export class FoodBotAuthLinkService {
   tokenChanges(): Observable<string | null> { return this.tokenChangedSubj.asObservable(); }
 
   private get apiBase(): string {
-    return (window as any).environment?.apiBaseUrl ?? environment?.apiBaseUrl ?? "";
+    const envApiBase = this.normalizeBaseUrl((window as any).environment?.apiBaseUrl ?? environment?.apiBaseUrl ?? "");
+
+    if (this.shouldUseMobileDefaultApi(envApiBase)) {
+      return MOBILE_DEFAULT_API_BASE_URL;
+    }
+
+    if (envApiBase) {
+      return envApiBase;
+    }
+
+    if (this.isNativeApp()) {
+      return MOBILE_DEFAULT_API_BASE_URL;
+    }
+
+    return this.normalizeBaseUrl(window.location.origin) || MOBILE_DEFAULT_API_BASE_URL;
   }
   get apiBaseUrl(): string { return this.apiBase; }
+
+  private shouldUseMobileDefaultApi(apiBase: string): boolean {
+    return this.isNativeApp() && this.isLocalhostLike(apiBase);
+  }
+
+  private isNativeApp(): boolean {
+    try {
+      return Capacitor.isNativePlatform();
+    } catch {
+      return false;
+    }
+  }
+
+  private isLocalhostLike(value: string): boolean {
+    if (!value) return false;
+
+    try {
+      const host = new URL(value).hostname.toLowerCase();
+      return host === "localhost" || host === "127.0.0.1" || host === "::1";
+    } catch {
+      const normalized = value.toLowerCase();
+      return normalized.includes("localhost") || normalized.includes("127.0.0.1");
+    }
+  }
+
+  private normalizeBaseUrl(value: string): string {
+    const trimmed = (value ?? "").trim();
+    if (!trimmed) return "";
+    return trimmed.replace(/\/+$/, "");
+  }
 
   private get botUsername(): string {
     return (window as any).environment?.telegramBot ?? environment?.telegramBot ?? "your_bot_username";

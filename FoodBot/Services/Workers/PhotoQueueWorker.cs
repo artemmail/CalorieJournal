@@ -166,7 +166,10 @@ public sealed class PhotoQueueWorker : BackgroundService
                         db.PendingMeals.Remove(next);
                         await db.SaveChangesAsync(stoppingToken);
 
-                        await notifier.MealUpdated(entry.ChatId, entry.ToListItem());
+                        await notifier.MealUpdated(
+                            entry.ChatId,
+                            entry.ToListItem(replacesPendingRequestId: next.Id)
+                        );
                     }
                     else
                     {

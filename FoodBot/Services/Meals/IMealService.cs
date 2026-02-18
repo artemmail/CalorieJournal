@@ -29,7 +29,10 @@ public sealed record MealListItem
     string[] Ingredients,
     FoodBot.Models.ProductInfo[] Products,
     bool HasImage,
-    bool UpdateQueued
+    bool UpdateQueued = false,
+    bool IsProcessing = false,
+    int? PendingRequestId = null,
+    int? ReplacesPendingRequestId = null
 );
 
 public sealed record MealDetails

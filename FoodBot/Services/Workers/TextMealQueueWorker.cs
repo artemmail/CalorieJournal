@@ -141,7 +141,10 @@ public sealed class TextMealQueueWorker : BackgroundService
                     db.PendingMeals.Remove(next);
                     await db.SaveChangesAsync(stoppingToken);
 
-                    await notifier.MealUpdated(entry.ChatId, entry.ToListItem());
+                    await notifier.MealUpdated(
+                        entry.ChatId,
+                        entry.ToListItem(replacesPendingRequestId: next.Id)
+                    );
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {

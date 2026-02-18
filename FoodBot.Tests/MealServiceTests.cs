@@ -10,9 +10,12 @@ using Xunit;
 
 public class MealServiceTests
 {
-    private MealService CreateService(List<MealEntry> meals, List<PendingClarify>? clarifies = null)
+    private MealService CreateService(
+        List<MealEntry> meals,
+        List<PendingClarify>? clarifies = null,
+        List<PendingMeal>? pendingMeals = null)
     {
-        var repo = new FakeRepo(meals, clarifies ?? new());
+        var repo = new FakeRepo(meals, clarifies ?? new(), pendingMeals ?? new());
         var notifier = new FakeNotifier();
         return new MealService(repo, notifier);
     }
@@ -21,7 +24,10 @@ public class MealServiceTests
     {
         private readonly BotDbContext _ctx;
 
-        public FakeRepo(IEnumerable<MealEntry> meals, IEnumerable<PendingClarify> clarifies)
+        public FakeRepo(
+            IEnumerable<MealEntry> meals,
+            IEnumerable<PendingClarify> clarifies,
+            IEnumerable<PendingMeal> pendingMeals)
         {
             var options = new DbContextOptionsBuilder<BotDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -29,6 +35,7 @@ public class MealServiceTests
             _ctx = new BotDbContext(options);
             _ctx.Meals.AddRange(meals);
             _ctx.PendingClarifies.AddRange(clarifies);
+            _ctx.PendingMeals.AddRange(pendingMeals);
             _ctx.SaveChanges();
         }
 
@@ -91,5 +98,43 @@ public class MealServiceTests
         var service = CreateService(new List<MealEntry> { meal }, clarifies);
         var res = await service.ListAsync(1, 10, 0, CancellationToken.None);
         Assert.True(res.Items.Single().UpdateQueued);
+    }
+
+    [Fact]
+    public async Task ListAsync_IncludesPendingMeals()
+    {
+        var meals = new List<MealEntry>
+        {
+            new MealEntry
+            {
+                Id = 1,
+                ChatId = 1,
+                CreatedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10),
+                FileId = "f",
+                DishName = "Готовое блюдо"
+            }
+        };
+
+        var pending = new List<PendingMeal>
+        {
+            new PendingMeal
+            {
+                Id = 7,
+                ChatId = 1,
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                Description = "Овсянка",
+                Attempts = 0
+            }
+        };
+
+        var service = CreateService(meals, pendingMeals: pending);
+        var res = await service.ListAsync(1, 10, 0, CancellationToken.None);
+
+        Assert.Equal(2, res.Total);
+        Assert.Equal(2, res.Items.Count);
+        Assert.Equal(-7, res.Items[0].Id);
+        Assert.True(res.Items[0].IsProcessing);
+        Assert.Equal(7, res.Items[0].PendingRequestId);
+        Assert.True(res.Items[0].UpdateQueued);
     }
 }

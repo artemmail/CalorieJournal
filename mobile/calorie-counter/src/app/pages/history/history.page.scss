@@ -57,6 +57,14 @@
   &:active { transform: none; }
 }
 
+.meal-card--processing {
+  border: 1px dashed rgba(255, 152, 0, 0.35);
+}
+
+.meal-card--pending {
+  cursor: default;
+}
+
 .meal-card__grid {
   display: grid;
   grid-template-columns: var(--thumb) 1fr; /* фикс слева, контент справа */

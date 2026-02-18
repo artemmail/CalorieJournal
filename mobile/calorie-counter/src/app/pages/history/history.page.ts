@@ -48,20 +48,7 @@ export class HistoryPage implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadMore();
 
-    this.updatesSub = this.updates.updates().subscribe(item => {
-      const idx = this.items.findIndex(x => x.id === item.id);
-      if (idx >= 0) {
-        this.items[idx] = item;
-      } else {
-        this.items = [item, ...this.items];
-        this.total++;
-      }
-      this.items.sort((a, b) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime());
-      if (item.hasImage) {
-        this.api.getMealImageObjectUrl(item.id).subscribe(url => this.imageUrls.set(item.id, url));
-      }
-      this.recomputeDateTotals();
-    });
+    this.updatesSub = this.updates.updates().subscribe(item => this.applyRealtimeUpdate(item));
   }
 
   ngOnDestroy() {
@@ -81,7 +68,7 @@ export class HistoryPage implements OnInit, OnDestroy {
         this.items = [...this.items, ...res.items];
         this.total = res.total;
         for (const m of res.items) {
-          if (m.hasImage) {
+          if (m.hasImage && m.id > 0) {
             this.api.getMealImageObjectUrl(m.id).subscribe((url) => this.imageUrls.set(m.id, url));
           }
         }
@@ -113,6 +100,11 @@ export class HistoryPage implements OnInit, OnDestroy {
   }
 
   openDialog(item: MealListItem) {
+    if (item.pendingRequestId) {
+      this.snack.open("Запрос ещё обрабатывается", "OK", { duration: 1500 });
+      return;
+    }
+
     const ref = this.dialog.open(HistoryDetailDialogComponent, {
       data: { item, imageUrl: this.imgUrl(item.id) },
       maxWidth: "100vw",
@@ -128,6 +120,35 @@ export class HistoryPage implements OnInit, OnDestroy {
         this.loadMore();
       }
     });
+  }
+
+  queueLabel(item: MealListItem): string {
+    return item.pendingRequestId ? "В обработке…" : "Обновляется…";
+  }
+
+  private applyRealtimeUpdate(item: MealListItem) {
+    let replacedPending = 0;
+    if (item.replacesPendingRequestId) {
+      const before = this.items.length;
+      this.items = this.items.filter(x => x.pendingRequestId !== item.replacesPendingRequestId);
+      replacedPending = before - this.items.length;
+    }
+
+    const idx = this.items.findIndex(x => x.id === item.id);
+    if (idx >= 0) {
+      this.items[idx] = item;
+    } else {
+      this.items = [item, ...this.items];
+      if (replacedPending === 0) {
+        this.total++;
+      }
+    }
+
+    this.items.sort((a, b) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime());
+    if (item.hasImage && item.id > 0) {
+      this.api.getMealImageObjectUrl(item.id).subscribe(url => this.imageUrls.set(item.id, url));
+    }
+    this.recomputeDateTotals();
   }
 
   private dateKey(s: string): string {

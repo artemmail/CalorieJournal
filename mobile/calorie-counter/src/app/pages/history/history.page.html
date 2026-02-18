@@ -19,7 +19,14 @@
     </div>
 
     <!-- Карточка приёма -->
-    <mat-card class="meal-card" (click)="openDialog(m)" tabindex="0" aria-label="Открыть карточку приёма">
+    <mat-card
+      class="meal-card"
+      [class.meal-card--pending]="!!m.pendingRequestId"
+      [class.meal-card--processing]="m.isProcessing"
+      (click)="openDialog(m)"
+      [attr.tabindex]="m.pendingRequestId ? -1 : 0"
+      [attr.aria-disabled]="m.pendingRequestId ? 'true' : null"
+      aria-label="Открыть карточку приёма">
       <div class="meal-card__grid">
         <!-- Фото без отступов: заполняет всю левую полосу карточки, квадрат по полной высоте -->
         <div class="meal-card__thumb" *ngIf="m.hasImage">
@@ -53,7 +60,7 @@
             <span class="chip" *ngIf="m.weightG">⚖ {{ m.weightG }} г</span>
           </div>
 
-          <div class="queued" *ngIf="m.updateQueued">Обновляется…</div>
+          <div class="queued" *ngIf="m.isProcessing">{{ queueLabel(m) }}</div>
           <!-- Состав (ингредиенты) — символ ⚗ -->
           <button type="button"
                   class="ingredients"

@@ -256,7 +256,7 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
     if ("queued" in result && result.queued) {
       const queueResult = result as { queued: true; note?: string; time?: string };
       if (this.lastMeal?.id === mealId) {
-        this.lastMeal = { ...this.lastMeal, updateQueued: true };
+        this.lastMeal = { ...this.lastMeal, updateQueued: true, isProcessing: true };
       }
       const trimmedNoteRaw = queueResult.note?.trim();
       this.lastClarifyNote = trimmedNoteRaw ? trimmedNoteRaw : undefined;
@@ -299,7 +299,10 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
       ingredients: res.result.ingredients,
       products: res.products,
       hasImage: this.lastMeal?.hasImage ?? this.lastMealDetails?.hasImage ?? true,
-      updateQueued: false
+      updateQueued: false,
+      isProcessing: false,
+      pendingRequestId: null,
+      replacesPendingRequestId: null
     };
     this.setClarifyPreview(this.lastClarifyNote, mealId, res.createdAtUtc, false);
     this.updateLastMeal(item);
@@ -314,8 +317,8 @@ export class AddMealPage implements OnInit, AfterViewInit, OnDestroy {
 
   private async refreshLatestMeal() {
     try {
-      const res = await firstValueFrom(this.api.getMeals(1, 0));
-      const item = res.items?.[0];
+      const res = await firstValueFrom(this.api.getMeals(10, 0));
+      const item = res.items?.find(x => !x.pendingRequestId);
       if (!item) {
         if (!this.pendingUpload) {
           this.lastMeal = undefined;

@@ -40,6 +40,9 @@ export interface MealListItem {
   products: ProductInfo[];
   hasImage: boolean;
   updateQueued: boolean;
+  isProcessing: boolean;
+  pendingRequestId: number | null;
+  replacesPendingRequestId: number | null;
   expanded?: boolean;
 }
 

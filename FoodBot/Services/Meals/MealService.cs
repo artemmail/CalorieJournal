@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -17,17 +18,13 @@ public sealed class MealService : IMealService
         _notifier = notifier;
     }
 
-
     public async Task<MealListResult> ListAsync(long chatId, int limit, int offset, CancellationToken ct)
     {
-        // ===== Локальные «безопасные» хелперы =====
-
         static string? ComputeIngredientsJson1Safe(string? productsJson)
         {
             if (string.IsNullOrWhiteSpace(productsJson))
                 return null;
 
-            // Защита от аномально больших строк
             if (productsJson.Length > 1_000_000)
                 return null;
 
@@ -45,7 +42,7 @@ public sealed class MealService : IMealService
                     .ToArray();
 
                 return names.Length > 0
-                    ? System.Text.Json.JsonSerializer.Serialize(names)
+                    ? JsonSerializer.Serialize(names)
                     : null;
             }
             catch
@@ -61,7 +58,7 @@ public sealed class MealService : IMealService
 
             try
             {
-                return System.Text.Json.JsonSerializer.Deserialize<string[]>(ingredientsJson!)
+                return JsonSerializer.Deserialize<string[]>(ingredientsJson!)
                        ?? Array.Empty<string>();
             }
             catch
@@ -79,32 +76,35 @@ public sealed class MealService : IMealService
             return ParseIngredientsOrEmpty(fallbackIngredientsJson);
         }
 
-        // ===== Основной запрос =====
-
-        var baseQuery = _repo.Meals
+        var mealsQuery = _repo.Meals
             .AsNoTracking()
-            .Where(m => m.ChatId == chatId)
-            .OrderByDescending(m => m.CreatedAtUtc);
+            .Where(m => m.ChatId == chatId);
 
-        var total = await baseQuery.CountAsync(ct);
+        var pendingMealsQuery = _repo.PendingMeals
+            .AsNoTracking()
+            .Where(p => p.ChatId == chatId);
 
-        // MealId тут int — приведём к long при построении множества
+        var mealsCount = await mealsQuery.CountAsync(ct);
+        var pendingCount = await pendingMealsQuery.CountAsync(ct);
+        var total = mealsCount + pendingCount;
+
         var pendingIdsInt = await _repo.PendingClarifies
             .AsNoTracking()
             .Where(p => p.ChatId == chatId)
-            .Select(p => p.MealId)              // int
+            .Select(p => p.MealId)
             .ToListAsync(ct);
 
         var pendingSet = pendingIdsInt.Count > 0
-            ? pendingIdsInt.Select(i => (long)i).ToHashSet()
-            : new HashSet<long>();
+            ? pendingIdsInt.ToHashSet()
+            : new HashSet<int>();
 
-        var rows = await baseQuery
-            .Skip(offset)
-            .Take(limit)
+        var mealRows = mealsQuery
             .Select(m => new
             {
-                m.Id,
+                IsPendingMeal = false,
+                IsPhotoPending = false,
+                Id = m.Id,
+                PendingRequestId = (int?)null,
                 m.CreatedAtUtc,
                 m.DishName,
                 m.WeightG,
@@ -115,28 +115,85 @@ public sealed class MealService : IMealService
                 m.IngredientsJson,
                 m.ProductsJson,
                 HasImage = m.ImageBytes != null && m.ImageBytes.Length > 0
-            })
+            });
+
+        var pendingRows = pendingMealsQuery
+            .Select(p => new
+            {
+                IsPendingMeal = true,
+                IsPhotoPending = p.Description == null,
+                Id = -p.Id,
+                PendingRequestId = (int?)p.Id,
+                CreatedAtUtc = p.DesiredMealTimeUtc ?? p.CreatedAtUtc,
+                DishName = p.Description,
+                WeightG = (decimal?)null,
+                CaloriesKcal = (decimal?)null,
+                ProteinsG = (decimal?)null,
+                FatsG = (decimal?)null,
+                CarbsG = (decimal?)null,
+                IngredientsJson = (string?)null,
+                ProductsJson = (string?)null,
+                HasImage = false
+            });
+
+        var rows = await mealRows
+            .Concat(pendingRows)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ThenByDescending(x => x.IsPendingMeal)
+            .ThenByDescending(x => x.Id)
+            .Skip(offset)
+            .Take(limit)
             .ToListAsync(ct);
 
-        var items = rows.Select(r => new MealListItem(
-            r.Id,
-            r.CreatedAtUtc,
-            r.DishName,
-            r.WeightG,
-            r.CaloriesKcal,
-            r.ProteinsG,
-            r.FatsG,
-            r.CarbsG,
-            // Сначала пробуем вычислить из ProductsJson, иначе — парсим исходный IngredientsJson
-            BuildIngredientsArraySafe(r.ProductsJson, r.IngredientsJson),
-            ProductJsonHelper.DeserializeProducts(r.ProductsJson),
-            r.HasImage,
-            pendingSet.Contains(r.Id) // r.Id — long, pendingSet — HashSet<long>
-        )).ToList();
+        var items = rows.Select(r =>
+        {
+            if (r.IsPendingMeal)
+            {
+                var pendingTitle = string.IsNullOrWhiteSpace(r.DishName)
+                    ? (r.IsPhotoPending ? "Р¤РѕС‚Рѕ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ" : "Р—Р°РїСЂРѕСЃ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ")
+                    : r.DishName;
+
+                return new MealListItem(
+                    r.Id,
+                    r.CreatedAtUtc,
+                    pendingTitle,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Array.Empty<string>(),
+                    Array.Empty<ProductInfo>(),
+                    false,
+                    true,
+                    true,
+                    r.PendingRequestId,
+                    null
+                );
+            }
+
+            var updateQueued = pendingSet.Contains(r.Id);
+            return new MealListItem(
+                r.Id,
+                r.CreatedAtUtc,
+                r.DishName,
+                r.WeightG,
+                r.CaloriesKcal,
+                r.ProteinsG,
+                r.FatsG,
+                r.CarbsG,
+                BuildIngredientsArraySafe(r.ProductsJson, r.IngredientsJson),
+                ProductJsonHelper.DeserializeProducts(r.ProductsJson),
+                r.HasImage,
+                updateQueued,
+                updateQueued,
+                null,
+                null
+            );
+        }).ToList();
 
         return new MealListResult(total, offset, limit, items);
     }
-
 
     public async Task<MealDetails?> GetDetailsAsync(long chatId, int id, CancellationToken ct)
     {
@@ -273,20 +330,7 @@ public sealed class MealService : IMealService
                 m.ImageBytes != null && m.ImageBytes.Length > 0
             );
 
-            var item = new MealListItem(
-                m.Id,
-                m.CreatedAtUtc,
-                m.DishName,
-                m.WeightG,
-                m.CaloriesKcal,
-                m.ProteinsG,
-                m.FatsG,
-                m.CarbsG,
-                ingredients,
-                products,
-                m.ImageBytes != null && m.ImageBytes.Length > 0,
-                false
-            );
+            var item = m.ToListItem();
             await _notifier.MealUpdated(chatId, item);
             return new ClarifyTextResult(false, details);
         }
