@@ -119,6 +119,24 @@ function Wait-Health([string]$Url, [int]$TimeoutSec, [int]$RetryDelaySec) {
     throw "Health check failed after $TimeoutSec sec for '$Url'. Last error: $lastError"
 }
 
+function Clear-ProjectBuildArtifacts([string]$ProjectPath, [string]$Configuration) {
+    $projectDir = Split-Path -Parent $ProjectPath
+    $objConfigPath = Join-Path $projectDir ("obj\" + $Configuration)
+    $binConfigPath = Join-Path $projectDir ("bin\" + $Configuration)
+
+    foreach ($path in @($objConfigPath, $binConfigPath)) {
+        if (Test-Path $path) {
+            Write-Step "Cleaning build artifacts: $path"
+            try {
+                Remove-Item -LiteralPath $path -Recurse -Force
+            }
+            catch {
+                Write-Step "Warning: cannot fully clean '$path' ($($_.Exception.Message))"
+            }
+        }
+    }
+}
+
 $appCmdPath = Resolve-AppCmdPath
 Write-Step "Using appcmd: $appCmdPath"
 
@@ -169,7 +187,13 @@ if ($SkipBuild) {
 Write-Step "dotnet $($dotnetArgs -join ' ')"
 & dotnet @dotnetArgs
 if ($LASTEXITCODE -ne 0) {
-    throw "dotnet publish failed with exit code $LASTEXITCODE."
+    Write-Step "First publish attempt failed with exit code $LASTEXITCODE. Retrying after cleaning obj/bin."
+    Clear-ProjectBuildArtifacts -ProjectPath $projectPath -Configuration $Configuration
+    Write-Step "dotnet $($dotnetArgs -join ' ')"
+    & dotnet @dotnetArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet publish failed with exit code $LASTEXITCODE."
+    }
 }
 
 $appOfflinePath = Join-Path $TargetPath "app_offline.htm"
