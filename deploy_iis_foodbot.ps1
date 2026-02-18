@@ -38,6 +38,21 @@ function Invoke-AppCmd([string]$AppCmdPath, [string[]]$Arguments) {
     return ($output | Out-String).Trim()
 }
 
+function Try-Invoke-AppCmd([string]$AppCmdPath, [string[]]$Arguments) {
+    $output = & $AppCmdPath @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        return @{
+            Success = $false
+            Output = ($output | Out-String).Trim()
+        }
+    }
+
+    return @{
+        Success = $true
+        Output = ($output | Out-String).Trim()
+    }
+}
+
 function Get-AppPoolState([string]$AppCmdPath, [string]$PoolName) {
     return (Invoke-AppCmd $AppCmdPath @("list", "apppool", $PoolName, "/text:state")).Trim()
 }
@@ -47,12 +62,33 @@ function Resolve-AppPoolName([string]$AppCmdPath, [string]$SiteName, [string]$Ap
         return $AppPoolParam
     }
 
-    $resolved = Invoke-AppCmd $AppCmdPath @("list", "app", "$SiteName/", "/text:applicationPool")
-    if ([string]::IsNullOrWhiteSpace($resolved)) {
-        throw "Cannot resolve app pool for IIS site '$SiteName'."
+    $siteCheck = Try-Invoke-AppCmd $AppCmdPath @("list", "site", $SiteName, "/text:name")
+    if (-not $siteCheck.Success -or [string]::IsNullOrWhiteSpace($siteCheck.Output)) {
+        throw "IIS site '$SiteName' not found. Pass an existing site name via -SiteName."
     }
 
-    return $resolved
+    $resolved = Try-Invoke-AppCmd $AppCmdPath @("list", "app", "$SiteName/", "/text:applicationPool")
+    if ($resolved.Success -and -not [string]::IsNullOrWhiteSpace($resolved.Output)) {
+        return $resolved.Output
+    }
+
+    $sitePool = Try-Invoke-AppCmd $AppCmdPath @("list", "site", $SiteName, "/text:applicationPool")
+    if ($sitePool.Success -and -not [string]::IsNullOrWhiteSpace($sitePool.Output)) {
+        return $sitePool.Output
+    }
+
+    try {
+        Import-Module WebAdministration -ErrorAction Stop
+        $ws = Get-Website -Name $SiteName -ErrorAction Stop
+        if (-not [string]::IsNullOrWhiteSpace($ws.applicationPool)) {
+            return $ws.applicationPool
+        }
+    }
+    catch {
+        # ignore and throw deterministic guidance below
+    }
+
+    throw "Cannot resolve app pool for IIS site '$SiteName'. Set it explicitly via -AppPool."
 }
 
 function Wait-AppPoolStopped([string]$AppCmdPath, [string]$PoolName, [int]$TimeoutSec) {
