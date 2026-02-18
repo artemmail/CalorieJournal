@@ -1,11 +1,11 @@
 param(
     [string]$SourceRoot = (Resolve-Path -LiteralPath $PSScriptRoot).Path,
     [string]$ProjectRelativePath = "FoodBot\FoodBot.csproj",
-    [string]$SiteName = "footbot",
+    [string]$SiteName = "foodbot",
     [string]$AppPool = "",
-    [string]$TargetPath = "C:\fb",
+    [string]$TargetPath = "C:\fb1",
     [string]$Configuration = "Release",
-    [string]$PublishOutput = "C:\fb_publish",
+    [string]$PublishOutput = "C:\fb",
     [switch]$SkipBuild,
     [int]$StopTimeoutSec = 60,
     [string]$HealthUrl = "",
@@ -134,13 +134,34 @@ if (-not (Test-Path $TargetPath)) {
     New-Item -ItemType Directory -Path $TargetPath -Force | Out-Null
 }
 
-if (Test-Path $PublishOutput) {
-    Write-Step "Cleaning publish directory: $PublishOutput"
-    Remove-Item -LiteralPath $PublishOutput -Recurse -Force
-}
-New-Item -ItemType Directory -Path $PublishOutput -Force | Out-Null
+$effectivePublishOutput = $PublishOutput
+$cleanupEffectivePublishOutput = $false
 
-$dotnetArgs = @("publish", $projectPath, "-c", $Configuration, "-o", $PublishOutput, "--nologo")
+if ([string]::Equals(
+        [System.IO.Path]::GetFullPath($effectivePublishOutput).TrimEnd('\'),
+        [System.IO.Path]::GetFullPath($TargetPath).TrimEnd('\'),
+        [System.StringComparison]::OrdinalIgnoreCase))
+{
+    $effectivePublishOutput = Join-Path $env:TEMP ("foodbot_publish_" + [Guid]::NewGuid().ToString("N"))
+    $cleanupEffectivePublishOutput = $true
+    Write-Step "PublishOutput matches TargetPath, using temp publish directory: $effectivePublishOutput"
+}
+
+if (Test-Path $effectivePublishOutput) {
+    Write-Step "Cleaning publish directory: $effectivePublishOutput"
+    try {
+        Remove-Item -LiteralPath $effectivePublishOutput -Recurse -Force
+    }
+    catch {
+        $fallbackPublish = Join-Path $env:TEMP ("foodbot_publish_" + [Guid]::NewGuid().ToString("N"))
+        Write-Step "Cannot clean publish directory '$effectivePublishOutput' ($($_.Exception.Message)). Using temp publish directory: $fallbackPublish"
+        $effectivePublishOutput = $fallbackPublish
+        $cleanupEffectivePublishOutput = $true
+    }
+}
+New-Item -ItemType Directory -Path $effectivePublishOutput -Force | Out-Null
+
+$dotnetArgs = @("publish", $projectPath, "-c", $Configuration, "-o", $effectivePublishOutput, "--nologo")
 if ($SkipBuild) {
     $dotnetArgs += "--no-build"
 }
@@ -167,7 +188,7 @@ try {
 
     Write-Step "Copying publish output to: $TargetPath"
     $roboArgs = @(
-        $PublishOutput,
+        $effectivePublishOutput,
         $TargetPath,
         "/MIR",
         "/R:2",
@@ -207,5 +228,8 @@ catch {
 finally {
     if (Test-Path $appOfflinePath) {
         Remove-Item -LiteralPath $appOfflinePath -Force -ErrorAction SilentlyContinue
+    }
+    if ($cleanupEffectivePublishOutput -and (Test-Path $effectivePublishOutput)) {
+        Remove-Item -LiteralPath $effectivePublishOutput -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
