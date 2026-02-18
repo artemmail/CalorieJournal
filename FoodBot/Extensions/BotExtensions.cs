@@ -23,6 +23,7 @@ namespace FoodBot;
 public static class BotExtensions
 {
     private const string CorsPolicy = "FrontendDev";
+    private const string DefaultTelegramBotUsername = "CalorieJournal_bot";
 
     public static IServiceCollection AddBotServices(this IServiceCollection services, IConfiguration cfg)
     {
@@ -241,7 +242,7 @@ public static class BotExtensions
             var payload = new
             {
                 apiBaseUrl = cfg["App:ApiBaseUrl"],
-                telegramBot = cfg["Telegram:BotUsername"]
+                telegramBot = NormalizeTelegramBotUsername(cfg["Telegram:BotUsername"])
             };
 
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
@@ -324,6 +325,37 @@ public static class BotExtensions
         });
 
         return app;
+    }
+
+    private static string NormalizeTelegramBotUsername(string? raw)
+    {
+        var value = (raw ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(value))
+            return DefaultTelegramBotUsername;
+
+        if (value.StartsWith("tg://", StringComparison.OrdinalIgnoreCase))
+        {
+            var domainMark = "domain=";
+            var pos = value.IndexOf(domainMark, StringComparison.OrdinalIgnoreCase);
+            if (pos >= 0)
+            {
+                value = value[(pos + domainMark.Length)..];
+                var amp = value.IndexOf('&');
+                if (amp >= 0) value = value[..amp];
+            }
+        }
+        else if (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+                 (uri.Host.Contains("t.me", StringComparison.OrdinalIgnoreCase) ||
+                  uri.Host.Contains("telegram.me", StringComparison.OrdinalIgnoreCase)))
+        {
+            var segment = uri.AbsolutePath.Trim('/');
+            if (!string.IsNullOrWhiteSpace(segment))
+                value = segment;
+        }
+
+        value = Uri.UnescapeDataString(value).Trim().TrimStart('@');
+        var cleaned = new string(value.Where(ch => char.IsLetterOrDigit(ch) || ch == '_').ToArray());
+        return string.IsNullOrWhiteSpace(cleaned) ? DefaultTelegramBotUsername : cleaned;
     }
 }
 

@@ -10,6 +10,7 @@ import { MealListItem } from "../../services/foodbot-api.types";
 import { HistoryDetailDialogComponent } from "./history-detail.dialog";
 import { HistoryUpdatesService } from "../../services/history-updates.service";
 import { Subscription } from "rxjs";
+import { FoodBotAuthLinkService } from "../../services/foodbot-auth-link.service";
 
 @Component({
   selector: "app-history",
@@ -40,10 +41,15 @@ export class HistoryPage implements OnInit, OnDestroy {
 
   constructor(
     private api: FoodbotApiService,
+    private auth: FoodBotAuthLinkService,
     private snack: MatSnackBar,
     private dialog: MatDialog,
     private updates: HistoryUpdatesService
   ) {}
+
+  get isAnonymousMode(): boolean {
+    return this.auth.isAnonymousAccount;
+  }
 
   ngOnInit() {
     this.loadMore();

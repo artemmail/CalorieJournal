@@ -3,7 +3,7 @@ param(
     [string]$ProjectRelativePath = "FoodBot\FoodBot.csproj",
     [string]$SiteName = "foodbot",
     [string]$AppPool = "",
-    [string]$TargetPath = "C:\fb1",
+    [string]$TargetPath = "C:\fb",
     [string]$Configuration = "Release",
     [string]$PublishOutput = "C:\fb",
     [switch]$SkipBuild,
@@ -137,6 +137,27 @@ function Clear-ProjectBuildArtifacts([string]$ProjectPath, [string]$Configuratio
     }
 }
 
+function Clear-StaticWebAssetsCompressionCache([string]$ProjectPath, [string]$Configuration) {
+    $projectDir = Split-Path -Parent $ProjectPath
+    $objConfigPath = Join-Path $projectDir ("obj\" + $Configuration)
+    if (-not (Test-Path $objConfigPath)) {
+        return
+    }
+
+    $compressedDirs = Get-ChildItem -Path $objConfigPath -Directory -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq "compressed" }
+
+    foreach ($dir in $compressedDirs) {
+        Write-Step "Cleaning static web assets cache: $($dir.FullName)"
+        try {
+            Remove-Item -LiteralPath $dir.FullName -Recurse -Force
+        }
+        catch {
+            Write-Step "Warning: cannot clean static web assets cache '$($dir.FullName)' ($($_.Exception.Message))"
+        }
+    }
+}
+
 $appCmdPath = Resolve-AppCmdPath
 Write-Step "Using appcmd: $appCmdPath"
 
@@ -182,6 +203,10 @@ New-Item -ItemType Directory -Path $effectivePublishOutput -Force | Out-Null
 $dotnetArgs = @("publish", $projectPath, "-c", $Configuration, "-o", $effectivePublishOutput, "--nologo")
 if ($SkipBuild) {
     $dotnetArgs += "--no-build"
+}
+
+if (-not $SkipBuild) {
+    Clear-StaticWebAssetsCompressionCache -ProjectPath $projectPath -Configuration $Configuration
 }
 
 Write-Step "dotnet $($dotnetArgs -join ' ')"

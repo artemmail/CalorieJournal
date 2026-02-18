@@ -34,6 +34,7 @@ const CHAT_ID_KEY = "foodbot.chat_id";
 const IS_ANON_KEY = "foodbot.is_anonymous";
 const INSTALL_ID_KEY = "foodbot.install_id";
 const MOBILE_DEFAULT_API_BASE_URL = "https://healthymeals.space";
+const DEFAULT_BOT_USERNAME = "CalorieJournal_bot";
 
 @Injectable({ providedIn: "root" })
 export class FoodBotAuthLinkService {
@@ -112,6 +113,36 @@ export class FoodBotAuthLinkService {
     return (window as any).environment?.telegramBot ?? environment?.telegramBot ?? "your_bot_username";
   }
 
+  private normalizeBotUsername(raw: string | null | undefined): string {
+    let value = (raw ?? "").trim();
+    if (!value) return DEFAULT_BOT_USERNAME;
+
+    if (value.startsWith("tg://")) {
+      try {
+        const url = new URL(value);
+        const domain = url.searchParams.get("domain")?.trim();
+        if (domain) value = domain;
+      } catch {
+        const match = value.match(/domain=([^&\s]+)/i);
+        if (match?.[1]) value = match[1];
+      }
+    } else if (/^https?:\/\//i.test(value)) {
+      try {
+        const url = new URL(value);
+        if (/^(?:www\.)?(?:t\.me|telegram\.me)$/i.test(url.hostname)) {
+          const segment = decodeURIComponent(url.pathname).split("/").filter(Boolean)[0];
+          if (segment) value = segment;
+        }
+      } catch {
+        // Ignore and continue with the raw value.
+      }
+    }
+
+    value = value.replace(/^@+/, "").trim();
+    const cleaned = value.replace(/[^A-Za-z0-9_]/g, "");
+    return cleaned || DEFAULT_BOT_USERNAME;
+  }
+
   get installId(): string {
     let id = localStorage.getItem(INSTALL_ID_KEY);
     if (id) return id;
@@ -169,6 +200,13 @@ export class FoodBotAuthLinkService {
 
   get appUserId(): number | null {
     const raw = localStorage.getItem(APP_USER_ID_KEY);
+    if (!raw) return null;
+    const id = Number(raw);
+    return Number.isFinite(id) ? id : null;
+  }
+
+  get chatId(): number | null {
+    const raw = localStorage.getItem(CHAT_ID_KEY);
     if (!raw) return null;
     const id = Number(raw);
     return Number.isFinite(id) ? id : null;
@@ -263,7 +301,7 @@ export class FoodBotAuthLinkService {
   }
 
   openBotWithCode(code: string) {
-    const bot = this.botUsername.replace(/^@/, "");
+    const bot = this.normalizeBotUsername(this.botUsername);
     const urlApp = `tg://resolve?domain=${encodeURIComponent(bot)}&start=${encodeURIComponent(code)}`;
     const urlWeb = `https://t.me/${encodeURIComponent(bot)}?start=${encodeURIComponent(code)}`;
     window.location.href = urlApp;

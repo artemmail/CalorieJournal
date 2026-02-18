@@ -8,7 +8,6 @@ import { Router } from "@angular/router";
 import { HttpErrorResponse } from "@angular/common/http";
 import { FoodBotAuthLinkService, ExchangeStartCodeResponse } from "../../services/foodbot-auth-link.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTabsModule } from "@angular/material/tabs";
 import { showErrorAlert } from "../../utils/alerts";
 
 @Component({
@@ -20,8 +19,7 @@ import { showErrorAlert } from "../../utils/alerts";
       MatButtonModule,
       MatIconModule,
       MatSnackBarModule,
-      MatProgressSpinnerModule,
-      MatTabsModule
+      MatProgressSpinnerModule
     ],
   templateUrl: "./auth.page.html",
   styleUrls: ["./auth.page.scss"]
@@ -31,6 +29,7 @@ export class AuthPage implements OnInit, OnDestroy {
   expiresAt = "";
   busy = false;
   errorMsg = "";
+  alreadyLinked = false;
   flow?: Awaited<ReturnType<FoodBotAuthLinkService["startLoginFlow"]>>;
   private autoRefreshInterval?: ReturnType<typeof setInterval>;
   private autoRefreshTimeout?: ReturnType<typeof setTimeout>;
@@ -41,9 +40,17 @@ export class AuthPage implements OnInit, OnDestroy {
     private router: Router
   ) {}
 
+  get currentChatId(): number | null {
+    return this.auth.chatId;
+  }
+
   async ngOnInit() {
     try {
       await this.auth.ensureSession();
+      this.alreadyLinked = this.auth.isAuthenticated() && !this.auth.isAnonymousAccount;
+      if (this.alreadyLinked) {
+        return;
+      }
       await this.startFlow();
     } catch (e) {
       this.errorMsg = "Не удалось получить код. Проверьте доступность API/CORS.";
@@ -124,9 +131,42 @@ export class AuthPage implements OnInit, OnDestroy {
     }
   }
 
-  logout() {
+  async logout() {
+    this.stopAutoRefresh();
     this.auth.logout();
+    this.alreadyLinked = false;
+    this.code = "";
+    this.expiresAt = "";
+    this.flow = undefined;
+    this.errorMsg = "";
     this.snack.open("Вы вышли", "OK", { duration: 1000 });
+
+    try {
+      await this.auth.ensureSession();
+      await this.startFlow();
+    } catch (e) {
+      this.errorMsg = "Не удалось подготовить новый код входа.";
+      showErrorAlert(e, "Ошибка после выхода");
+    }
+  }
+
+  goHistory() {
+    this.router.navigateByUrl("/history");
+  }
+
+  async relinkTelegram() {
+    this.stopAutoRefresh();
+    this.alreadyLinked = false;
+    this.code = "";
+    this.expiresAt = "";
+    this.flow = undefined;
+    this.errorMsg = "";
+    try {
+      await this.startFlow();
+    } catch (e) {
+      this.errorMsg = "Не удалось начать перепривязку.";
+      showErrorAlert(e, "Не удалось начать перепривязку");
+    }
   }
 
   private startAutoRefresh() {

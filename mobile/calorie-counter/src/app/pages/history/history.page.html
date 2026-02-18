@@ -83,7 +83,12 @@
   </div>
 
   <div class="empty-state" *ngIf="!loading && items.length === 0">
-    История пока пуста. Сделайте фото еды и/или подключите Telegram-бота в разделе «Аккаунт».
+    <ng-container *ngIf="isAnonymousMode; else linkedEmpty">
+      История пока пуста. Сейчас вы в анонимном режиме. Подключите Telegram в разделе «Аккаунт», чтобы увидеть ваш основной профиль.
+    </ng-container>
+    <ng-template #linkedEmpty>
+      История пока пуста. Сделайте фото еды и/или подключите Telegram-бота в разделе «Аккаунт».
+    </ng-template>
   </div>
 
   <div class="safe-area-bottom"></div>

@@ -498,14 +498,17 @@ public sealed class AppAuthService : IAppAuthService
             return new TelegramLinkCodeResult("already_linked", "Этот код уже привязан к вашему аккаунту. Можете вернуться в приложение и нажать «Обновить».", true);
 
         AppUser sourceUser;
+        long sourceUserId;
         if (row.AppUserId.HasValue)
         {
             sourceUser = row.AppUser ?? await _db.AppUsers.FirstAsync(x => x.Id == row.AppUserId.Value, ct);
+            sourceUserId = sourceUser.Id;
         }
         else
         {
             sourceUser = await CreateAnonymousUserAsync(ct);
             row.AppUserId = sourceUser.Id;
+            sourceUserId = sourceUser.Id;
         }
 
         var targetUser = await GetOrCreateTelegramUserAsync(telegramChatId, ct);
@@ -538,6 +541,21 @@ public sealed class AppAuthService : IAppAuthService
 
         if (!await EnsureTelegramIdentityAsync(targetUser.Id, telegramChatId, telegramUsername, ct))
             return new TelegramLinkCodeResult("identity_conflict", "Этот Telegram уже привязан к другому аккаунту. Нужен merge в приложении.", false);
+
+        // Mark all active codes for the same app account as linked so the app can
+        // finish login even if it polls a recently issued sibling code.
+        var activeCodes = await _db.StartCodes
+            .Where(x =>
+                x.ConsumedAtUtc == null &&
+                x.ExpiresAtUtc > now &&
+                x.ChatId == null &&
+                (x.AppUserId == targetUser.Id || x.AppUserId == sourceUserId))
+            .ToListAsync(ct);
+        foreach (var startCode in activeCodes)
+        {
+            startCode.ChatId = telegramChatId;
+            startCode.AppUserId = targetUser.Id;
+        }
 
         targetUser.IsAnonymous = false;
         targetUser.LastSeenAtUtc = now;
