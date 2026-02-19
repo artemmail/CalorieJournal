@@ -29,4 +29,14 @@
     <mat-icon fontSet="material-icons-outlined" matListItemIcon>link</mat-icon>
     <span matListItemTitle>Аккаунт</span>
   </a>
+  <a
+    mat-list-item
+    href="/privacy-policy.html"
+    target="_blank"
+    rel="noopener noreferrer"
+    (click)="close.emit()"
+  >
+    <mat-icon fontSet="material-icons-outlined" matListItemIcon>policy</mat-icon>
+    <span matListItemTitle>Privacy Policy</span>
+  </a>
 </mat-nav-list>

@@ -1,6 +1,8 @@
 param(
     [switch]$Release,
     [switch]$PublishSigned,
+    [ValidateSet("apk", "aab")]
+    [string]$Artifact = "apk",
     [string]$KeystorePath,
     [string]$KeystorePassword,
     [string]$KeyAlias,
@@ -13,6 +15,9 @@ Push-Location $PSScriptRoot
 try {
     if ($PublishSigned -and -not $Release) {
         throw "-PublishSigned can be used only with -Release"
+    }
+    if (($Artifact -eq "aab") -and -not $Release) {
+        throw "-Artifact aab can be used only with -Release"
     }
 
     $requiredPackages = @(
@@ -47,7 +52,9 @@ try {
     }
 
     if ($Release) {
-        $gradleArgs = @("assembleRelease", "--no-daemon")
+        $releaseTask = if ($Artifact -eq "aab") { "bundleRelease" } else { "assembleRelease" }
+        $artifactLabel = $Artifact.ToUpperInvariant()
+        $gradleArgs = @($releaseTask, "--no-daemon")
 
         if ($PublishSigned) {
             if ([string]::IsNullOrWhiteSpace($KeystorePath)) {
@@ -78,9 +85,9 @@ try {
             $gradleArgs += "-Pandroid.injected.signing.key.alias=$KeyAlias"
             $gradleArgs += "-Pandroid.injected.signing.key.password=$KeyPassword"
 
-            Write-Host "Building release APK with publish signing..."
+            Write-Host "Building release $artifactLabel with publish signing..."
         } else {
-            Write-Host "Building release APK..."
+            Write-Host "Building release $artifactLabel..."
         }
 
         & $gradlew @gradleArgs
@@ -90,9 +97,16 @@ try {
     }
     Pop-Location
 
-    Write-Host "APK files:"
-    Get-ChildItem "$gradleDir/app/build/outputs/apk" -Recurse -Filter *.apk | ForEach-Object {
-        Write-Host (" - " + $_.FullName)
+    if ($Release -and $Artifact -eq "aab") {
+        Write-Host "AAB files:"
+        Get-ChildItem "$gradleDir/app/build/outputs/bundle" -Recurse -Filter *.aab | ForEach-Object {
+            Write-Host (" - " + $_.FullName)
+        }
+    } else {
+        Write-Host "APK files:"
+        Get-ChildItem "$gradleDir/app/build/outputs/apk" -Recurse -Filter *.apk | ForEach-Object {
+            Write-Host (" - " + $_.FullName)
+        }
     }
 }
 finally {

@@ -1,7 +1,7 @@
 ﻿import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.yourscriptor.calorie',
+  appId: 'com.space.healthymeals',
   appName: 'HealthyMeals',
   webDir: '../../FoodBot/wwwroot',
   bundledWebRuntime: false,
