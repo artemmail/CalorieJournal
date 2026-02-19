@@ -9,6 +9,7 @@ using FoodBot.Data;
 using FoodBot.Services;
 using FoodBot.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
@@ -21,6 +22,7 @@ public class UpdateHandler
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TelegramBotClient _bot;
     private readonly IConfiguration _cfg;
+    private readonly ILogger<UpdateHandler> _log;
 
     // (опционально) карта "чат → последний threadId"
     private static readonly ConcurrentDictionary<long, Guid> _threadsByChat = new();
@@ -41,11 +43,12 @@ public class UpdateHandler
     // Константа по умолчанию (можно поменять здесь в коде)
     private const ClarifyStartMode CLARIFY_START_DEFAULT = ClarifyStartMode.FromSavedStep1;
 
-    public UpdateHandler(IServiceScopeFactory scopeFactory, TelegramBotClient bot, IConfiguration cfg)
+    public UpdateHandler(IServiceScopeFactory scopeFactory, TelegramBotClient bot, IConfiguration cfg, ILogger<UpdateHandler> log)
     {
         _scopeFactory = scopeFactory;
         _bot = bot;
         _cfg = cfg;
+        _log = log;
     }
 
     // Читать режим из конфига (необязательно). Если не задан — берём константу.
@@ -154,21 +157,35 @@ $@"Вход через приложение:
 
                 var conv = await nutrition.AnalyzeAsync(bytes, async step =>
                 {
-                    if (step == 1)
+                    try
                     {
-                        await _bot.SendChatAction(chatId, ChatAction.UploadPhoto, cancellationToken: ct);
-                        await _bot.EditMessageText(chatId, progressMsg.MessageId, "🔎 Шаг 1/2: анализ фото", cancellationToken: ct);
+                        if (step == 1)
+                        {
+                            await _bot.SendChatAction(chatId, ChatAction.UploadPhoto, cancellationToken: ct);
+                            await _bot.EditMessageText(chatId, progressMsg.MessageId, "🔎 Шаг 1/2: анализ фото", cancellationToken: ct);
+                        }
+                        else if (step == 2)
+                        {
+                            await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
+                            await _bot.EditMessageText(chatId, progressMsg.MessageId, "🧠 Шаг 2/2: расчёт нутриентов", cancellationToken: ct);
+                        }
                     }
-                    else if (step == 2)
+                    catch (Exception pex)
                     {
-                        await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
-                        await _bot.EditMessageText(chatId, progressMsg.MessageId, "🧠 Шаг 2/2: расчёт нутриентов", cancellationToken: ct);
+                        _log.LogWarning(pex, "Photo progress update failed. chatId={ChatId}, step={Step}", chatId, step);
                     }
                 }, ct);
 
-                await _bot.EditMessageText(chatId, progressMsg.MessageId,
-                    conv is null ? "❌ Распознавание не удалось" : "✅ Распознавание завершено",
-                    cancellationToken: ct);
+                try
+                {
+                    await _bot.EditMessageText(chatId, progressMsg.MessageId,
+                        conv is null ? "❌ Распознавание не удалось" : "✅ Распознавание завершено",
+                        cancellationToken: ct);
+                }
+                catch (Exception pex)
+                {
+                    _log.LogWarning(pex, "Photo final progress update failed. chatId={ChatId}", chatId);
+                }
 
                 var productsJsonEntry = conv is null ? null : ProductJsonHelper.BuildProductsJson(conv.CalcPlanJson);
                 var entry = new MealEntry
@@ -250,8 +267,8 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
             }
             catch (Exception ex)
             {
+                _log.LogError(ex, "Telegram photo processing failed. chatId={ChatId}, userId={UserId}", chatId, userId);
                 await _bot.SendMessage(chatId, "Произошла ошибка при обработке изображения.", cancellationToken: ct);
-                Console.WriteLine(ex);
             }
             return;
         }
@@ -282,8 +299,8 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
             }
             catch (Exception ex)
             {
+                _log.LogError(ex, "Telegram voice processing failed. chatId={ChatId}, userId={UserId}", chatId, userId);
                 await _bot.SendMessage(chatId, "Ошибка при распознавании голосового сообщения.", cancellationToken: ct);
-                Console.WriteLine(ex);
             }
             return;
         }
@@ -316,8 +333,8 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
             }
             catch (Exception ex)
             {
+                _log.LogError(ex, "Telegram audio processing failed. chatId={ChatId}, userId={UserId}", chatId, userId);
                 await _bot.SendMessage(chatId, "Ошибка при распознавании аудио.", cancellationToken: ct);
-                Console.WriteLine(ex);
             }
             return;
         }
@@ -355,8 +372,8 @@ $@"<b>✅ Итоговые нутриенты (рассчитано ИИ)</b>
             }
             catch (Exception ex)
             {
+                _log.LogError(ex, "Telegram clarify processing failed. chatId={ChatId}, userId={UserId}", chatId, userId);
                 await _bot.SendMessage(chatId, "Ошибка при применении уточнения.", cancellationToken: ct);
-                Console.WriteLine(ex);
             }
             return;
         }
@@ -459,18 +476,39 @@ $@"<b>✅ Итоговые нутриенты (после уточнения)</b
             {
                 if (step == 1)
                 {
-                    await _bot.SendChatAction(chatId, ChatAction.UploadPhoto, cancellationToken: ct);
-                    await _bot.EditMessageText(chatId, progressMsg.MessageId, "🔎 Шаг 1/2: анализ фото", cancellationToken: ct);
+                    try
+                    {
+                        await _bot.SendChatAction(chatId, ChatAction.UploadPhoto, cancellationToken: ct);
+                        await _bot.EditMessageText(chatId, progressMsg.MessageId, "🔎 Шаг 1/2: анализ фото", cancellationToken: ct);
+                    }
+                    catch (Exception pex)
+                    {
+                        _log.LogWarning(pex, "Clarify progress update failed. chatId={ChatId}, step=1", chatId);
+                    }
                 }
                 else if (step == 2)
                 {
-                    await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
-                    await _bot.EditMessageText(chatId, progressMsg.MessageId, "🧠 Шаг 2/2: расчёт нутриентов", cancellationToken: ct);
+                    try
+                    {
+                        await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
+                        await _bot.EditMessageText(chatId, progressMsg.MessageId, "🧠 Шаг 2/2: расчёт нутриентов", cancellationToken: ct);
+                    }
+                    catch (Exception pex)
+                    {
+                        _log.LogWarning(pex, "Clarify progress update failed. chatId={ChatId}, step=2", chatId);
+                    }
                 }
             }, ct);
-            await _bot.EditMessageText(chatId, progressMsg.MessageId,
-                result is null ? "❌ Распознавание не удалось" : "✅ Распознавание завершено",
-                cancellationToken: ct);
+            try
+            {
+                await _bot.EditMessageText(chatId, progressMsg.MessageId,
+                    result is null ? "❌ Распознавание не удалось" : "✅ Распознавание завершено",
+                    cancellationToken: ct);
+            }
+            catch (Exception pex)
+            {
+                _log.LogWarning(pex, "Clarify final progress update failed. chatId={ChatId}", chatId);
+            }
             return result;
         }
 
@@ -491,7 +529,7 @@ $@"<b>✅ Итоговые нутриенты (после уточнения)</b
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("[ClarifyFromStep1] fail, fallback to image: " + ex.Message);
+                            _log.LogWarning(ex, "ClarifyFromStep1 failed, fallback to image. chatId={ChatId}", chatId);
                         }
                     }
                     if (conv2 is null && last?.ImageBytes is { Length: > 0 })
@@ -514,7 +552,7 @@ $@"<b>✅ Итоговые нутриенты (после уточнения)</b
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("[ClarifyFromStep1 fallback] " + ex.Message);
+                            _log.LogWarning(ex, "ClarifyFromStep1 fallback failed. chatId={ChatId}", chatId);
                         }
                     }
                     break;
@@ -534,7 +572,7 @@ $@"<b>✅ Итоговые нутриенты (после уточнения)</b
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("[Auto ClarifyFromStep1] fail: " + ex.Message);
+                            _log.LogWarning(ex, "Auto ClarifyFromStep1 failed. chatId={ChatId}", chatId);
                             conv2 = null;
                         }
                     }

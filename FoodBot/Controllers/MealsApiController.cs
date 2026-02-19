@@ -63,13 +63,11 @@ namespace FoodBot.Controllers
             {
                 Console.WriteLine($"[MealsController.List] fallback path activated. chatId={chatId}. Error: {ex}");
 
-                var baseRows = await _db.Meals
+                var mealRows = await _db.Meals
                     .AsNoTracking()
                     .Where(m => m.ChatId == chatId)
                     .OrderByDescending(m => m.CreatedAtUtc)
                     .ThenByDescending(m => m.Id)
-                    .Skip(offset)
-                    .Take(limit)
                     .Select(m => new
                     {
                         m.Id,
@@ -86,9 +84,26 @@ namespace FoodBot.Controllers
                     })
                     .ToListAsync(ct);
 
-                var total = await _db.Meals.AsNoTracking().CountAsync(m => m.ChatId == chatId, ct);
+                var pendingRows = await _db.PendingMeals
+                    .AsNoTracking()
+                    .Where(p => p.ChatId == chatId)
+                    .Select(p => new
+                    {
+                        p.Id,
+                        p.CreatedAtUtc,
+                        p.DesiredMealTimeUtc,
+                        p.Description
+                    })
+                    .ToListAsync(ct);
 
-                var items = baseRows.Select(m =>
+                var pendingClarifyMealIds = await _db.PendingClarifies
+                    .AsNoTracking()
+                    .Where(p => p.ChatId == chatId)
+                    .Select(p => p.MealId)
+                    .ToListAsync(ct);
+                var pendingClarifySet = pendingClarifyMealIds.ToHashSet();
+
+                var mealItems = mealRows.Select(m =>
                 {
                     string[] ingredients;
                     try
@@ -115,11 +130,45 @@ namespace FoodBot.Controllers
                         ingredients,
                         products,
                         m.HasImage,
-                        false,
-                        false,
+                        pendingClarifySet.Contains(m.Id),
+                        pendingClarifySet.Contains(m.Id),
                         null,
                         null);
-                }).ToList();
+                });
+
+                var pendingItems = pendingRows.Select(p =>
+                {
+                    var createdAt = p.DesiredMealTimeUtc ?? p.CreatedAtUtc;
+                    var title = string.IsNullOrWhiteSpace(p.Description)
+                        ? "Запрос обрабатывается"
+                        : p.Description;
+                    return new MealListItem(
+                        -p.Id,
+                        createdAt,
+                        title,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        Array.Empty<string>(),
+                        Array.Empty<ProductInfo>(),
+                        false,
+                        true,
+                        true,
+                        p.Id,
+                        null);
+                });
+
+                var allItems = mealItems
+                    .Concat(pendingItems)
+                    .OrderByDescending(x => x.CreatedAtUtc)
+                    .ThenByDescending(x => x.PendingRequestId.HasValue)
+                    .ThenByDescending(x => x.Id)
+                    .ToList();
+
+                var total = allItems.Count;
+                var items = allItems.Skip(offset).Take(limit).ToList();
 
                 return Ok(new MealListResult(total, offset, limit, items));
             }

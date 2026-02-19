@@ -12,6 +12,8 @@ ehthumbs.db
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
+FoodBot/wwwroot/**
+**/.dotnet-home/**
 
 ### Git logs ###
 *.log

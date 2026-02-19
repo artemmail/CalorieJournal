@@ -5,9 +5,9 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // Keep file logging enabled, but do not crash startup when the directory
-    // is unavailable on a different machine/user profile.
-    var fallbackLogDir = Path.Combine(
+    // Prefer logs near the deployed app (e.g. C:\fb\logs on production IIS).
+    var fallbackLogDir = Path.Combine(builder.Environment.ContentRootPath, "logs");
+    var localProfileLogDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FoodBot",
         "logs");
@@ -16,11 +16,22 @@ try
 
     try
     {
+        Directory.CreateDirectory(fileLogDir);
         builder.Logging.AddProvider(new FileLoggerProvider(fileLogDir));
     }
     catch (Exception ex)
     {
-        Console.Error.WriteLine($"[startup] File logger disabled ({fileLogDir}): {ex.Message}");
+        Console.Error.WriteLine($"[startup] File logger failed ({fileLogDir}): {ex.Message}");
+        try
+        {
+            Directory.CreateDirectory(localProfileLogDir);
+            builder.Logging.AddProvider(new FileLoggerProvider(localProfileLogDir));
+            Console.Error.WriteLine($"[startup] File logger fallback enabled ({localProfileLogDir})");
+        }
+        catch (Exception ex2)
+        {
+            Console.Error.WriteLine($"[startup] File logger disabled ({localProfileLogDir}): {ex2.Message}");
+        }
     }
 
     builder.Services

@@ -36,7 +36,8 @@ public sealed class PhotoQueueWorker : BackgroundService
 
                 var nextPhoto = await db.PendingMeals
                     .Where(x => x.Description == null)
-                    .OrderBy(x => x.CreatedAtUtc)
+                    .OrderBy(x => x.Attempts)
+                    .ThenBy(x => x.CreatedAtUtc)
                     .FirstOrDefaultAsync(stoppingToken);
                 var nextClar = await db.PendingClarifies
                     .Join(db.Meals,
@@ -127,13 +128,25 @@ public sealed class PhotoQueueWorker : BackgroundService
                 }
 
                 var next = nextPhoto!;
+                if (next.ImageBytes == null || next.ImageBytes.Length == 0)
+                {
+                    _log.LogWarning("PhotoQueueWorker got empty image payload for pending meal {Id}", next.Id);
+                    next.Attempts++;
+                    if (next.Attempts >= 3)
+                        db.PendingMeals.Remove(next);
+                    await db.SaveChangesAsync(stoppingToken);
+                    continue;
+                }
 
                 try
                 {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                    cts.CancelAfter(TimeSpan.FromSeconds(120));
+
                     var note = string.IsNullOrWhiteSpace(next.ClarifyNote) ? null : next.ClarifyNote.Trim();
                     var conv = note != null
-                        ? await nutrition.AnalyzeWithNoteAsync(next.ImageBytes, note, ct: stoppingToken)
-                        : await nutrition.AnalyzeAsync(next.ImageBytes, ct: stoppingToken);
+                        ? await nutrition.AnalyzeWithNoteAsync(next.ImageBytes, note, ct: cts.Token)
+                        : await nutrition.AnalyzeAsync(next.ImageBytes, ct: cts.Token);
                     if (conv != null)
                     {
                         var desiredTime = (next.DesiredMealTimeUtc ?? DateTimeOffset.UtcNow);
@@ -164,7 +177,7 @@ public sealed class PhotoQueueWorker : BackgroundService
                         };
                         db.Meals.Add(entry);
                         db.PendingMeals.Remove(next);
-                        await db.SaveChangesAsync(stoppingToken);
+                        await db.SaveChangesAsync(cts.Token);
 
                         await notifier.MealUpdated(
                             entry.ChatId,
@@ -173,18 +186,41 @@ public sealed class PhotoQueueWorker : BackgroundService
                     }
                     else
                     {
+                        _log.LogWarning("PhotoQueueWorker got null AI result for {Id} (chatId={ChatId}, attempt={Attempt})",
+                            next.Id, next.ChatId, next.Attempts + 1);
                         next.Attempts++;
                         if (next.Attempts >= 3)
+                        {
+                            var failed = BuildFailedPhotoMeal(next, "Не удалось распознать фото. Отправьте его еще раз.");
+                            db.Meals.Add(failed);
                             db.PendingMeals.Remove(next);
+                            await db.SaveChangesAsync(stoppingToken);
+                            await notifier.MealUpdated(
+                                failed.ChatId,
+                                failed.ToListItem(replacesPendingRequestId: next.Id)
+                            );
+                            continue;
+                        }
                         await db.SaveChangesAsync(stoppingToken);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _log.LogError(ex, "PhotoQueueWorker processing failed for {Id}", next.Id);
+                    _log.LogError(ex, "PhotoQueueWorker processing failed for {Id} (chatId={ChatId}, attempt={Attempt})",
+                        next.Id, next.ChatId, next.Attempts + 1);
                     next.Attempts++;
                     if (next.Attempts >= 3)
+                    {
+                        var failed = BuildFailedPhotoMeal(next, BuildFailureMessage(ex));
+                        db.Meals.Add(failed);
                         db.PendingMeals.Remove(next);
+                        await db.SaveChangesAsync(stoppingToken);
+                        await notifier.MealUpdated(
+                            failed.ChatId,
+                            failed.ToListItem(replacesPendingRequestId: next.Id)
+                        );
+                        continue;
+                    }
                     await db.SaveChangesAsync(stoppingToken);
                     await Task.Delay(2000, stoppingToken);
                 }
@@ -196,6 +232,40 @@ public sealed class PhotoQueueWorker : BackgroundService
                 await Task.Delay(2000, stoppingToken);
             }
         }
+    }
+
+    private static string BuildFailureMessage(Exception ex)
+    {
+        if (ex is OperationCanceledException or TimeoutException)
+            return "Превышено время обработки фото. Отправьте фото еще раз.";
+        return "Ошибка обработки фото. Отправьте фото еще раз.";
+    }
+
+    private static MealEntry BuildFailedPhotoMeal(PendingMeal pending, string message)
+    {
+        var desiredTime = pending.DesiredMealTimeUtc ?? DateTimeOffset.UtcNow;
+        return new MealEntry
+        {
+            ChatId = pending.ChatId,
+            UserId = 0,
+            Username = "app",
+            CreatedAtUtc = desiredTime,
+            SourceType = MealSourceType.Photo,
+            FileId = string.Empty,
+            FileMime = pending.FileMime ?? "image/jpeg",
+            ImageBytes = pending.ImageBytes ?? Array.Empty<byte>(),
+            DishName = message,
+            IngredientsJson = "[]",
+            ProductsJson = "[]",
+            ProteinsG = 0,
+            FatsG = 0,
+            CarbsG = 0,
+            CaloriesKcal = 0,
+            Confidence = 0,
+            WeightG = 0,
+            Model = "app-error",
+            ClarifyNote = pending.ClarifyNote
+        };
     }
 
 }
