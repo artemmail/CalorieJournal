@@ -1,57 +1,148 @@
 :host {
   display: block;
-
-  /* Цвета сегментов */
-  --p-color: #4caf50; /* белки */
-  --f-color: #ff9800; /* жиры */
-  --c-color: #2196f3; /* углеводы */
-
-  /* Геометрия */
-  --label-w: 44px;
-  --value-w: 56px;
-  --gap: 6px;
-  --bar-h: 16px;
+  --p-color: #2f9b63;
+  --f-color: #dc8e2d;
+  --c-color: #3579c8;
+  --label-w: 52px;
+  --value-w: 58px;
+  --gap: 8px;
+  --bar-h: 18px;
+  --text-muted: rgba(0, 0, 0, 0.64);
+  --border-muted: rgba(0, 0, 0, 0.1);
 }
 
-.controls {
+.stats-page {
+  display: grid;
+  gap: 16px;
+}
+
+.page-header {
+  padding: 16px;
+  border-radius: 12px;
   display: flex;
-  align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.preset-toggle {
-  display: inline-flex;
+.header-copy h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
 }
 
+.header-copy p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.controls-card {
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.preset-toggle,
+.view-toggle,
 .range-field {
-  min-width: 250px;
+  width: 100%;
 }
 
-.controls button {
-  white-space: nowrap;
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.legend {
+.kpi-card {
+  padding: 12px;
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border-muted);
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.kpi-value {
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.kpi-note {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.legend-card {
+  border-radius: 12px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 8px 0 4px;
+  gap: 10px;
+  flex-wrap: wrap;
   font-size: 12px;
 
   .dot {
-    width: 12px; height: 12px; border-radius: 2px; display: inline-block; margin-right: 4px;
-    &.p { background: var(--p-color); }
-    &.f { background: var(--f-color); }
-    &.c { background: var(--c-color); }
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
   }
+
+  .dot.p { background: var(--p-color); }
+  .dot.f { background: var(--f-color); }
+  .dot.c { background: var(--c-color); }
+}
+
+.days-note {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.chart-card,
+.table-card,
+.state-card {
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.state-card,
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.state-card p,
+.empty-state p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.helper {
+  margin: 2px 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .chart {
   position: relative;
 }
 
-/* Шкала сверху: 0, 25%, 50%, 75%, 100% от effectiveMax (ккал) */
 .scale {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -59,68 +150,67 @@
   margin-right: calc(var(--value-w) + var(--gap));
   height: 20px;
   align-items: end;
-  position: relative;
 
   .tick {
     position: relative;
     height: 100%;
   }
+
   .tick::before {
     content: '';
     position: absolute;
-    left: 0; top: 0; bottom: 0;
+    left: 0;
+    top: 0;
+    bottom: 0;
     width: 1px;
-    background: rgba(0,0,0,.08);
+    background: rgba(0, 0, 0, 0.12);
   }
+
   .tick span {
     position: absolute;
     top: 0;
     transform: translateX(-50%);
     font-size: 11px;
-    color: rgba(0,0,0,.6);
+    color: var(--text-muted);
   }
 }
 
-/* Строка графика */
 .row {
   display: flex;
   align-items: center;
   gap: var(--gap);
-  margin: 4px 0;
+  margin: 5px 0;
 }
 
 .label {
   width: var(--label-w);
   text-align: right;
   font-size: 12px;
-  color: rgba(0,0,0,.75);
+  color: rgba(0, 0, 0, 0.78);
 }
 
-/* Дорожка + бар */
 .track {
   position: relative;
   flex: 1;
   height: var(--bar-h);
   border-radius: 4px;
-  background:
-    repeating-linear-gradient(
-      to right,
-      transparent 0,
-      transparent calc(25% - 0.5px),
-      rgba(0,0,0,.06) calc(25% - 0.5px),
-      rgba(0,0,0,.06) calc(25% + 0.5px)
-    );
+  background: repeating-linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.02) 0,
+    rgba(0, 0, 0, 0.02) calc(25% - 0.5px),
+    rgba(0, 0, 0, 0.08) calc(25% - 0.5px),
+    rgba(0, 0, 0, 0.08) calc(25% + 0.5px)
+  );
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  display: flex;       /* для сегментов Б/Ж/У */
+  display: flex;
   border-radius: 4px;
   overflow: hidden;
 }
 
-/* Сегменты */
 .seg { height: 100%; display: block; }
 .seg.p { background: var(--p-color); }
 .seg.f { background: var(--f-color); }
@@ -130,19 +220,82 @@
   width: var(--value-w);
   text-align: right;
   font-size: 12px;
-  color: rgba(0,0,0,.75);
+  color: rgba(0, 0, 0, 0.78);
 }
 
-/* Таблица */
 .stats-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 8px;
-  th, td {
-    border: 1px solid rgba(0,0,0,.1);
-    padding: 4px;
+  margin-top: 2px;
+
+  th,
+  td {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 7px 6px;
     text-align: right;
     font-size: 12px;
   }
-  th:first-child, td:first-child { text-align: left; }
+
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+
+  tfoot td {
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.03);
+  }
+}
+
+.desktop-table {
+  display: none;
+}
+
+.mobile-cards {
+  display: grid;
+  gap: 8px;
+}
+
+.day-card {
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  padding: 10px;
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: baseline;
+  }
+
+  header span {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+}
+
+.macros {
+  margin-top: 7px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+@media (min-width: 768px) {
+  .controls-grid {
+    grid-template-columns: auto minmax(280px, 1fr) auto;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .mobile-cards {
+    display: none;
+  }
+
+  .desktop-table {
+    display: block;
+  }
 }

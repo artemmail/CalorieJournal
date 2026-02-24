@@ -230,8 +230,7 @@ namespace FoodBot.Controllers
             await image.CopyToAsync(ms, ct);
             var bytes = ms.ToArray();
 
-            var chatId = User.GetChatId();
-            chatId = await ResolveChatIdAsync(ct);
+            var chatId = await ResolveChatIdAsync(ct);
             var trimmedNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
             DateTimeOffset? desiredTime = null;
             if (!string.IsNullOrWhiteSpace(time) && DateTimeOffset.TryParse(time, out var parsedTime))

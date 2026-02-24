@@ -1,100 +1,182 @@
-<mat-card>
-  <h3>Статистика по дням</h3>
+<section class="stats-page">
+  <mat-card class="page-header">
+    <div class="header-copy">
+      <h1>Статистика</h1>
+      <p>{{ periodCaption }}</p>
+    </div>
+    <button mat-stroked-button color="primary" (click)="openExportDialog()" [disabled]="loading">
+      <mat-icon>download</mat-icon>
+      <span>Экспорт</span>
+    </button>
+  </mat-card>
 
-  <div class="controls">
-    <mat-button-toggle-group
-      [value]="selectedPeriod === 'custom' ? null : selectedPeriod"
-      (change)="selectPreset($event.value)"
-      class="preset-toggle"
-    >
-      <mat-button-toggle value="week">Неделя</mat-button-toggle>
-      <mat-button-toggle value="month">Месяц</mat-button-toggle>
-      <mat-button-toggle value="quarter">Квартал</mat-button-toggle>
-    </mat-button-toggle-group>
+  <mat-card class="controls-card">
+    <div class="controls-grid">
+      <mat-button-toggle-group
+        [value]="selectedPeriod === 'custom' ? null : selectedPeriod"
+        (change)="selectPreset($event.value)"
+        class="preset-toggle"
+      >
+        <mat-button-toggle value="week">7 дней</mat-button-toggle>
+        <mat-button-toggle value="month">30 дней</mat-button-toggle>
+        <mat-button-toggle value="quarter">90 дней</mat-button-toggle>
+      </mat-button-toggle-group>
 
-    <mat-form-field appearance="fill" class="range-field">
-      <mat-label>Период</mat-label>
-      <mat-date-range-input [rangePicker]="picker" (dateChange)="onRangeChange()">
-        <input matStartDate name="customStart" placeholder="Начало" [(ngModel)]="customStart" />
-        <input matEndDate name="customEnd" placeholder="Конец" [(ngModel)]="customEnd" />
-      </mat-date-range-input>
-      <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-      <mat-date-range-picker #picker></mat-date-range-picker>
-    </mat-form-field>
+      <mat-form-field appearance="outline" class="range-field">
+        <mat-label>Период</mat-label>
+        <mat-date-range-input [rangePicker]="picker" (dateChange)="onRangeChange()">
+          <input matStartDate name="customStart" placeholder="Начало" [(ngModel)]="customStart" />
+          <input matEndDate name="customEnd" placeholder="Конец" [(ngModel)]="customEnd" />
+        </mat-date-range-input>
+        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-date-range-picker #picker></mat-date-range-picker>
+      </mat-form-field>
 
-    <mat-button-toggle-group [(ngModel)]="view">
-      <mat-button-toggle value="chart">График</mat-button-toggle>
-      <mat-button-toggle value="table">Таблица</mat-button-toggle>
-    </mat-button-toggle-group>
+      <mat-button-toggle-group [(ngModel)]="view" class="view-toggle">
+        <mat-button-toggle value="chart">График</mat-button-toggle>
+        <mat-button-toggle value="table">Таблица</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  </mat-card>
 
-    <button mat-raised-button color="primary" (click)="openExportDialog()">Экспорт</button>
-  </div>
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
 
-  <!-- Легенда по периоду -->
-  <div class="legend" *ngIf="legend.totalMacroKcal > 0">
-    <span class="dot p"></span>
-    Б {{ legend.proteinsPct | number:'1.0-0' }}%
-    <span class="dot f"></span>
-    Ж {{ legend.fatsPct | number:'1.0-0' }}%
-    <span class="dot c"></span>
-    У {{ legend.carbsPct | number:'1.0-0' }}%
-  </div>
+  <mat-card class="state-card" *ngIf="loadError && !loading">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <p>{{ loadError }}</p>
+    <button mat-stroked-button color="primary" (click)="updatePeriod(selectedPeriod === 'custom')">
+      Повторить
+    </button>
+  </mat-card>
 
-  <ng-container *ngIf="view==='chart'">
-    <div class="chart">
-      <!-- Шкала (совпадает по ширине с дорожкой) -->
-      <div class="scale" *ngIf="ticks.length">
-        <div class="tick" *ngFor="let t of ticks">
-          <span>{{ t | number:'1.0-0' }}</span>
-        </div>
+  <ng-container *ngIf="!loadError">
+    <section class="kpi-grid">
+      <mat-card class="kpi-card">
+        <span class="kpi-label">Среднее ккал/день</span>
+        <strong class="kpi-value">{{ averageCalories | number:'1.0-0' }}</strong>
+      </mat-card>
+
+      <mat-card class="kpi-card">
+        <span class="kpi-label">Максимум</span>
+        <strong class="kpi-value">{{ peakCalories | number:'1.0-0' }}</strong>
+      </mat-card>
+
+      <mat-card class="kpi-card">
+        <span class="kpi-label">Минимум</span>
+        <strong class="kpi-value">{{ minimumCalories | number:'1.0-0' }}</strong>
+      </mat-card>
+
+      <mat-card class="kpi-card">
+        <span class="kpi-label">Дни в цели</span>
+        <strong class="kpi-value" *ngIf="daysInTargetPct !== null">{{ daysInTargetPct | number:'1.0-0' }}%</strong>
+        <strong class="kpi-value" *ngIf="daysInTargetPct === null">—</strong>
+        <small class="kpi-note" *ngIf="daysInTargetPct === null">Целевой диапазон не задан</small>
+      </mat-card>
+    </section>
+
+    <mat-card class="legend-card" *ngIf="legend.totalMacroKcal > 0">
+      <span class="dot p"></span>
+      Б {{ legend.proteinsPct | number:'1.0-0' }}%
+      <span class="dot f"></span>
+      Ж {{ legend.fatsPct | number:'1.0-0' }}%
+      <span class="dot c"></span>
+      У {{ legend.carbsPct | number:'1.0-0' }}%
+      <span class="days-note">Дней с данными: {{ daysWithEntries }}</span>
+    </mat-card>
+
+    <mat-card class="chart-card" *ngIf="view==='chart'">
+      <div class="empty-state" *ngIf="!hasCaloriesData && !loading">
+        <mat-icon>bar_chart</mat-icon>
+        <p>За выбранный период данных нет. Попробуйте другой диапазон.</p>
       </div>
 
-      <!-- Строки по дням -->
-      <div class="row" *ngFor="let d of data">
-        <div class="label">{{ d.date | date:'dd.MM' }}</div>
+      <ng-container *ngIf="hasCaloriesData">
+        <p class="helper" *ngIf="showSparseHint">Данных пока мало. Для уверенного тренда нужно больше дней.</p>
 
-        <div class="track" [attr.aria-label]="'Сумма ккал ' + (d.totals.calories | number:'1.0-0')">
-          <div
-            class="bar-fill"
-            [style.width.%]="effectiveMax ? (d.totals.calories / effectiveMax) * 100 : 0"
-          >
-            <span
-              class="seg p"
-              [style.width.%]="macroShare(d, 'p')"
-              [attr.title]="macroTooltip(d, 'p')"
-            ></span>
-            <span
-              class="seg f"
-              [style.width.%]="macroShare(d, 'f')"
-              [attr.title]="macroTooltip(d, 'f')"
-            ></span>
-            <span
-              class="seg c"
-              [style.width.%]="macroShare(d, 'c')"
-              [attr.title]="macroTooltip(d, 'c')"
-            ></span>
+        <div class="chart">
+          <div class="scale" *ngIf="ticks.length">
+            <div class="tick" *ngFor="let t of ticks">
+              <span>{{ t | number:'1.0-0' }}</span>
+            </div>
+          </div>
+
+          <div class="row" *ngFor="let d of data; trackBy: trackByDay">
+            <div class="label">{{ d.date | date:'dd.MM' }}</div>
+
+            <div class="track" [attr.aria-label]="'Калорийность за день ' + (d.totals.calories | number:'1.0-0')">
+              <div
+                class="bar-fill"
+                [style.width.%]="effectiveMax ? (d.totals.calories / effectiveMax) * 100 : 0"
+              >
+                <span
+                  class="seg p"
+                  [style.width.%]="macroShare(d, 'p')"
+                  [attr.title]="macroTooltip(d, 'p')"
+                ></span>
+                <span
+                  class="seg f"
+                  [style.width.%]="macroShare(d, 'f')"
+                  [attr.title]="macroTooltip(d, 'f')"
+                ></span>
+                <span
+                  class="seg c"
+                  [style.width.%]="macroShare(d, 'c')"
+                  [attr.title]="macroTooltip(d, 'c')"
+                ></span>
+              </div>
+            </div>
+
+            <div class="value">{{ d.totals.calories | number:'1.0-0' }}</div>
           </div>
         </div>
+      </ng-container>
+    </mat-card>
 
-        <div class="value">{{ d.totals.calories | number:'1.0-0' }}</div>
+    <mat-card class="table-card" *ngIf="view==='table'">
+      <div class="desktop-table" *ngIf="data.length > 0">
+        <table class="stats-table">
+          <thead>
+            <tr><th>Дата</th><th>Ккал</th><th>Б</th><th>Ж</th><th>У</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of data; trackBy: trackByDay">
+              <td>{{ d.date | date:'dd.MM' }}</td>
+              <td>{{ d.totals.calories | number:'1.0-0' }}</td>
+              <td>{{ d.totals.proteins | number:'1.0-0' }}</td>
+              <td>{{ d.totals.fats | number:'1.0-0' }}</td>
+              <td>{{ d.totals.carbs | number:'1.0-0' }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>Итого</td>
+              <td>{{ tableTotals.calories | number:'1.0-0' }}</td>
+              <td>{{ tableTotals.proteins | number:'1.0-0' }}</td>
+              <td>{{ tableTotals.fats | number:'1.0-0' }}</td>
+              <td>{{ tableTotals.carbs | number:'1.0-0' }}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
-    </div>
-  </ng-container>
 
-  <ng-container *ngIf="view==='table'">
-    <table class="stats-table">
-      <thead>
-        <tr><th>Дата</th><th>Ккал</th><th>Б</th><th>Ж</th><th>У</th></tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let d of data">
-          <td>{{ d.date | date:'dd.MM' }}</td>
-          <td>{{ d.totals.calories | number:'1.0-0' }}</td>
-          <td>{{ d.totals.proteins | number:'1.0-0' }}</td>
-          <td>{{ d.totals.fats | number:'1.0-0' }}</td>
-          <td>{{ d.totals.carbs | number:'1.0-0' }}</td>
-        </tr>
-      </tbody>
-    </table>
+      <div class="mobile-cards" *ngIf="data.length > 0">
+        <article class="day-card" *ngFor="let d of data; trackBy: trackByDay">
+          <header>
+            <strong>{{ d.date | date:'dd.MM.yyyy' }}</strong>
+            <span>{{ d.totals.calories | number:'1.0-0' }} ккал</span>
+          </header>
+          <div class="macros">
+            <span>Б: {{ d.totals.proteins | number:'1.0-0' }}</span>
+            <span>Ж: {{ d.totals.fats | number:'1.0-0' }}</span>
+            <span>У: {{ d.totals.carbs | number:'1.0-0' }}</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="empty-state" *ngIf="data.length === 0 && !loading">
+        <mat-icon>table_rows</mat-icon>
+        <p>За выбранный период данных нет.</p>
+      </div>
+    </mat-card>
   </ng-container>
-</mat-card>
+</section>

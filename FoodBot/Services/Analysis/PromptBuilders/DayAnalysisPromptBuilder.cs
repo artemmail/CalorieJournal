@@ -381,31 +381,24 @@ public sealed class DayAnalysisPromptBuilder<TData> : BaseAnalysisPromptBuilder<
     // ----------------------------- META -----------------------------
 
     /// <summary>
-    /// meta: TargetCalories, Profile.{WeightKg, HeightCm, Age, Sex, Goal, Timezone}, Payload.Timezone.
+    /// meta из фактических полей ReportPayload.
     /// </summary>
-    private static dynamic BuildMetaObject(object payload)
+    private static dynamic BuildMetaObject(ReportPayload payload)
     {
-        var targetCalories = TryGet<double?>(payload, "TargetCalories")
-                             ?? TryGet<int?>(payload, "TargetCalories") as double?;
-
-        var profile = TryGet<object>(payload, "Profile");
-
-        var weightKg = TryGet<double?>(profile, "WeightKg") ?? TryGet<int?>(profile, "WeightKg") as double?;
-        var heightCm = TryGet<double?>(profile, "HeightCm") ?? TryGet<int?>(profile, "HeightCm") as double?;
-        var ageYears = TryGet<int?>(profile, "Age") ?? (int?)TryGet<double?>(profile, "Age");
-        var sex = TryGet<string>(profile, "Sex") ?? TryGet<string>(profile, "Gender");
-        var goal = TryGet<string>(profile, "Goal");
-        var timezone = TryGet<string>(profile, "Timezone") ?? TryGet<string>(payload, "Timezone");
+        var client = payload.Client;
+        var targetCalories = client.DailyCalories.HasValue ? (double?)client.DailyCalories.Value : null;
+        var weightKg = client.WeightKg.HasValue ? (double?)client.WeightKg.Value : null;
+        var heightCm = client.HeightCm.HasValue ? (double?)client.HeightCm.Value : null;
 
         return new
         {
             targetCalories,
             weightKg,
             heightCm,
-            ageYears,
-            sex,
-            goal,
-            timezone
+            ageYears = client.Age,
+            sex = client.Gender,
+            goal = client.Goals,
+            timezone = payload.Timezone.Id
         };
     }
 

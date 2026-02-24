@@ -113,7 +113,11 @@ public sealed class AnalysisController : ControllerBase
         };
         _db.AnalysisPdfJobs.Add(job);
         await _db.SaveChangesAsync(ct);
-        return Accepted(new { id = job.Id });
+        return Accepted(new
+        {
+            id = job.Id,
+            jobId = job.Id.ToString()
+        });
     }
 
     [HttpGet("{id:long}/docx")]
@@ -140,15 +144,37 @@ public sealed class AnalysisController : ControllerBase
         if (job.Status == AnalysisPdfJobStatus.Done &&
             !string.IsNullOrEmpty(job.FilePath) && System.IO.File.Exists(job.FilePath))
         {
+            return Ok(new { status = "ready" });
+        }
+
+        if (job.Status == AnalysisPdfJobStatus.Error ||
+            (job.Status == AnalysisPdfJobStatus.Done && (string.IsNullOrEmpty(job.FilePath) || !System.IO.File.Exists(job.FilePath))))
+            return Ok(new { status = "error" });
+
+        return Accepted(new { status = "processing" });
+    }
+
+    [HttpGet("pdf-jobs/{id:long}/file")]
+    public async Task<IActionResult> DownloadPdfJobFile([FromRoute] long id, CancellationToken ct)
+    {
+        var chatId = User.GetChatId();
+        var job = await _db.AnalysisPdfJobs.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.ChatId == chatId, ct);
+        if (job == null) return NotFound();
+
+        if (job.Status == AnalysisPdfJobStatus.Done &&
+            !string.IsNullOrEmpty(job.FilePath) &&
+            System.IO.File.Exists(job.FilePath))
+        {
             var bytes = await System.IO.File.ReadAllBytesAsync(job.FilePath, ct);
             var fn = Path.GetFileName(job.FilePath);
             return File(bytes, "application/pdf", fn);
         }
 
         if (job.Status == AnalysisPdfJobStatus.Error)
-            return Ok(new { status = "error" });
+            return Conflict(new { status = "error" });
 
-        return Accepted(new { status = job.Status.ToString().ToLowerInvariant() });
+        return Accepted(new { status = "processing" });
     }
 
     // --- старые маршруты оставлены для обратной совместимости с прежним UI ---

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { firstValueFrom, Observable, EMPTY, timer } from 'rxjs';
-import { filter, switchMap, take } from 'rxjs/operators';
+import { firstValueFrom, Observable, EMPTY, timer, throwError } from 'rxjs';
+import { map, switchMap, take } from 'rxjs/operators';
 import { FoodBotAuthLinkService } from './foodbot-auth-link.service';
 
 export type AnalysisPeriod = 'day' | 'dayRemainder' | 'week' | 'month' | 'quarter';
@@ -34,10 +34,11 @@ export interface GetReportResponse {
 
 export interface PdfJobResponse {
   jobId: string;
+  id?: number;
 }
 
 export interface PdfJobStatusResponse {
-  status: 'processing' | 'ready';
+  status: 'processing' | 'ready' | 'error';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -89,7 +90,15 @@ export class AnalysisService {
 
   /** Запросить создание PDF, возвращает идентификатор задания */
   createPdfJob(id: number): Observable<PdfJobResponse> {
-    return this.http.post<PdfJobResponse>(`${this.baseUrl}/api/analysis/${id}/pdf`, {});
+    return this.http.post<{ id?: number; jobId?: string }>(`${this.baseUrl}/api/analysis/${id}/pdf`, {}).pipe(
+      map(res => {
+        const jobId = res.jobId ?? (res.id != null ? String(res.id) : '');
+        if (!jobId) {
+          throw new Error('Missing pdf job id in response');
+        }
+        return { id: res.id, jobId };
+      })
+    );
   }
 
   /** Опросить статус задания до готовности и скачать файл */
@@ -97,13 +106,16 @@ export class AnalysisService {
     return timer(0, 1000).pipe(
       switchMap(() => this.http.get<PdfJobStatusResponse>(`${this.baseUrl}/api/analysis/pdf-jobs/${jobId}`)),
       switchMap(res => {
-        if (res.status !== 'ready') return EMPTY;
-        return this.http.get(`${this.baseUrl}/api/analysis/pdf-jobs/${jobId}`, {
+        if (res.status === 'processing') return EMPTY;
+        if (res.status === 'error') {
+          return throwError(() => new Error('Pdf job failed'));
+        }
+
+        return this.http.get(`${this.baseUrl}/api/analysis/pdf-jobs/${jobId}/file`, {
           responseType: 'blob',
           observe: 'response',
         });
       }),
-      filter(x => !!x),
       take(1)
     );
   }

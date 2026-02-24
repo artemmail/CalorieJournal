@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text.Json;
 using FoodBot.Services.Reports;
 
@@ -134,68 +133,24 @@ public sealed class WeekAnalysisPromptBuilder<TData> : BaseAnalysisPromptBuilder
     }
 
     /// <summary>
-    /// Пытается собрать объект meta: целевые калории, базовые параметры профиля и цель.
-    /// Неформальные поля читаем через reflection по именам: TargetCalories, Profile.{WeightKg, HeightCm, Age, Sex, Goal, Timezone}.
-    /// Если поля отсутствуют — возвращаем только то, что нашли (остальное будет null).
+    /// Собирает meta из фактической структуры ReportPayload.
     /// </summary>
-    private static object BuildMetaObject(object payload)
+    private static object BuildMetaObject(ReportPayload payload)
     {
-        // Сам payload
-        var targetCalories = TryGet<double?>(payload, "TargetCalories")
-                             ?? TryGet<int?>(payload, "TargetCalories") as double?;
-
-        // Профиль, если есть
-        var profile = TryGet<object>(payload, "Profile");
-
-        var weightKg = TryGet<double?>(profile, "WeightKg") ?? TryGet<int?>(profile, "WeightKg") as double?;
-        var heightCm = TryGet<double?>(profile, "HeightCm") ?? TryGet<int?>(profile, "HeightCm") as double?;
-        var ageYears = TryGet<int?>(profile, "Age") ?? (int?)TryGet<double?>(profile, "Age");
-        var sex = TryGet<string>(profile, "Sex") ?? TryGet<string>(profile, "Gender");
-        var goal = TryGet<string>(profile, "Goal");
-        var timezone = TryGet<string>(profile, "Timezone") ?? TryGet<string>(payload, "Timezone");
-
-        // Можно сюда же добавить другие полезные флаги, если они у вас есть в модели:
-        // например Diagnoses/Restrictions и т.п. — по тем же TryGet.
+        var client = payload.Client;
+        var targetCalories = client.DailyCalories.HasValue ? (double?)client.DailyCalories.Value : null;
+        var weightKg = client.WeightKg.HasValue ? (double?)client.WeightKg.Value : null;
+        var heightCm = client.HeightCm.HasValue ? (double?)client.HeightCm.Value : null;
 
         return new
         {
             targetCalories,
             weightKg,
             heightCm,
-            ageYears,
-            sex,
-            goal,
-            timezone
+            ageYears = client.Age,
+            sex = client.Gender,
+            goal = client.Goals,
+            timezone = payload.Timezone.Id
         };
-    }
-
-    /// <summary>
-    /// Универсальный безопасный геттер через reflection.
-    /// </summary>
-    private static T? TryGet<T>(object? obj, string propertyName)
-    {
-        if (obj == null) return default;
-        var type = obj.GetType();
-        var pi = type.GetProperty(propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
-        if (pi == null) return default;
-
-        var value = pi.GetValue(obj);
-        if (value == null) return default;
-
-        try
-        {
-            // Пробуем прямое приведение
-            if (value is T tv) return tv;
-
-            // Для числовых типов попытаемся через Convert.ChangeType
-            var target = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
-            var converted = System.Convert.ChangeType(value, target);
-            return (T?)converted;
-        }
-        catch
-        {
-            return default;
-        }
     }
 }

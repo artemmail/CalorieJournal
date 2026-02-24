@@ -11,6 +11,7 @@ namespace FoodBot.Services;
 public sealed class StatsService
 {
     private readonly BotDbContext _db;
+    private static TimeZoneInfo MoscowTz => GetMoscowTz();
 
     public StatsService(BotDbContext db)
     {
@@ -20,12 +21,17 @@ public sealed class StatsService
     public async Task<StatsSummary> GetSummaryAsync(long chatId, int days, CancellationToken ct = default)
     {
         if (days <= 0) days = 1;
-        var from = DateTimeOffset.UtcNow.Date.AddDays(-(days - 1));
-        var to = DateTimeOffset.UtcNow.Date.AddDays(1);
+        var tz = MoscowTz;
+        var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
+        var fromLocal = nowLocal.Date.AddDays(-(days - 1));
+        var toLocalExclusive = nowLocal.Date.AddDays(1);
+
+        var fromUtc = new DateTimeOffset(fromLocal, tz.GetUtcOffset(fromLocal)).UtcDateTime;
+        var toUtc = new DateTimeOffset(toLocalExclusive, tz.GetUtcOffset(toLocalExclusive)).UtcDateTime;
 
         var totals = await _db.Meals
             .AsNoTracking()
-            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= from && m.CreatedAtUtc < to)
+            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= fromUtc && m.CreatedAtUtc < toUtc)
             .GroupBy(_ => 1)
             .Select(g => new
             {
@@ -63,32 +69,50 @@ public sealed class StatsService
 
     public async Task<List<DailyTotals>> GetDailyTotalsAsync(long chatId, DateTime from, DateTime to, CancellationToken ct = default)
     {
-        var start = DateTime.SpecifyKind(from.Date, DateTimeKind.Utc);
-        var end = DateTime.SpecifyKind(to.Date, DateTimeKind.Utc).AddDays(1);
+        var tz = MoscowTz;
+        var startLocal = from.Date;
+        var endLocalExclusive = to.Date.AddDays(1);
+        if (endLocalExclusive <= startLocal)
+            return new List<DailyTotals>();
 
-        var results = await _db.Meals
+        var startUtc = new DateTimeOffset(startLocal, tz.GetUtcOffset(startLocal)).UtcDateTime;
+        var endUtc = new DateTimeOffset(endLocalExclusive, tz.GetUtcOffset(endLocalExclusive)).UtcDateTime;
+
+        var meals = await _db.Meals
             .AsNoTracking()
-            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= start && m.CreatedAtUtc < end)
-            .GroupBy(m => m.CreatedAtUtc.Date)
-            .Select(g => new DailyTotals
+            .Where(m => m.ChatId == chatId && m.CreatedAtUtc >= startUtc && m.CreatedAtUtc < endUtc)
+            .Select(m => new
             {
-                Date = g.Key,
-                Totals = new MacroTotals
-                {
-                    Calories = g.Sum(m => m.CaloriesKcal) ?? 0,
-                    Proteins = g.Sum(m => m.ProteinsG) ?? 0,
-                    Fats = g.Sum(m => m.FatsG) ?? 0,
-                    Carbs = g.Sum(m => m.CarbsG) ?? 0,
-                }
+                m.CreatedAtUtc,
+                Calories = m.CaloriesKcal ?? 0,
+                Proteins = m.ProteinsG ?? 0,
+                Fats = m.FatsG ?? 0,
+                Carbs = m.CarbsG ?? 0
             })
             .ToListAsync(ct);
 
+        var results = meals
+            .GroupBy(m => TimeZoneInfo.ConvertTime(m.CreatedAtUtc, tz).Date)
+            .ToDictionary(
+                g => g.Key,
+                g => new MacroTotals
+                {
+                    Calories = g.Sum(x => x.Calories),
+                    Proteins = g.Sum(x => x.Proteins),
+                    Fats = g.Sum(x => x.Fats),
+                    Carbs = g.Sum(x => x.Carbs)
+                });
+
         var list = new List<DailyTotals>();
-        for (var day = start; day < end; day = day.AddDays(1))
+        for (var day = startLocal; day < endLocalExclusive; day = day.AddDays(1))
         {
-            var item = results.FirstOrDefault(r => r.Date == day);
-            list.Add(item ?? new DailyTotals { Date = day, Totals = new MacroTotals() });
+            list.Add(new DailyTotals
+            {
+                Date = day,
+                Totals = results.TryGetValue(day, out var totals) ? totals : new MacroTotals()
+            });
         }
+
         // remove empty days until the first one containing a meal
         // but keep at least one day to show zero totals for the current day
         while (list.Count > 1 &&
@@ -100,6 +124,18 @@ public sealed class StatsService
             list.RemoveAt(0);
         }
         return list;
+    }
+
+    private static TimeZoneInfo GetMoscowTz()
+    {
+        string[] ids = { "Europe/Moscow", "Russian Standard Time" };
+        foreach (var id in ids)
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
+            catch { }
+        }
+
+        return TimeZoneInfo.CreateCustomTimeZone("UTC+03", TimeSpan.FromHours(3), "UTC+03", "UTC+03");
     }
 }
 

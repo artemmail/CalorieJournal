@@ -58,7 +58,7 @@ export class HistoryPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    for (const url of this.imageUrls.values()) URL.revokeObjectURL(url);
+    this.clearAllImageUrls();
     this.updatesSub?.unsubscribe();
   }
 
@@ -75,7 +75,7 @@ export class HistoryPage implements OnInit, OnDestroy {
         this.total = res.total;
         for (const m of res.items) {
           if (m.hasImage && m.id > 0) {
-            this.api.getMealImageObjectUrl(m.id).subscribe((url) => this.imageUrls.set(m.id, url));
+            this.api.getMealImageObjectUrl(m.id).subscribe((url) => this.setImageUrl(m.id, url));
           }
         }
         this.recomputeDateTotals();
@@ -120,6 +120,7 @@ export class HistoryPage implements OnInit, OnDestroy {
     });
     ref.afterClosed().subscribe(r => {
       if (r?.deleted) {
+        this.clearImageUrl(item.id);
         this.items = this.items.filter(x => x.id !== item.id);
         this.total = Math.max(0, this.total - 1);
         this.recomputeDateTotals();
@@ -152,9 +153,33 @@ export class HistoryPage implements OnInit, OnDestroy {
 
     this.items.sort((a, b) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime());
     if (item.hasImage && item.id > 0) {
-      this.api.getMealImageObjectUrl(item.id).subscribe(url => this.imageUrls.set(item.id, url));
+      this.api.getMealImageObjectUrl(item.id).subscribe(url => this.setImageUrl(item.id, url));
+    } else if (item.id > 0) {
+      this.clearImageUrl(item.id);
     }
     this.recomputeDateTotals();
+  }
+
+  private setImageUrl(id: number, url: string) {
+    const prev = this.imageUrls.get(id);
+    if (prev && prev !== url) {
+      URL.revokeObjectURL(prev);
+    }
+    this.imageUrls.set(id, url);
+  }
+
+  private clearImageUrl(id: number) {
+    const prev = this.imageUrls.get(id);
+    if (!prev) return;
+    URL.revokeObjectURL(prev);
+    this.imageUrls.delete(id);
+  }
+
+  private clearAllImageUrls() {
+    for (const url of this.imageUrls.values()) {
+      URL.revokeObjectURL(url);
+    }
+    this.imageUrls.clear();
   }
 
   private dateKey(s: string): string {

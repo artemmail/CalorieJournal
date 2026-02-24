@@ -22,7 +22,8 @@ export interface DayStats {
 }
 
 export interface ReportJobResponse {
-  jobId: string;
+  id?: number;
+  jobId?: string;
 }
 
 export type ReportFormat = 'pdf' | 'docx';

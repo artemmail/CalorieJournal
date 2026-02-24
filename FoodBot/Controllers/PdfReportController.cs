@@ -25,7 +25,13 @@ public sealed class PdfReportController : ControllerBase
         [FromQuery] DateTime to,
         CancellationToken ct = default)
     {
-        if (to < from)
+        // Frontend sends dates as YYYY-MM-DD.
+        // For end date include the full selected day.
+        var normalizedTo = to.TimeOfDay == TimeSpan.Zero
+            ? to.Date.AddDays(1).AddTicks(-1)
+            : to;
+
+        if (normalizedTo < from)
             return BadRequest("Parameter 'to' must be greater than or equal to 'from'.");
 
         var reportFormat = string.Equals(format, "docx", StringComparison.OrdinalIgnoreCase)
@@ -36,7 +42,7 @@ public sealed class PdfReportController : ControllerBase
         {
             ChatId = User.GetChatId(),
             From = from,
-            To = to,
+            To = normalizedTo,
             Format = reportFormat,
             Status = PeriodPdfJobStatus.Queued,
             CreatedAtUtc = DateTimeOffset.UtcNow
