@@ -42,7 +42,7 @@ public static class BotExtensions
             var settings = new OpenAiSettings
             {
                 ApiKey = cfg["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI:ApiKey missing"),
-                TimeoutSeconds = int.TryParse(cfg["OpenAI:TimeoutSeconds"], out var t) ? t : 60,
+                TimeoutSeconds = int.TryParse(cfg["OpenAI:TimeoutSeconds"], out var t) ? t : 180,
                 DebugLog = bool.TryParse(cfg["OpenAI:DebugLog"], out var dbg) && dbg,
                 MaxRetries = Math.Clamp(int.TryParse(cfg["OpenAI:MaxRetries"], out var mr) ? mr : 7, 1, 7),
                 RetryBaseDelaySeconds = Math.Clamp(int.TryParse(cfg["OpenAI:RetryBaseSeconds"], out var rbs) ? rbs : 2, 1, 60),

@@ -15,7 +15,7 @@ namespace FoodBot.Services.OpenAI
     public sealed class OpenAiSettings
     {
         public string ApiKey { get; init; } = "";
-        public int TimeoutSeconds { get; init; } = 60;
+        public int TimeoutSeconds { get; init; } = 180;
         public bool DebugLog { get; init; } = false;
         public int MaxRetries { get; init; } = 7;
         public int RetryBaseDelaySeconds { get; init; } = 2;
