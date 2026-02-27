@@ -1,6 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
@@ -9,10 +8,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { InfiniteScrollModule } from 'ngx-infinite-scroll';
 import { AnalysisService, AnalysisPeriod, ReportRow } from '../../services/analysis.service';
 import { Router } from '@angular/router';
@@ -22,16 +17,11 @@ import { FoodbotApiService } from '../../services/foodbot-api.service';
 import { PersonalCard } from '../../services/foodbot-api.types';
 import { ProfileRequiredDialogComponent } from './profile-required-dialog.component';
 
-type FilterPeriod = AnalysisPeriod | 'all';
-type FilterStatus = 'all' | 'processing' | 'ready' | 'error';
-type ReportStatus = Exclude<FilterStatus, 'all'>;
-
 @Component({
   selector: 'app-analysis',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     DatePipe,
     MatCardModule,
     MatButtonModule,
@@ -41,48 +31,18 @@ type ReportStatus = Exclude<FilterStatus, 'all'>;
     MatChipsModule,
     MatSnackBarModule,
     MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatProgressBarModule,
     InfiniteScrollModule
   ],
   templateUrl: './analysis.page.html',
   styleUrls: ['./analysis.page.scss']
 })
 export class AnalysisPage implements OnInit, OnDestroy {
-  cols = ['date', 'name', 'period', 'status', 'actions'];
-
-  readonly periodFilters: Array<{ value: FilterPeriod; label: string }> = [
-    { value: 'all', label: 'Все периоды' },
-    { value: 'day', label: 'День · итог' },
-    { value: 'dayRemainder', label: 'День · остаток' },
-    { value: 'week', label: 'Неделя' },
-    { value: 'month', label: 'Месяц' },
-    { value: 'quarter', label: 'Квартал' }
-  ];
-
-  readonly statusFilters: Array<{ value: FilterStatus; label: string }> = [
-    { value: 'all', label: 'Все статусы' },
-    { value: 'processing', label: 'В обработке' },
-    { value: 'ready', label: 'Готово' },
-    { value: 'error', label: 'Ошибка' }
-  ];
-
-  readonly skeletonRows = Array.from({ length: 4 });
-
-  searchTerm = '';
-  selectedPeriod: FilterPeriod = 'all';
-  selectedStatus: FilterStatus = 'all';
-
+  cols = ['date', 'name', 'period', 'status'];
   rows: ReportRow[] = [];
-  filteredRows: ReportRow[] = [];
   allRows: ReportRow[] = [];
-  pageSize = 12;
+  pageSize = 10;
   loading = false;
-  loadError = '';
   hasProcessing = false;
-  isFirstLoad = true;
 
   private timer?: any;
 
@@ -97,9 +57,7 @@ export class AnalysisPage implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.refresh();
     this.timer = setInterval(() => {
-      if (this.hasProcessing) {
-        this.refresh(false);
-      }
+      if (this.hasProcessing) this.refresh(false);
     }, 3000);
   }
 
@@ -109,58 +67,23 @@ export class AnalysisPage implements OnInit, OnDestroy {
 
   async refresh(showSpinner = true) {
     try {
-      if (showSpinner) {
-        this.loading = true;
-      }
-      this.loadError = '';
+      if (showSpinner) this.loading = true;
       const list = await this.api.list();
       this.allRows = list;
+      this.rows = [];
+      this.loadMore();
       this.hasProcessing = list.some(x => x.isProcessing);
-      this.applyFilters();
-    } catch {
-      this.loadError = 'Не удалось загрузить историю отчётов.';
-      this.sb.open('Не удалось загрузить историю отчётов.', 'Закрыть', { duration: 3500 });
     } finally {
       this.loading = false;
-      this.isFirstLoad = false;
     }
   }
 
-  onFiltersChanged() {
-    this.applyFilters();
+  loadMore() {
+    const next = this.allRows.slice(this.rows.length, this.rows.length + this.pageSize);
+    if (next.length) this.rows = [...this.rows, ...next];
   }
 
-  clearFilters() {
-    this.searchTerm = '';
-    this.selectedPeriod = 'all';
-    this.selectedStatus = 'all';
-    this.applyFilters();
-  }
-
-  hasActiveFilters(): boolean {
-    return this.searchTerm.trim().length > 0 || this.selectedPeriod !== 'all' || this.selectedStatus !== 'all';
-  }
-
-  loadMore(reset = false) {
-    if (reset) {
-      this.rows = [];
-    }
-    const next = this.filteredRows.slice(this.rows.length, this.rows.length + this.pageSize);
-    if (next.length) {
-      this.rows = [...this.rows, ...next];
-    }
-  }
-
-  hasMoreRows(): boolean {
-    return this.rows.length < this.filteredRows.length;
-  }
-
-  onScrollDown() {
-    if (this.loading || !this.hasMoreRows()) {
-      return;
-    }
-    this.loadMore();
-  }
+  onScrollDown() { this.loadMore(); }
 
   async create(period: AnalysisPeriod, date?: Date, skipProfileCheck = false) {
     if (!skipProfileCheck && !(await this.ensureProfileFilled())) {
@@ -182,13 +105,6 @@ export class AnalysisPage implements OnInit, OnDestroy {
     }
   }
 
-  repeat(row: ReportRow) {
-    if (row.isProcessing) {
-      return;
-    }
-    this.create(row.period);
-  }
-
   async createFromDate() {
     if (!(await this.ensureProfileFilled())) {
       return;
@@ -203,28 +119,6 @@ export class AnalysisPage implements OnInit, OnDestroy {
     this.router.navigate(['/analysis', row.id]);
   }
 
-  reportStatus(row: ReportRow): ReportStatus {
-    if (row.isProcessing) {
-      return 'processing';
-    }
-    return row.hasMarkdown ? 'ready' : 'error';
-  }
-
-  reportStatusLabel(row: ReportRow): string {
-    const status = this.reportStatus(row);
-    if (status === 'processing') {
-      return 'В обработке';
-    }
-    if (status === 'ready') {
-      return 'Готово';
-    }
-    return 'Ошибка';
-  }
-
-  trackByReportId(_: number, row: ReportRow): number {
-    return row.id;
-  }
-
   periodLabel(p: AnalysisPeriod) {
     switch (p) {
       case 'day': return 'День · итог';
@@ -233,25 +127,6 @@ export class AnalysisPage implements OnInit, OnDestroy {
       case 'month': return 'Месяц';
       case 'quarter': return 'Квартал';
     }
-  }
-
-  private applyFilters() {
-    const term = this.searchTerm.trim().toLowerCase();
-
-    this.filteredRows = this.allRows.filter(row => {
-      if (term && !row.name.toLowerCase().includes(term)) {
-        return false;
-      }
-      if (this.selectedPeriod !== 'all' && row.period !== this.selectedPeriod) {
-        return false;
-      }
-      if (this.selectedStatus !== 'all' && this.reportStatus(row) !== this.selectedStatus) {
-        return false;
-      }
-      return true;
-    });
-
-    this.loadMore(true);
   }
 
   private async ensureProfileFilled(): Promise<boolean> {
