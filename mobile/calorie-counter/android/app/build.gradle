@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.space.healthymeals"
+    namespace "com.yourscriptor.calorie"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.space.healthymeals"
+        applicationId "com.yourscriptor.calorie"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 3
