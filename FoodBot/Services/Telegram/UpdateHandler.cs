@@ -145,36 +145,76 @@ $@"Вход через приложение:
         {
             try
             {
+                var progressMsg = await _bot.SendMessage(chatId, "⏳ Фото получено, начинаю обработку...", cancellationToken: ct);
+                var downloadTimeoutSec = Math.Clamp(
+                    int.TryParse(_cfg["Telegram:FileDownloadTimeoutSeconds"], out var dlSec) ? dlSec : 45,
+                    5,
+                    300);
+                var analyzeTimeoutSec = Math.Clamp(
+                    int.TryParse(_cfg["Telegram:PhotoAnalyzeTimeoutSeconds"], out var azSec) ? azSec : 300,
+                    30,
+                    1800);
+
                 var ph = photos.OrderBy(p => p.FileSize).Last();
-                var file = await _bot.GetFile(ph.FileId, cancellationToken: ct);
-
-                var token = _cfg["Telegram:BotToken"]!;
-                var url = $"https://api.telegram.org/file/bot{token}/{file.FilePath}";
-                var client = httpf.CreateClient();
-                var bytes = await client.GetByteArrayAsync(url, ct);
-
-                var progressMsg = await _bot.SendMessage(chatId, "⏳ Распознавание запущено...", cancellationToken: ct);
-
-                var conv = await nutrition.AnalyzeAsync(bytes, async step =>
+                byte[] bytes;
+                try
                 {
-                    try
+                    await _bot.EditMessageText(chatId, progressMsg.MessageId, "📥 Загружаю фото из Telegram...", cancellationToken: ct);
+
+                    var file = await _bot.GetFile(ph.FileId, cancellationToken: ct);
+                    if (string.IsNullOrWhiteSpace(file.FilePath))
+                        throw new InvalidOperationException("Telegram returned empty file path for photo.");
+
+                    var token = _cfg["Telegram:BotToken"]!;
+                    var url = $"https://api.telegram.org/file/bot{token}/{file.FilePath}";
+                    var client = httpf.CreateClient();
+                    client.Timeout = TimeSpan.FromSeconds(downloadTimeoutSec);
+
+                    using var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    downloadCts.CancelAfter(TimeSpan.FromSeconds(downloadTimeoutSec));
+                    bytes = await client.GetByteArrayAsync(url, downloadCts.Token);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    _log.LogWarning("Telegram photo download timed out. chatId={ChatId}, userId={UserId}, timeoutSec={TimeoutSec}", chatId, userId, downloadTimeoutSec);
+                    await _bot.EditMessageText(chatId, progressMsg.MessageId, "⌛ Не удалось скачать фото вовремя. Попробуйте отправить его ещё раз.", cancellationToken: ct);
+                    return;
+                }
+
+                await _bot.EditMessageText(chatId, progressMsg.MessageId, "⏳ Распознавание запущено...", cancellationToken: ct);
+
+                NutritionConversation? conv;
+                try
+                {
+                    using var analyzeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    analyzeCts.CancelAfter(TimeSpan.FromSeconds(analyzeTimeoutSec));
+                    conv = await nutrition.AnalyzeAsync(bytes, async step =>
                     {
-                        if (step == 1)
+                        try
                         {
-                            await _bot.SendChatAction(chatId, ChatAction.UploadPhoto, cancellationToken: ct);
-                            await _bot.EditMessageText(chatId, progressMsg.MessageId, "🔎 Шаг 1/2: анализ фото", cancellationToken: ct);
+                            if (step == 1)
+                            {
+                                await _bot.SendChatAction(chatId, ChatAction.UploadPhoto, cancellationToken: ct);
+                                await _bot.EditMessageText(chatId, progressMsg.MessageId, "🔎 Шаг 1/2: анализ фото", cancellationToken: ct);
+                            }
+                            else if (step == 2)
+                            {
+                                await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
+                                await _bot.EditMessageText(chatId, progressMsg.MessageId, "🧠 Шаг 2/2: расчёт нутриентов", cancellationToken: ct);
+                            }
                         }
-                        else if (step == 2)
+                        catch (Exception pex)
                         {
-                            await _bot.SendChatAction(chatId, ChatAction.Typing, cancellationToken: ct);
-                            await _bot.EditMessageText(chatId, progressMsg.MessageId, "🧠 Шаг 2/2: расчёт нутриентов", cancellationToken: ct);
+                            _log.LogWarning(pex, "Photo progress update failed. chatId={ChatId}, step={Step}", chatId, step);
                         }
-                    }
-                    catch (Exception pex)
-                    {
-                        _log.LogWarning(pex, "Photo progress update failed. chatId={ChatId}, step={Step}", chatId, step);
-                    }
-                }, ct);
+                    }, analyzeCts.Token);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    _log.LogWarning("Telegram photo analysis timed out. chatId={ChatId}, userId={UserId}, timeoutSec={TimeoutSec}", chatId, userId, analyzeTimeoutSec);
+                    await _bot.EditMessageText(chatId, progressMsg.MessageId, "⌛ Анализ занял слишком много времени. Попробуйте фото меньшего размера или отправьте позже.", cancellationToken: ct);
+                    return;
+                }
 
                 try
                 {
