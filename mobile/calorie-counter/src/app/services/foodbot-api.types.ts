@@ -53,6 +53,14 @@ export interface MealsListResponse {
   items: MealListItem[];
 }
 
+export interface MealsPendingState {
+  hasPending: boolean;
+  changed: boolean;
+  cursor: string;
+  pendingMealsCount: number;
+  pendingClarifiesCount: number;
+}
+
 export interface MealDetails {
   id: number;
   createdAtUtc: string;

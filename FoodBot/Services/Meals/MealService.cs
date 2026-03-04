@@ -195,6 +195,65 @@ public sealed class MealService : IMealService
         return new MealListResult(total, offset, limit, items);
     }
 
+    public async Task<MealsPendingState> GetPendingStateAsync(long chatId, string? cursor, CancellationToken ct)
+    {
+        var pendingMealsStats = await _repo.PendingMeals
+            .AsNoTracking()
+            .Where(x => x.ChatId == chatId)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Count = g.Count(),
+                SumIds = g.Sum(x => (long)x.Id),
+                MaxId = g.Max(x => x.Id)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        var pendingClarifiesStats = await _repo.PendingClarifies
+            .AsNoTracking()
+            .Where(x => x.ChatId == chatId)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Count = g.Count(),
+                SumIds = g.Sum(x => (long)x.Id),
+                MaxId = g.Max(x => x.Id)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        var latestMealId = await _repo.Meals
+            .AsNoTracking()
+            .Where(x => x.ChatId == chatId)
+            .Select(x => (int?)x.Id)
+            .MaxAsync(ct) ?? 0;
+
+        var pendingMealsCount = pendingMealsStats?.Count ?? 0;
+        var pendingMealsSumIds = pendingMealsStats?.SumIds ?? 0;
+        var pendingMealsMaxId = pendingMealsStats?.MaxId ?? 0;
+        var pendingClarifiesCount = pendingClarifiesStats?.Count ?? 0;
+        var pendingClarifiesSumIds = pendingClarifiesStats?.SumIds ?? 0;
+        var pendingClarifiesMaxId = pendingClarifiesStats?.MaxId ?? 0;
+
+        var stateCursor = string.Join(":",
+            pendingMealsCount,
+            pendingMealsSumIds,
+            pendingMealsMaxId,
+            pendingClarifiesCount,
+            pendingClarifiesSumIds,
+            pendingClarifiesMaxId,
+            latestMealId);
+
+        var changed = !string.Equals(cursor, stateCursor, StringComparison.Ordinal);
+        var hasPending = pendingMealsCount > 0 || pendingClarifiesCount > 0;
+
+        return new MealsPendingState(
+            hasPending,
+            changed,
+            stateCursor,
+            pendingMealsCount,
+            pendingClarifiesCount);
+    }
+
     public async Task<MealDetails?> GetDetailsAsync(long chatId, int id, CancellationToken ct)
     {
         var m = await _repo.Meals.AsNoTracking()

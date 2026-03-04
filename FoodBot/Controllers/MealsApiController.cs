@@ -175,6 +175,16 @@ namespace FoodBot.Controllers
             }
         }
 
+        // ---------- Лёгкий статус pending для fallback-поллинга ----------
+        // GET /api/meals/pending-state?cursor=...
+        [HttpGet("pending-state")]
+        public async Task<IActionResult> PendingState([FromQuery] string? cursor = null, CancellationToken ct = default)
+        {
+            var chatId = await ResolveChatIdAsync(ct);
+            var state = await _meals.GetPendingStateAsync(chatId, cursor, ct);
+            return Ok(state);
+        }
+
         // ---------- Детали блюда ----------
         // GET /api/meals/{id}
         [HttpGet("{id:int}")]

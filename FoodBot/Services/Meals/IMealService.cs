@@ -6,6 +6,7 @@ namespace FoodBot.Services;
 public interface IMealService
 {
     Task<MealListResult> ListAsync(long chatId, int limit, int offset, CancellationToken ct);
+    Task<MealsPendingState> GetPendingStateAsync(long chatId, string? cursor, CancellationToken ct);
     Task<MealDetails?> GetDetailsAsync(long chatId, int id, CancellationToken ct);
     Task<(byte[] bytes, string mime)?> GetImageAsync(long chatId, int id, CancellationToken ct);
     Task QueueImageAsync(long chatId, byte[] bytes, string fileMime, string? note, DateTimeOffset? desiredTime, CancellationToken ct);
@@ -15,6 +16,13 @@ public interface IMealService
 }
 
 public sealed record MealListResult(int Total, int Offset, int Limit, List<MealListItem> Items);
+public sealed record MealsPendingState(
+    bool HasPending,
+    bool Changed,
+    string Cursor,
+    int PendingMealsCount,
+    int PendingClarifiesCount
+);
 
 public sealed record MealListItem
 (

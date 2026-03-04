@@ -6,6 +6,7 @@ import {
   ClarifyResult,
   MealDetails,
   MealsListResponse,
+  MealsPendingState,
   PersonalCard
 } from "./foodbot-api.types";
 
@@ -18,6 +19,10 @@ export class FoodbotApiService {
   getMeals(limit = 30, offset = 0): Observable<MealsListResponse> {
     const params = new HttpParams().set("limit", limit).set("offset", offset);
     return this.http.get<MealsListResponse>(`${this.baseUrl}/api/meals`, { params });
+  }
+  getMealsPendingState(cursor?: string): Observable<MealsPendingState> {
+    const params = cursor ? new HttpParams().set("cursor", cursor) : undefined;
+    return this.http.get<MealsPendingState>(`${this.baseUrl}/api/meals/pending-state`, { params });
   }
   getMeal(id: number): Observable<MealDetails> {
     return this.http.get<MealDetails>(`${this.baseUrl}/api/meals/${id}`);

@@ -37,6 +37,12 @@ export class HistoryPage implements OnInit, OnDestroy {
   imageUrls = new Map<number, string>();
   private dateTotals = new Map<string, number>();
   private updatesSub?: Subscription;
+  private pendingPollTimer?: ReturnType<typeof setTimeout>;
+  private pendingPollInFlight = false;
+  private pendingCursor = "";
+  private pendingNoChangeStreak = 0;
+  private readonly pendingPollMs = 30_000;
+  private readonly pendingPollBackoffMs = 60_000;
 
   /** локальное состояние раскрытых ингредиентов */
   private ingOpen = new Set<number>();
@@ -62,6 +68,7 @@ export class HistoryPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.stopPendingPolling();
     this.clearAllImageUrls();
     this.updatesSub?.unsubscribe();
   }
@@ -83,6 +90,7 @@ export class HistoryPage implements OnInit, OnDestroy {
           }
         }
         this.recomputeDateTotals();
+        this.updatePendingPolling();
         this.loading = false;
       },
       error: () => {
@@ -130,6 +138,7 @@ export class HistoryPage implements OnInit, OnDestroy {
         this.items = this.items.filter(x => x.id !== item.id);
         this.total = Math.max(0, this.total - 1);
         this.recomputeDateTotals();
+        this.updatePendingPolling();
         this.loadMore();
       }
     });
@@ -167,6 +176,7 @@ export class HistoryPage implements OnInit, OnDestroy {
       this.clearImageUrl(item.id);
     }
     this.recomputeDateTotals();
+    this.updatePendingPolling();
   }
 
   private setImageUrl(id: number, url: string) {
@@ -240,6 +250,119 @@ export class HistoryPage implements OnInit, OnDestroy {
     if (!card) return false;
     const required: Array<keyof PersonalCard> = ["gender", "birthYear", "heightCm", "weightKg", "activityLevel"];
     return required.every(field => card[field] !== null && card[field] !== undefined);
+  }
+
+  private hasPendingItems(): boolean {
+    return this.items.some(x => x.isProcessing);
+  }
+
+  private updatePendingPolling() {
+    if (!this.hasPendingItems()) {
+      this.stopPendingPolling();
+      this.pendingNoChangeStreak = 0;
+      return;
+    }
+    this.schedulePendingPoll();
+  }
+
+  private schedulePendingPoll(delayMs?: number) {
+    if (this.pendingPollTimer || this.pendingPollInFlight) return;
+    if (!this.hasPendingItems()) return;
+
+    const baseDelay = delayMs ?? this.nextPendingDelayMs();
+    const delayWithJitter = this.withJitter(baseDelay);
+    this.pendingPollTimer = setTimeout(() => {
+      this.pendingPollTimer = undefined;
+      void this.runPendingPoll();
+    }, delayWithJitter);
+  }
+
+  private stopPendingPolling() {
+    if (!this.pendingPollTimer) return;
+    clearTimeout(this.pendingPollTimer);
+    this.pendingPollTimer = undefined;
+  }
+
+  private nextPendingDelayMs(): number {
+    return this.pendingNoChangeStreak >= 3 ? this.pendingPollBackoffMs : this.pendingPollMs;
+  }
+
+  private withJitter(ms: number): number {
+    const jitter = Math.floor(Math.random() * 6001) - 3000; // -3..+3 sec
+    return Math.max(5_000, ms + jitter);
+  }
+
+  private runPendingPoll(): Promise<void> {
+    if (this.pendingPollInFlight || !this.hasPendingItems()) {
+      return Promise.resolve();
+    }
+
+    this.pendingPollInFlight = true;
+    let shouldScheduleNext = false;
+    let nextDelay: number | undefined;
+
+    return new Promise((resolve) => {
+      this.api.getMealsPendingState(this.pendingCursor || undefined).subscribe({
+        next: (state) => {
+          this.pendingCursor = state.cursor;
+
+          if (state.changed) {
+            this.pendingNoChangeStreak = 0;
+            this.reloadVisibleItems();
+          } else {
+            this.pendingNoChangeStreak++;
+          }
+
+          if (!state.hasPending) {
+            this.stopPendingPolling();
+            if (this.hasPendingItems()) {
+              this.reloadVisibleItems();
+            }
+            return;
+          }
+
+          shouldScheduleNext = true;
+        },
+        error: () => {
+          this.pendingNoChangeStreak = 0;
+          shouldScheduleNext = true;
+          nextDelay = this.pendingPollBackoffMs;
+          this.pendingPollInFlight = false;
+          this.schedulePendingPoll(nextDelay);
+          resolve();
+        },
+        complete: () => {
+          this.pendingPollInFlight = false;
+          if (shouldScheduleNext) {
+            this.schedulePendingPoll(nextDelay);
+          }
+          resolve();
+        }
+      });
+    });
+  }
+
+  private reloadVisibleItems() {
+    if (this.loading) return;
+
+    const limit = Math.max(this.pageSize, this.items.length || this.pageSize);
+    this.api.getMeals(limit, 0).subscribe({
+      next: (res) => {
+        this.clearAllImageUrls();
+        this.items = res.items;
+        this.total = res.total;
+        for (const m of this.items) {
+          if (m.hasImage) {
+            this.api.getMealImageObjectUrl(m.id).subscribe((url) => this.setImageUrl(m.id, url));
+          }
+        }
+        this.recomputeDateTotals();
+        this.updatePendingPolling();
+      },
+      error: () => {
+        this.schedulePendingPoll(this.pendingPollBackoffMs);
+      }
+    });
   }
 
 }
