@@ -59,7 +59,7 @@ public static class MealMapping
             null,
             Array.Empty<string>(),
             Array.Empty<ProductInfo>(),
-            false,
+            pending.ImageBytes is { Length: > 0 },
             true,
             true,
             pending.Id,

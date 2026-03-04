@@ -8,6 +8,31 @@
   background: var(--mat-sys-surface, #ffffff);
 }
 
+.profile-onboarding {
+  margin-bottom: 12px;
+  border: 1px solid rgba(72, 119, 166, 0.22);
+  background: rgba(72, 119, 166, 0.06);
+}
+
+.profile-onboarding__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.profile-onboarding__text {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.profile-onboarding__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
 /* ЕДИНЫЙ заголовок (день и карточка) — одна строка, без растягивания */
 .header-row {
   display: inline-flex;
@@ -175,6 +200,27 @@
   font-size: 14px;
   line-height: 1.35;
   opacity: 0.9;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.text-action {
+  align-self: flex-start;
+  border: 1px solid rgba(72, 119, 166, 0.34);
+  background: rgba(72, 119, 166, 0.12);
+  color: #28537b;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.text-action--secondary {
+  border-color: rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.8);
+  color: #374151;
 }
 
 .safe-area-bottom {

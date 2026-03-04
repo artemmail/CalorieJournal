@@ -3,6 +3,10 @@
     <mat-icon fontSet="material-icons-outlined" matListItemIcon>history</mat-icon>
     <span matListItemTitle>История</span>
   </a>
+  <a mat-list-item routerLink="/guide" routerLinkActive="active" (click)="close.emit()">
+    <mat-icon fontSet="material-icons-outlined" matListItemIcon>help</mat-icon>
+    <span matListItemTitle>Как пользоваться</span>
+  </a>
   <a mat-list-item routerLink="/add" routerLinkActive="active" (click)="close.emit()">
     <mat-icon fontSet="material-icons-outlined" matListItemIcon>add_a_photo</mat-icon>
     <span matListItemTitle>Добавить</span>
@@ -10,7 +14,7 @@
 
   <a mat-list-item routerLink="/analysis" routerLinkActive="active" (click)="openAddMealNoteDialog($event)">
     <mat-icon fontSet="material-icons-outlined" matListItemIcon>mic</mat-icon>
-    <span matListItemTitle>Добавить</span>
+    <span matListItemTitle>Добавить голосом</span>
   </a>
 
   <a mat-list-item routerLink="/analysis" routerLinkActive="active" (click)="close.emit()">

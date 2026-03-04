@@ -16,19 +16,42 @@
     </div>
   </ng-container>
   <ng-template #linkFlow>
-  <h2>Телеграм бот</h2>
-  <p><b>@CalorieJournal_bot</b> связывает ваш Telegram с приложением и подтягивает вашу историю питания.</p>
-  <p>После линковки вы сможете быстро входить в аккаунт, синхронизировать данные между устройствами и продолжать работу без повторной настройки.</p>
-  <p>Нажмите кнопку ниже: откроется бот, код передастся автоматически, а вход завершится после подтверждения.</p>
+  <h2>Телеграм бот (опционально)</h2>
+  <p><b>@CalorieJournal_bot</b> нужен для синхронизации данных и входа на других устройствах.</p>
+  <p class="optional-note">
+    Telegram не обязателен: базовый сценарий (добавить еду и смотреть историю) доступен сразу.
+  </p>
+
+  <div class="error-block" *ngIf="errorMsg">
+    <p class="error-block__text">{{ errorMsg }}</p>
+    <div class="actions">
+      <button mat-stroked-button color="primary" (click)="retryStartup()" [disabled]="busy">
+        <mat-icon>refresh</mat-icon> Повторить
+      </button>
+      <button mat-stroked-button (click)="openWebVersion()">
+        <mat-icon>open_in_new</mat-icon> Открыть веб-версию
+      </button>
+      <button mat-button (click)="continueWithoutTelegram()" [disabled]="busy || !canContinueWithoutTelegram">
+        <mat-icon>history</mat-icon> Продолжить без Telegram
+      </button>
+    </div>
+  </div>
+
   <div class="actions">
     <button mat-raised-button color="primary" (click)="openBotWithFreshCode()" [disabled]="busy || !code">
-      <mat-icon>send</mat-icon> Открыть бота
+      <mat-icon>send</mat-icon> Подключить Telegram
+    </button>
+    <button mat-stroked-button color="primary" (click)="continueWithoutTelegram()" [disabled]="busy || !canContinueWithoutTelegram">
+      <mat-icon>history</mat-icon> Продолжить без Telegram
     </button>
   </div>
   <div class="pending" *ngIf="busy">
     <mat-progress-spinner mode="indeterminate" diameter="28"></mat-progress-spinner>
-    <span>Ждём подтверждение…</span>
+    <span>Готовим вход…</span>
   </div>
+  <p class="web-version" *ngIf="webVersionUrl">
+    Веб-версия: <a [href]="webVersionUrl" target="_blank" rel="noopener noreferrer">{{ webVersionUrl }}</a>
+  </p>
   <p class="expires" *ngIf="expiresAt">Код действителен до: {{ expiresAt | date:'medium' }}</p>
   </ng-template>
 </mat-card>

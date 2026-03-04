@@ -92,7 +92,8 @@ namespace FoodBot.Controllers
                         p.Id,
                         p.CreatedAtUtc,
                         p.DesiredMealTimeUtc,
-                        p.Description
+                        p.Description,
+                        HasImage = p.ImageBytes != null && p.ImageBytes.Length > 0
                     })
                     .ToListAsync(ct);
 
@@ -140,7 +141,7 @@ namespace FoodBot.Controllers
                 {
                     var createdAt = p.DesiredMealTimeUtc ?? p.CreatedAtUtc;
                     var title = string.IsNullOrWhiteSpace(p.Description)
-                        ? "Запрос обрабатывается"
+                        ? "Фото обрабатывается"
                         : p.Description;
                     return new MealListItem(
                         -p.Id,
@@ -153,7 +154,7 @@ namespace FoodBot.Controllers
                         null,
                         Array.Empty<string>(),
                         Array.Empty<ProductInfo>(),
-                        false,
+                        p.HasImage,
                         true,
                         true,
                         p.Id,

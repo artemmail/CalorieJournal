@@ -30,6 +30,17 @@ public sealed class AppAuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpGet("health")]
+    public IActionResult Health()
+    {
+        return Ok(new
+        {
+            status = "ok",
+            serverTimeUtc = DateTime.UtcNow
+        });
+    }
+
+    [AllowAnonymous]
     [HttpPost("refresh")]
     public async Task<ActionResult<AuthSessionResponse>> Refresh([FromBody] RefreshRequest req, CancellationToken ct)
     {

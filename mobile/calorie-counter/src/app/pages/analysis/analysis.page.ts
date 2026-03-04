@@ -142,10 +142,11 @@ export class AnalysisPage implements OnInit, OnDestroy {
       return true;
     }
 
+    this.sb.open('Для персональных рекомендаций сначала заполните профиль.', 'OK', { duration: 3500 });
     const ref = this.dialog.open(ProfileRequiredDialogComponent, { autoFocus: false });
     const action = await firstValueFrom(ref.afterClosed());
     if (action === 'profile') {
-      this.router.navigate(['/profile']);
+      this.router.navigate(['/profile'], { queryParams: { returnUrl: '/analysis' } });
     }
     return false;
   }

@@ -6,7 +6,11 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { Router } from "@angular/router";
 import { HttpErrorResponse } from "@angular/common/http";
-import { FoodBotAuthLinkService, ExchangeStartCodeResponse } from "../../services/foodbot-auth-link.service";
+import {
+  FoodBotAuthLinkService,
+  ExchangeStartCodeResponse,
+  SessionBootstrapError
+} from "../../services/foodbot-auth-link.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { showErrorAlert } from "../../utils/alerts";
 
@@ -30,6 +34,7 @@ export class AuthPage implements OnInit, OnDestroy {
   busy = false;
   errorMsg = "";
   alreadyLinked = false;
+  canContinueWithoutTelegram = false;
   flow?: Awaited<ReturnType<FoodBotAuthLinkService["startLoginFlow"]>>;
   private autoRefreshInterval?: ReturnType<typeof setInterval>;
   private autoRefreshTimeout?: ReturnType<typeof setTimeout>;
@@ -44,27 +49,50 @@ export class AuthPage implements OnInit, OnDestroy {
     return this.auth.chatId;
   }
 
+  get webVersionUrl(): string {
+    return this.auth.webAppUrl;
+  }
+
   async ngOnInit() {
-    try {
-      await this.auth.ensureSession();
-      this.alreadyLinked = this.auth.isAuthenticated() && !this.auth.isAnonymousAccount;
-      if (this.alreadyLinked) {
-        return;
-      }
-      await this.startFlow();
-    } catch (e) {
-      this.errorMsg = "Не удалось получить код. Проверьте доступность API/CORS.";
-      showErrorAlert(e, "Не удалось получить код");
-    }
+    await this.initialize();
   }
 
   ngOnDestroy() { this.stopAutoRefresh(); }
+
+  async retryStartup() {
+    if (this.busy) return;
+    this.stopAutoRefresh();
+    this.code = "";
+    this.expiresAt = "";
+    this.flow = undefined;
+    await this.initialize();
+  }
+
+  openWebVersion() {
+    window.open(this.webVersionUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async continueWithoutTelegram() {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      if (!this.auth.isAuthenticated()) {
+        await this.auth.ensureSession();
+      }
+      await this.router.navigateByUrl("/history");
+    } catch (e) {
+      this.errorMsg = this.describeSessionStartError(e);
+    } finally {
+      this.busy = false;
+    }
+  }
 
   private async startFlow() {
     this.errorMsg = "";
     this.flow = await this.auth.startLoginFlow({
       onCode: (code, exp) => { this.code = code; this.expiresAt = exp; }
     });
+    this.canContinueWithoutTelegram = this.auth.isAuthenticated();
   }
 
   async copyCode() {
@@ -90,7 +118,7 @@ export class AuthPage implements OnInit, OnDestroy {
       await this.startFlow();
       this.openBot();
     } catch (e) {
-      this.errorMsg = "Не удалось получить код. Проверьте доступность API/CORS.";
+      this.errorMsg = this.describeFlowError(e);
       showErrorAlert(e, "Не удалось получить свежий код");
     } finally {
       this.busy = false;
@@ -126,7 +154,7 @@ export class AuthPage implements OnInit, OnDestroy {
       await this.startFlow();
       this.startAutoRefresh();
     } catch (e) {
-      this.errorMsg = "Не удалось получить новый код.";
+      this.errorMsg = this.describeFlowError(e);
       showErrorAlert(e, "Ошибка при запросе нового кода");
     }
   }
@@ -145,7 +173,7 @@ export class AuthPage implements OnInit, OnDestroy {
       await this.auth.ensureSession();
       await this.startFlow();
     } catch (e) {
-      this.errorMsg = "Не удалось подготовить новый код входа.";
+      this.errorMsg = this.describeSessionStartError(e);
       showErrorAlert(e, "Ошибка после выхода");
     }
   }
@@ -164,7 +192,7 @@ export class AuthPage implements OnInit, OnDestroy {
     try {
       await this.startFlow();
     } catch (e) {
-      this.errorMsg = "Не удалось начать перепривязку.";
+      this.errorMsg = this.describeFlowError(e);
       showErrorAlert(e, "Не удалось начать перепривязку");
     }
   }
@@ -186,6 +214,60 @@ export class AuthPage implements OnInit, OnDestroy {
       clearTimeout(this.autoRefreshTimeout);
       this.autoRefreshTimeout = undefined;
     }
+  }
+
+  private async initialize() {
+    this.errorMsg = "";
+    this.busy = true;
+    try {
+      await this.auth.ensureSession();
+      this.canContinueWithoutTelegram = this.auth.isAuthenticated();
+      this.alreadyLinked = this.auth.isAuthenticated() && !this.auth.isAnonymousAccount;
+      if (this.alreadyLinked) return;
+      await this.startFlow();
+    } catch (e) {
+      this.canContinueWithoutTelegram = this.auth.isAuthenticated();
+      this.errorMsg = this.describeSessionStartError(e);
+      if (!(e instanceof SessionBootstrapError)) {
+        showErrorAlert(e, "Не удалось подготовить вход");
+      }
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private describeSessionStartError(err: unknown): string {
+    if (err instanceof SessionBootstrapError) {
+      switch (err.kind) {
+        case "timeout":
+          return "Сервер долго не отвечает. Проверьте интернет и повторите.";
+        case "network":
+          return "Нет соединения с сервером. Проверьте сеть или VPN и повторите.";
+        case "tls":
+          return "Не удалось установить защищённое соединение (TLS/сертификат). Попробуйте другую сеть или веб-версию.";
+        case "api":
+          return "Сервис временно недоступен. Повторите чуть позже.";
+        default:
+          return "Не удалось запустить сессию. Повторите попытку.";
+      }
+    }
+    return this.describeFlowError(err);
+  }
+
+  private describeFlowError(err: unknown): string {
+    if (err instanceof HttpErrorResponse) {
+      if (err.status === 0) {
+        return "Не удалось связаться с сервером. Telegram можно подключить позже.";
+      }
+      if (err.status >= 500) {
+        return "Сервер временно недоступен. Telegram можно подключить позже.";
+      }
+      return `Ошибка при получении кода входа (HTTP ${err.status}).`;
+    }
+    if (err instanceof Error && err.message) {
+      return err.message;
+    }
+    return "Не удалось получить код входа. Telegram можно подключить позже.";
   }
 
   private getTerminalExchangeMessage(err: unknown): string | null {

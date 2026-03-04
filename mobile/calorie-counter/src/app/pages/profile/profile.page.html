@@ -1,4 +1,18 @@
 <mat-card>
+  <section class="profile-hint">
+    <p class="profile-hint__title">Персональные рекомендации в «Диетолог ИИ»</p>
+    <p class="profile-hint__text">
+      Для отчётов нужны обязательные поля: пол, год рождения, рост, вес и активность.
+    </p>
+    <div class="profile-progress">
+      <div class="profile-progress__bar" [style.width.%]="completionPercent"></div>
+    </div>
+    <p class="profile-hint__meta">Заполнено {{ requiredFilled }} из {{ requiredTotal }} ({{ completionPercent }}%).</p>
+    <p class="profile-hint__missing" *ngIf="missingRequiredLabels.length > 0">
+      Осталось заполнить: {{ missingRequiredLabels.join(', ') }}.
+    </p>
+  </section>
+
   <form [formGroup]="form" (ngSubmit)="save()">
     <mat-form-field appearance="fill" class="w-100">
       <mat-label>Email</mat-label>
@@ -11,7 +25,7 @@
     </mat-form-field>
 
     <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Год рождения</mat-label>
+      <mat-label>Год рождения *</mat-label>
       <mat-select formControlName="birthYear">
         <mat-option [value]="null">—</mat-option>
         <mat-option *ngFor="let y of years" [value]="y">{{ y }}</mat-option>
@@ -19,7 +33,7 @@
     </mat-form-field>
 
     <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Пол</mat-label>
+      <mat-label>Пол *</mat-label>
       <mat-select formControlName="gender">
         <mat-option [value]="null">—</mat-option>
         <mat-option *ngFor="let g of genders" [value]="g.value">{{ g.label }}</mat-option>
@@ -27,17 +41,17 @@
     </mat-form-field>
 
     <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Рост (см)</mat-label>
+      <mat-label>Рост (см) *</mat-label>
       <input matInput type="number" formControlName="heightCm" />
     </mat-form-field>
 
     <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Вес (кг)</mat-label>
+      <mat-label>Вес (кг) *</mat-label>
       <input matInput type="number" formControlName="weightKg" />
     </mat-form-field>
 
     <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Коэффициент активности</mat-label>
+      <mat-label>Коэффициент активности *</mat-label>
       <mat-select formControlName="activityLevel">
         <mat-option [value]="null">—</mat-option>
         <mat-option *ngFor="let a of activities" [value]="a.value">{{ a.label }}</mat-option>
@@ -59,6 +73,17 @@
       <textarea matInput formControlName="medicalRestrictions"></textarea>
     </mat-form-field>
 
-    <button mat-raised-button color="primary" type="submit">Сохранить</button>
+    <div class="profile-actions">
+      <button mat-raised-button color="primary" type="submit">Сохранить</button>
+      <button
+        mat-stroked-button
+        color="primary"
+        type="button"
+        *ngIf="saveSuccess && recommendationProfileReady"
+        (click)="goToRecommendations()"
+      >
+        Перейти к рекомендациям
+      </button>
+    </div>
   </form>
 </mat-card>

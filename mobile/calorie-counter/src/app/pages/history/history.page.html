@@ -8,6 +8,17 @@
      [infiniteScrollThrottle]="200"
      (scrolled)="onScrollDown()">
 
+  <mat-card class="profile-onboarding" *ngIf="!profileComplete">
+    <h3 class="profile-onboarding__title">Персональные рекомендации</h3>
+    <p class="profile-onboarding__text">
+      Для персональных рекомендаций заполните профиль. История питания и добавление приёмов пищи доступны и без Telegram.
+    </p>
+    <div class="profile-onboarding__actions">
+      <button type="button" class="text-action" (click)="goProfile()">Заполнить профиль</button>
+      <button type="button" class="text-action text-action--secondary" (click)="goGuide()">Как пользоваться</button>
+    </div>
+  </mat-card>
+
   <ng-container *ngFor="let m of items; let i = index">
     <!-- Липкий заголовок ДНЯ: дата · суточные ккал -->
     <div class="date-header" *ngIf="showDateSeparator(i)">
@@ -89,6 +100,9 @@
     <ng-template #linkedEmpty>
       История пока пуста. Сделайте фото еды и/или подключите Telegram-бота в разделе «Аккаунт».
     </ng-template>
+    <button type="button" class="text-action text-action--secondary" (click)="goGuide()">
+      Открыть инструкцию «Как пользоваться»
+    </button>
   </div>
 
   <div class="safe-area-bottom"></div>

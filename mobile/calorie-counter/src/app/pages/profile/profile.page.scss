@@ -1,1 +1,45 @@
 .w-100 { width: 100%; }
+
+.profile-hint {
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(72, 119, 166, 0.08);
+  border: 1px solid rgba(72, 119, 166, 0.2);
+}
+
+.profile-hint__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.profile-hint__text,
+.profile-hint__meta,
+.profile-hint__missing {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.profile-progress {
+  margin-top: 10px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.profile-progress__bar {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f7bb6, #46a47f);
+  transition: width 0.25s ease;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -133,7 +133,7 @@ public sealed class MealService : IMealService
                 CarbsG = (decimal?)null,
                 IngredientsJson = (string?)null,
                 ProductsJson = (string?)null,
-                HasImage = false
+                HasImage = p.ImageBytes != null && p.ImageBytes.Length > 0
             });
 
         var rows = await mealRows
@@ -164,7 +164,7 @@ public sealed class MealService : IMealService
                     null,
                     Array.Empty<string>(),
                     Array.Empty<ProductInfo>(),
-                    false,
+                    r.HasImage,
                     true,
                     true,
                     r.PendingRequestId,
@@ -241,6 +241,23 @@ public sealed class MealService : IMealService
 
     public async Task<(byte[] bytes, string mime)?> GetImageAsync(long chatId, int id, CancellationToken ct)
     {
+        if (id < 0)
+        {
+            if (id == int.MinValue)
+                return null;
+
+            var pendingId = -id;
+            var pending = await _repo.PendingMeals.AsNoTracking()
+                .Where(x => x.ChatId == chatId && x.Id == pendingId)
+                .Select(x => new { x.ImageBytes, x.FileMime })
+                .FirstOrDefaultAsync(ct);
+            if (pending == null || pending.ImageBytes == null || pending.ImageBytes.Length == 0)
+                return null;
+
+            var pendingMime = string.IsNullOrWhiteSpace(pending.FileMime) ? "image/jpeg" : pending.FileMime!;
+            return new(pending.ImageBytes, pendingMime);
+        }
+
         var m = await _repo.Meals.AsNoTracking()
             .Where(x => x.ChatId == chatId && x.Id == id)
             .Select(x => new { x.ImageBytes, x.FileMime })

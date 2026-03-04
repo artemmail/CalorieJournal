@@ -1,0 +1,50 @@
+:host {
+  display: block;
+}
+
+.guide-card {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.lead {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.guide-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.guide-section h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.guide-section p,
+.guide-section li {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.guide-section ul,
+.guide-section ol {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.hint {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(72, 119, 166, 0.08);
+}
+
+.guide-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

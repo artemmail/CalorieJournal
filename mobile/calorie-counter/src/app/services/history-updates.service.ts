@@ -34,7 +34,10 @@ export class HistoryUpdatesService {
 
     this.hub = new signalR.HubConnectionBuilder()
       .withUrl(`${this.auth.apiBaseUrl}/hubs/meals`, {
-        accessTokenFactory: () => this.auth.token ?? ""
+        accessTokenFactory: () => this.auth.token ?? "",
+        // Mobile app runs from localhost origin and uses bearer token auth.
+        // Disable credentialed CORS mode to avoid negotiate failures in WebView.
+        withCredentials: false
       })
       .withAutomaticReconnect()
       .build();

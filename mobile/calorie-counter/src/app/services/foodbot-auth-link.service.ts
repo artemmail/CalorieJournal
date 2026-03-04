@@ -4,7 +4,7 @@
 import { Injectable } from "@angular/core";
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from "@angular/common/http";
 import { Capacitor } from "@capacitor/core";
-import { Observable, firstValueFrom, of, Subject, throwError, timer } from "rxjs";
+import { Observable, TimeoutError, firstValueFrom, of, Subject, throwError, timer } from "rxjs";
 import { catchError, exhaustMap, filter, map, take, timeout } from "rxjs/operators";
 
 declare const environment: any;
@@ -24,6 +24,19 @@ export interface RequestCodeResponse { code: string; expiresAtUtc: string; }
 export interface StatusResponse { linked: boolean; expiresAtUtc: string; secondsLeft: number; }
 export interface ExchangeStartCodeResponse extends AuthSessionResponse {}
 export interface ExchangePending { status: "pending"; }
+export type SessionBootstrapErrorKind = "network" | "tls" | "timeout" | "api" | "unknown";
+
+export class SessionBootstrapError extends Error {
+  constructor(
+    readonly kind: SessionBootstrapErrorKind,
+    message: string,
+    readonly status?: number,
+    readonly originalError?: unknown
+  ) {
+    super(message);
+    this.name = "SessionBootstrapError";
+  }
+}
 
 const JWT_KEY = "foodbot.jwt";
 const JWT_EXP = "foodbot.jwt.exp";
@@ -35,6 +48,9 @@ const IS_ANON_KEY = "foodbot.is_anonymous";
 const INSTALL_ID_KEY = "foodbot.install_id";
 const MOBILE_DEFAULT_API_BASE_URL = "https://healthymeals.space";
 const DEFAULT_BOT_USERNAME = "CalorieJournal_bot";
+const ANON_START_TIMEOUT_MS = 9000;
+const ANON_START_MAX_ATTEMPTS = 3;
+const ANON_START_RETRY_DELAYS_MS = [800, 1700];
 
 @Injectable({ providedIn: "root" })
 export class FoodBotAuthLinkService {
@@ -78,6 +94,14 @@ export class FoodBotAuthLinkService {
     return this.normalizeBaseUrl(window.location.origin) || MOBILE_DEFAULT_API_BASE_URL;
   }
   get apiBaseUrl(): string { return this.apiBase; }
+  get webAppUrl(): string {
+    try {
+      const url = new URL(this.apiBase);
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      return MOBILE_DEFAULT_API_BASE_URL;
+    }
+  }
 
   private shouldUseMobileDefaultApi(apiBase: string): boolean {
     return this.isNativeApp() && this.isLocalhostLike(apiBase);
@@ -279,8 +303,111 @@ export class FoodBotAuthLinkService {
       }
     }
 
-    const anon = await firstValueFrom(this.startAnonymousSession(device));
+    await this.pingAuthHealthForDiagnostics();
+    const anon = await this.startAnonymousSessionWithRetry(device);
     this.setToken(anon);
+  }
+
+  private async startAnonymousSessionWithRetry(device: string): Promise<AuthSessionResponse> {
+    let lastError: SessionBootstrapError | null = null;
+
+    for (let attempt = 1; attempt <= ANON_START_MAX_ATTEMPTS; attempt++) {
+      try {
+        return await firstValueFrom(
+          this.startAnonymousSession(device).pipe(timeout({ first: ANON_START_TIMEOUT_MS }))
+        );
+      } catch (err) {
+        const classified = this.classifyAnonymousStartError(err);
+        lastError = classified;
+        this.logAnonymousStartError(classified, attempt);
+
+        const canRetry = this.shouldRetryAnonymousStart(classified) && attempt < ANON_START_MAX_ATTEMPTS;
+        if (!canRetry) break;
+
+        await this.sleep(this.getAnonymousRetryDelayMs(attempt));
+      }
+    }
+
+    throw lastError ?? new SessionBootstrapError("unknown", "Не удалось запустить анонимную сессию.");
+  }
+
+  private async pingAuthHealthForDiagnostics(): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.http
+          .get<{ status: string }>(`${this.apiBase}/api/auth/health`)
+          .pipe(timeout({ first: 3000 }))
+      );
+    } catch (err) {
+      const classified = this.classifyAnonymousStartError(err);
+      this.logAnonymousStartError(classified, 0);
+    }
+  }
+
+  private classifyAnonymousStartError(err: unknown): SessionBootstrapError {
+    if (err instanceof SessionBootstrapError) return err;
+
+    if (err instanceof TimeoutError) {
+      return new SessionBootstrapError("timeout", "Сервер не ответил вовремя.");
+    }
+
+    if (err instanceof HttpErrorResponse) {
+      if (err.status === 0) {
+        if (this.looksLikeTlsError(err)) {
+          return new SessionBootstrapError("tls", "Ошибка защищённого соединения (TLS/сертификат).", err.status, err);
+        }
+        return new SessionBootstrapError("network", "Проблема с сетью или CORS/доступом к API.", err.status, err);
+      }
+
+      return new SessionBootstrapError("api", `API вернуло HTTP ${err.status}.`, err.status, err);
+    }
+
+    return new SessionBootstrapError("unknown", "Неизвестная ошибка запуска сессии.", undefined, err);
+  }
+
+  private looksLikeTlsError(err: HttpErrorResponse): boolean {
+    const message = `${err.message ?? ""} ${this.stringifyError(err.error)}`.toLowerCase();
+    return ["ssl", "tls", "certificate", "cert", "handshake"].some(mark => message.includes(mark));
+  }
+
+  private stringifyError(err: unknown): string {
+    if (!err) return "";
+    if (typeof err === "string") return err;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+
+  private shouldRetryAnonymousStart(err: SessionBootstrapError): boolean {
+    if (err.kind === "timeout" || err.kind === "network" || err.kind === "tls") return true;
+    if (err.kind !== "api") return false;
+    const status = err.status ?? 0;
+    return status >= 500 || status === 429;
+  }
+
+  private getAnonymousRetryDelayMs(attempt: number): number {
+    const index = Math.max(0, Math.min(attempt - 1, ANON_START_RETRY_DELAYS_MS.length - 1));
+    return ANON_START_RETRY_DELAYS_MS[index];
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private logAnonymousStartError(err: SessionBootstrapError, attempt: number): void {
+    const platform = Capacitor.getPlatform();
+    const origin = typeof window !== "undefined" ? window.location.origin : "unknown";
+
+    console.warn("[auth] anonymous/start failed", {
+      attempt,
+      kind: err.kind,
+      status: err.status ?? null,
+      platform,
+      origin,
+      apiBase: this.apiBase
+    });
   }
 
   requestStartCode(): Observable<RequestCodeResponse> {

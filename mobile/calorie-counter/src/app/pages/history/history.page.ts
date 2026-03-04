@@ -6,11 +6,12 @@ import { MatDialog, MatDialogModule } from "@angular/material/dialog";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { InfiniteScrollModule } from "ngx-infinite-scroll";
 import { FoodbotApiService } from "../../services/foodbot-api.service";
-import { MealListItem } from "../../services/foodbot-api.types";
+import { MealListItem, PersonalCard } from "../../services/foodbot-api.types";
 import { HistoryDetailDialogComponent } from "./history-detail.dialog";
 import { HistoryUpdatesService } from "../../services/history-updates.service";
 import { Subscription } from "rxjs";
 import { FoodBotAuthLinkService } from "../../services/foodbot-auth-link.service";
+import { Router } from "@angular/router";
 
 @Component({
   selector: "app-history",
@@ -31,6 +32,7 @@ export class HistoryPage implements OnInit, OnDestroy {
   total = 0;
   pageSize = 10;
   loading = false;
+  profileComplete = false;
 
   imageUrls = new Map<number, string>();
   private dateTotals = new Map<string, number>();
@@ -44,7 +46,8 @@ export class HistoryPage implements OnInit, OnDestroy {
     private auth: FoodBotAuthLinkService,
     private snack: MatSnackBar,
     private dialog: MatDialog,
-    private updates: HistoryUpdatesService
+    private updates: HistoryUpdatesService,
+    private router: Router
   ) {}
 
   get isAnonymousMode(): boolean {
@@ -53,6 +56,7 @@ export class HistoryPage implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadMore();
+    this.loadProfileStatus();
 
     this.updatesSub = this.updates.updates().subscribe(item => this.applyRealtimeUpdate(item));
   }
@@ -74,7 +78,7 @@ export class HistoryPage implements OnInit, OnDestroy {
         this.items = [...this.items, ...res.items];
         this.total = res.total;
         for (const m of res.items) {
-          if (m.hasImage && m.id > 0) {
+          if (m.hasImage) {
             this.api.getMealImageObjectUrl(m.id).subscribe((url) => this.setImageUrl(m.id, url));
           }
         }
@@ -89,6 +93,8 @@ export class HistoryPage implements OnInit, OnDestroy {
   }
 
   onScrollDown() { this.loadMore(); }
+  goProfile() { void this.router.navigateByUrl("/profile"); }
+  goGuide() { void this.router.navigateByUrl("/guide"); }
 
   //time(s: string) { return new Date(s).toLocaleString(); }
   imgUrl(id: number) { return this.imageUrls.get(id) || ""; }
@@ -136,9 +142,12 @@ export class HistoryPage implements OnInit, OnDestroy {
   private applyRealtimeUpdate(item: MealListItem) {
     let replacedPending = 0;
     if (item.replacesPendingRequestId) {
-      const before = this.items.length;
+      const toRemove = this.items.filter(x => x.pendingRequestId === item.replacesPendingRequestId);
+      for (const removed of toRemove) {
+        this.clearImageUrl(removed.id);
+      }
+      replacedPending = toRemove.length;
       this.items = this.items.filter(x => x.pendingRequestId !== item.replacesPendingRequestId);
-      replacedPending = before - this.items.length;
     }
 
     const idx = this.items.findIndex(x => x.id === item.id);
@@ -152,9 +161,9 @@ export class HistoryPage implements OnInit, OnDestroy {
     }
 
     this.items.sort((a, b) => new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime());
-    if (item.hasImage && item.id > 0) {
+    if (item.hasImage) {
       this.api.getMealImageObjectUrl(item.id).subscribe(url => this.setImageUrl(item.id, url));
-    } else if (item.id > 0) {
+    } else if (item.id !== 0) {
       this.clearImageUrl(item.id);
     }
     this.recomputeDateTotals();
@@ -213,7 +222,24 @@ export class HistoryPage implements OnInit, OnDestroy {
   }
 
   time(s: string) {
-  return new Date(s).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
+    return new Date(s).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  private loadProfileStatus() {
+    this.api.getPersonalCard().subscribe({
+      next: (card) => {
+        this.profileComplete = this.isProfileComplete(card);
+      },
+      error: () => {
+        this.profileComplete = false;
+      }
+    });
+  }
+
+  private isProfileComplete(card: PersonalCard | null): card is PersonalCard {
+    if (!card) return false;
+    const required: Array<keyof PersonalCard> = ["gender", "birthYear", "heightCm", "weightKg", "activityLevel"];
+    return required.every(field => card[field] !== null && card[field] !== undefined);
+  }
 
 }
